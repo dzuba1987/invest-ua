@@ -779,28 +779,79 @@ function initFirebase() {
   }
 }
 
-function saveUserMeta(user) {
+async function saveUserMeta(user) {
   if (!firebaseReady || !user) return;
-  db.collection('users').doc(user.uid).update({
-    'meta.uid': user.uid,
-    'meta.email': user.email || '',
-    'meta.displayName': user.displayName || '',
-    'meta.photoURL': user.photoURL || '',
-    'meta.lastLogin': new Date().toISOString(),
-    'meta.provider': user.providerData[0]?.providerId || 'unknown'
-  }).catch(() => {
-    // Document doesn't exist yet — create it
-    db.collection('users').doc(user.uid).set({
-      meta: {
-        uid: user.uid,
-        email: user.email || '',
-        displayName: user.displayName || '',
-        photoURL: user.photoURL || '',
-        lastLogin: new Date().toISOString(),
-        provider: user.providerData[0]?.providerId || 'unknown'
-      }
-    }).catch(e => console.warn('User meta save failed:', e));
-  });
+  try {
+    const docRef = db.collection('users').doc(user.uid);
+    const doc = await docRef.get();
+    const isNewUser = !doc.exists;
+
+    if (isNewUser) {
+      await docRef.set({
+        meta: {
+          uid: user.uid,
+          email: user.email || '',
+          displayName: user.displayName || '',
+          photoURL: user.photoURL || '',
+          lastLogin: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          provider: user.providerData[0]?.providerId || 'unknown'
+        }
+      });
+      notifyTelegram('newUser', user);
+    } else {
+      await docRef.update({
+        'meta.uid': user.uid,
+        'meta.email': user.email || '',
+        'meta.displayName': user.displayName || '',
+        'meta.photoURL': user.photoURL || '',
+        'meta.lastLogin': new Date().toISOString(),
+        'meta.provider': user.providerData[0]?.providerId || 'unknown'
+      });
+    }
+  } catch(e) {
+    console.warn('User meta save failed:', e);
+  }
+}
+
+// ============ TELEGRAM BOT ============
+async function getTelegramConfig() {
+  if (!firebaseReady) return null;
+  try {
+    const doc = await db.collection('settings').doc('telegram').get();
+    if (doc.exists) return doc.data();
+  } catch(e) { /* ignore */ }
+  return null;
+}
+
+async function notifyTelegram(event, user) {
+  const config = await getTelegramConfig();
+  if (!config || !config.botToken || !config.chatId) return;
+
+  let text = '';
+  if (event === 'newUser') {
+    text = `🆕 *Новий користувач Invest UA*\n\n` +
+      `👤 ${user.displayName || 'Без імені'}\n` +
+      `📧 ${user.email || '—'}\n` +
+      `🕐 ${new Date().toLocaleString('uk-UA')}\n` +
+      `🔑 Provider: ${user.providerData[0]?.providerId || 'unknown'}`;
+  }
+
+  if (!text) return;
+
+  try {
+    await fetch(`https://api.telegram.org/bot${config.botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: config.chatId,
+        text: text,
+        parse_mode: 'Markdown'
+      })
+    });
+  } catch(e) {
+    console.warn('Telegram notify failed:', e);
+  }
 }
 
 function updateAuthUI() {

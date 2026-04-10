@@ -150,6 +150,26 @@
 
     <div class="admin-stats" id="adminStats"></div>
 
+    <!-- Telegram settings -->
+    <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:24px">
+      <h3 style="font-size:15px;color:#f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:20px">🤖</span> Telegram Bot
+      </h3>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">
+        <div style="flex:1;min-width:200px">
+          <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Bot Token</label>
+          <input type="text" id="tgBotToken" class="search-input" style="margin:0" placeholder="123456:ABC-DEF...">
+        </div>
+        <div style="min-width:150px">
+          <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Chat ID</label>
+          <input type="text" id="tgChatId" class="search-input" style="margin:0" placeholder="-1001234567890">
+        </div>
+        <button class="btn-sm" onclick="saveTelegramConfig()" style="padding:10px 20px;height:fit-content">Зберегти</button>
+        <button class="btn-sm" onclick="testTelegram()" style="padding:10px 20px;height:fit-content">Тест</button>
+      </div>
+      <p id="tgStatus" style="font-size:12px;margin-top:8px;display:none"></p>
+    </div>
+
     <input type="text" class="search-input" id="searchInput" placeholder="Пошук за ім'ям або email..." oninput="filterUsers()">
 
     <div class="user-list" id="userList"></div>
@@ -186,6 +206,7 @@
 
     document.getElementById('adminContent').style.display = 'block';
     loadUsers();
+    loadTelegramConfig();
   });
 
   async function loadUsers() {
@@ -312,6 +333,74 @@
       renderUsers(allUsers);
     } catch(e) {
       alert('Помилка: ' + e.message);
+    }
+  }
+
+  // ---- Telegram ----
+  async function loadTelegramConfig() {
+    try {
+      const doc = await db.collection('settings').doc('telegram').get();
+      if (doc.exists) {
+        document.getElementById('tgBotToken').value = doc.data().botToken || '';
+        document.getElementById('tgChatId').value = doc.data().chatId || '';
+      }
+    } catch(e) { /* ignore */ }
+  }
+
+  async function saveTelegramConfig() {
+    const botToken = document.getElementById('tgBotToken').value.trim();
+    const chatId = document.getElementById('tgChatId').value.trim();
+    const status = document.getElementById('tgStatus');
+
+    try {
+      await db.collection('settings').doc('telegram').set({ botToken, chatId });
+      status.textContent = '✓ Збережено';
+      status.style.color = '#4ade80';
+      status.style.display = 'block';
+      setTimeout(() => { status.style.display = 'none'; }, 3000);
+    } catch(e) {
+      status.textContent = 'Помилка: ' + e.message;
+      status.style.color = '#f87171';
+      status.style.display = 'block';
+    }
+  }
+
+  async function testTelegram() {
+    const botToken = document.getElementById('tgBotToken').value.trim();
+    const chatId = document.getElementById('tgChatId').value.trim();
+    const status = document.getElementById('tgStatus');
+
+    if (!botToken || !chatId) {
+      status.textContent = 'Заповніть Bot Token та Chat ID';
+      status.style.color = '#f87171';
+      status.style.display = 'block';
+      return;
+    }
+
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: '✅ *Invest UA — тестове повідомлення*\n\nБот підключений успішно!',
+          parse_mode: 'Markdown'
+        })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        status.textContent = '✓ Повідомлення надіслано в Telegram';
+        status.style.color = '#4ade80';
+      } else {
+        status.textContent = 'Помилка: ' + (data.description || 'unknown');
+        status.style.color = '#f87171';
+      }
+      status.style.display = 'block';
+      setTimeout(() => { status.style.display = 'none'; }, 5000);
+    } catch(e) {
+      status.textContent = 'Помилка: ' + e.message;
+      status.style.color = '#f87171';
+      status.style.display = 'block';
     }
   }
 </script>
