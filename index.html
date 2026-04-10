@@ -18,7 +18,7 @@
     background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
     min-height: 100vh;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
     padding: 20px;
     color: #e2e8f0;
@@ -29,7 +29,7 @@
     border-radius: 16px;
     padding: 36px;
     width: 100%;
-    max-width: 1200px;
+    max-width: 1100px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.4);
   }
   h1 { text-align: center; font-size: 22px; margin-bottom: 8px; color: #f1f5f9; }
@@ -142,8 +142,6 @@
     70% { opacity: 1; }
     100% { opacity: 0; }
   }
-
-  /* Saved records table */
   .saved-section {
     margin-top: 28px;
     display: none;
@@ -219,43 +217,223 @@
   }
   .install-banner.show { display: block; }
 
-  /* Two-column desktop layout */
-  .main-layout {
+  /* === TAB NAVIGATION === */
+  .main-tabs {
     display: flex;
-    gap: 24px;
-    align-items: flex-start;
+    gap: 4px;
+    margin-bottom: 24px;
+    background: #0f172a;
+    border-radius: 12px;
+    padding: 4px;
+    border: 1px solid #334155;
   }
-  .panel-left {
+  .main-tab {
     flex: 1;
-    min-width: 0;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin: 0;
+    width: auto;
   }
-  .panel-right {
-    flex: 1;
-    min-width: 0;
-    position: sticky;
-    top: 20px;
+  .main-tab:hover { color: #94a3b8; }
+  .main-tab.active {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #fff;
   }
-  .panel-right .results {
-    display: block;
-    margin-top: 0;
-    min-height: 200px;
-  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
 
-  @media (max-width: 900px) {
-    .main-layout {
-      flex-direction: column;
-    }
-    .panel-right {
-      position: static;
-    }
-    .panel-right .results {
-      margin-top: 24px;
-      display: none;
-    }
-    .panel-right .results.show {
-      display: block;
-    }
+  /* === ANALYTICS STYLES === */
+  .a-card {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
   }
+  .a-card h3 {
+    font-size: 15px;
+    color: #f1f5f9;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .a-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .a-filter-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid #334155;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin: 0;
+    width: auto;
+    transition: all 0.2s;
+  }
+  .a-filter-btn:hover { border-color: #3b82f6; color: #e2e8f0; }
+  .a-filter-btn.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+  .a-params {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: end;
+    margin-bottom: 16px;
+  }
+  .a-field { display: flex; flex-direction: column; gap: 4px; }
+  .a-field label { font-size: 12px; color: #64748b; font-weight: 500; }
+  .a-field input, .a-field select {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #f1f5f9;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    width: 160px;
+  }
+  .a-field input:focus, .a-field select:focus { border-color: #3b82f6; }
+  .a-btn-calc {
+    padding: 10px 24px;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    width: auto;
+    margin: 0;
+  }
+  .a-btn-calc:hover { filter: brightness(1.1); }
+  .a-rank-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .a-rank-table th {
+    text-align: left;
+    padding: 10px 8px;
+    color: #64748b;
+    font-weight: 600;
+    border-bottom: 2px solid #334155;
+    font-size: 12px;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .a-rank-table th:hover { color: #3b82f6; }
+  .a-rank-table td { padding: 10px 8px; border-bottom: 1px solid #1e293b; }
+  .a-rank-table tr.a-best { background: rgba(74, 222, 128, 0.06); }
+  .a-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .a-badge-green { background: rgba(74,222,128,0.12); color: #4ade80; }
+  .a-badge-yellow { background: rgba(250,204,21,0.12); color: #facc15; }
+  .a-badge-blue { background: rgba(96,165,250,0.12); color: #60a5fa; }
+  .a-combo {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .a-combo h4 {
+    font-size: 14px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .a-combo-rank { color: #3b82f6; font-weight: 700; }
+  .a-combo-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .a-combo-item {
+    background: #0f172a;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .a-combo-item .name { font-weight: 600; margin-bottom: 4px; }
+  .a-combo-summary {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding-top: 10px;
+    border-top: 1px solid #334155;
+    font-size: 13px;
+  }
+  .a-stat .a-stat-label { color: #64748b; font-size: 11px; }
+  .a-stat .a-stat-value { font-weight: 700; font-size: 15px; }
+  .a-stat .green { color: #4ade80; }
+  .a-stat .yellow { color: #facc15; }
+  .a-empty {
+    text-align: center;
+    color: #475569;
+    padding: 40px 20px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .a-reinvest-chain {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .a-reinvest-step {
+    background: #0f172a;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .a-reinvest-arrow {
+    color: #3b82f6;
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .a-sub-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 14px;
+  }
+  .a-sub-tab {
+    padding: 7px 14px;
+    border-radius: 7px;
+    border: 1px solid #334155;
+    background: transparent;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    width: auto;
+    margin: 0;
+    transition: all 0.2s;
+  }
+  .a-sub-tab:hover { border-color: #3b82f6; color: #94a3b8; }
+  .a-sub-tab.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+
   @media (max-width: 768px) {
     body { padding: 8px; align-items: flex-start; }
     .container { padding: 16px; border-radius: 12px; }
@@ -267,167 +445,229 @@
     .saved-table th, .saved-table td { padding: 6px 4px; }
     .result-value { font-size: 14px; }
     .result-value.rate { font-size: 18px; }
+    .main-tab { font-size: 12px; padding: 10px 8px; }
+    .a-params { flex-direction: column; }
+    .a-field input, .a-field select { width: 100%; }
+    .a-combo-items { grid-template-columns: 1fr; }
   }
 </style>
 </head>
 <body>
 
 <div class="container">
-  <h1>💰 Калькулятор інвестицій</h1>
+  <h1>Калькулятор інвестицій</h1>
   <p class="subtitle">ОВДП, депозити та інші вкладення</p>
-  <p class="hint">Заповніть будь-які відомі поля — решта розрахується автоматично</p>
+
   <div class="install-banner" id="installBanner" onclick="installApp()">
-    📲 Встановити додаток на пристрій
+    Встановити додаток на пристрій
   </div>
 
-  <div class="main-layout">
-    <div class="panel-left">
-      <div class="form-grid">
-        <div class="field field-full">
-          <label>Назва облігації</label>
-          <input type="text" id="bondName" placeholder="Військові ОВДП серія 123/456">
-        </div>
+  <!-- TAB NAVIGATION -->
+  <div class="main-tabs">
+    <button class="main-tab active" onclick="switchMainTab('calc', this)">Калькулятор</button>
+    <button class="main-tab" onclick="switchMainTab('analytics', this)">Аналітика</button>
+  </div>
 
-        <div class="field">
-          <label>Вартість 1 облігації (грн)</label>
-          <input type="text" id="bondPrice" placeholder="1 000" inputmode="decimal">
-        </div>
-        <div class="field">
-          <label>Кількість облігацій</label>
-          <input type="text" id="bondCount" placeholder="500" inputmode="numeric">
-        </div>
+  <!-- ====== TAB 1: CALCULATOR (original) ====== -->
+  <div class="tab-panel active" id="panel-calc">
+    <p class="hint">Заповніть будь-які відомі поля — решта розрахується автоматично</p>
+    <div class="form-grid">
+      <div class="field field-full">
+        <label>Назва облігації</label>
+        <input type="text" id="bondName" placeholder="Військові ОВДП серія 123/456">
+      </div>
+      <div class="field">
+        <label>Вартість 1 облігації (грн)</label>
+        <input type="text" id="bondPrice" placeholder="1 000" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>Кількість облігацій</label>
+        <input type="text" id="bondCount" placeholder="500" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label>Сума вкладення (грн)</label>
+        <input type="text" id="invested" placeholder="561 870" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>Річна ставка (%)</label>
+        <input type="text" id="annualRateInput" placeholder="15" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>Дата вкладення</label>
+        <input type="date" id="dateStart">
+      </div>
+      <div class="field">
+        <label>Дата отримання</label>
+        <input type="date" id="dateEnd">
+      </div>
+      <div class="field">
+        <label>Сума отримання (грн)</label>
+        <input type="text" id="received" placeholder="607 231" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>Різниця (грн)</label>
+        <input type="text" id="diffAmount" placeholder="45 361" inputmode="decimal">
+      </div>
+    </div>
 
-        <div class="field">
-          <label>Сума вкладення (грн)</label>
-          <input type="text" id="invested" placeholder="561 870" inputmode="decimal">
-        </div>
-        <div class="field">
-          <label>Річна ставка (%)</label>
-          <input type="text" id="annualRateInput" placeholder="15" inputmode="decimal">
-        </div>
+    <button onclick="calculate()">Розрахувати</button>
+    <div class="btn-row">
+      <button class="btn-save" onclick="saveRecord()">Зберегти запис</button>
+      <button class="btn-clear" onclick="clearAll()">Очистити</button>
+    </div>
+    <button class="btn-import" onclick="document.getElementById('importFile').click()">Імпорт з Excel</button>
+    <input type="file" id="importFile" accept=".xlsx,.xls" style="display:none" onchange="importFromExcel(event)">
+    <p class="error" id="error"></p>
+    <p class="success-msg" id="successMsg"></p>
 
-        <div class="field">
-          <label>Дата вкладення</label>
-          <input type="date" id="dateStart">
-        </div>
-        <div class="field">
-          <label>Дата отримання</label>
-          <input type="date" id="dateEnd">
-        </div>
+    <div class="results" id="results">
+      <div class="result-section" id="bondsSectionLabel" style="display:none">Облігації</div>
+      <div class="result-row" id="bondNameRow" style="display:none">
+        <span class="result-label">Назва</span>
+        <span class="result-value" id="resBondName" style="font-size:14px;"></span>
+      </div>
+      <div class="result-row" id="bondsCountRow" style="display:none">
+        <span class="result-label">Кількість облігацій</span>
+        <span class="result-value" id="resBondsCount"></span>
+      </div>
+      <div class="result-row" id="investedCalcRow" style="display:none">
+        <span class="result-label">Сума вкладення</span>
+        <span class="result-value computed" id="resInvestedCalc"></span>
+      </div>
+      <div class="result-section">Результат</div>
+      <div class="result-row" id="receivedCalcRow" style="display:none">
+        <span class="result-label">Сума отримання</span>
+        <span class="result-value computed" id="resReceivedCalc"></span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Прибуток</span>
+        <span class="result-value profit" id="resProfit"></span>
+      </div>
+      <div class="result-row" id="profitPerBondRow" style="display:none">
+        <span class="result-label">Прибуток на 1 облігацію</span>
+        <span class="result-value profit" id="resProfitPerBond"></span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Термін</span>
+        <span class="result-value" id="resTerm"></span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Дохідність за період</span>
+        <span class="result-value profit" id="resPeriodRate"></span>
+      </div>
+      <div class="result-row" id="annualRateCalcRow">
+        <span class="result-label">Річна дохідність</span>
+        <span class="result-value rate" id="resAnnualRate"></span>
+      </div>
+      <div class="result-section">Чистий прибуток</div>
+      <div class="result-row">
+        <span class="result-label">Чистий прибуток (отримано − вкладено)</span>
+        <span class="result-value profit" id="resNetProfit"></span>
+      </div>
+      <div class="result-row" id="netPerBondRow" style="display:none">
+        <span class="result-label">Чистий прибуток на 1 облігацію</span>
+        <span class="result-value profit" id="resNetPerBond"></span>
+      </div>
+    </div>
 
-        <div class="field">
-          <label>Сума отримання (грн)</label>
-          <input type="text" id="received" placeholder="607 231" inputmode="decimal">
-        </div>
-        <div class="field">
-          <label>Різниця (грн)</label>
-          <input type="text" id="diffAmount" placeholder="45 361" inputmode="decimal">
+    <!-- Saved records -->
+    <div class="saved-section" id="savedSection">
+      <div class="saved-title">
+        Збережені облігації
+        <span class="saved-count" id="savedCount"></span>
+      </div>
+      <div class="table-wrap">
+        <table class="saved-table">
+          <thead>
+            <tr>
+              <th>Назва</th><th>Ціна</th><th>К-сть</th><th>Вкладено</th>
+              <th>Отримано</th><th>Різниця</th><th>Дата від</th><th>Дата до</th>
+              <th>Днів</th><th>Місяців</th><th>Ставка</th><th>Річна %</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="savedBody"></tbody>
+          <tfoot id="savedFoot"></tfoot>
+        </table>
+      </div>
+      <button class="btn-export" onclick="exportToExcel()" style="margin-top:12px;">Експорт у Excel</button>
+    </div>
+  </div>
+
+  <!-- ====== TAB 2: ANALYTICS ====== -->
+  <div class="tab-panel" id="panel-analytics">
+    <div id="analyticsEmpty" class="a-empty">
+      Збережи хоча б 2 облігації у вкладці «Калькулятор»,<br>щоб побачити аналітику та рекомендації.
+    </div>
+    <div id="analyticsContent" style="display:none;">
+
+      <!-- Budget & params -->
+      <div class="a-card">
+        <h3>Параметри аналізу</h3>
+        <div class="a-params">
+          <div class="a-field">
+            <label>Бюджет (грн)</label>
+            <input type="number" id="aBudget" value="600000" step="10000">
+          </div>
+          <div class="a-field">
+            <label>Облігацій у портфелі</label>
+            <select id="aComboCount">
+              <option value="1">1</option>
+              <option value="2" selected>2</option>
+              <option value="3">3</option>
+            </select>
+          </div>
+          <div class="a-field">
+            <label>Горизонт інвестування</label>
+            <select id="aHorizon">
+              <option value="0">Будь-який</option>
+              <option value="3">~3 місяці</option>
+              <option value="6" selected>~6 місяців</option>
+              <option value="9">~9 місяців</option>
+              <option value="12">~12 місяців</option>
+            </select>
+          </div>
+          <button class="a-btn-calc" onclick="runAnalytics()">Аналізувати</button>
         </div>
       </div>
 
-      <button onclick="calculate()">Розрахувати</button>
-      <div class="btn-row">
-        <button class="btn-save" onclick="saveRecord()">💾 Зберегти запис</button>
-        <button class="btn-clear" onclick="clearAll()">Очистити</button>
+      <!-- Ranking -->
+      <div class="a-card">
+        <h3>Рейтинг облігацій</h3>
+        <div style="overflow-x:auto">
+          <table class="a-rank-table" id="aRankTable"></table>
+        </div>
       </div>
-      <button class="btn-import" onclick="document.getElementById('importFile').click()">📂 Імпорт з Excel</button>
-      <input type="file" id="importFile" accept=".xlsx,.xls" style="display:none" onchange="importFromExcel(event)">
-      <p class="error" id="error"></p>
-      <p class="success-msg" id="successMsg">✓ Запис збережено!</p>
-    </div>
 
-    <div class="panel-right">
-      <div class="results" id="results">
-    <div class="results-placeholder" id="resultsPlaceholder">
-      <p style="text-align:center;color:#475569;font-size:14px;padding:20px 0;">Заповніть поля зліва та натисніть «Розрахувати»</p>
-    </div>
-    <div class="result-section" id="bondsSectionLabel" style="display:none">Облігації</div>
-    <div class="result-row" id="bondNameRow" style="display:none">
-      <span class="result-label">Назва</span>
-      <span class="result-value" id="resBondName" style="font-size:14px;"></span>
-    </div>
-    <div class="result-row" id="bondsCountRow" style="display:none">
-      <span class="result-label">Кількість облігацій</span>
-      <span class="result-value" id="resBondsCount"></span>
-    </div>
-    <div class="result-row" id="investedCalcRow" style="display:none">
-      <span class="result-label">Сума вкладення</span>
-      <span class="result-value computed" id="resInvestedCalc"></span>
-    </div>
-
-    <div class="result-section">Результат</div>
-    <div class="result-row" id="receivedCalcRow" style="display:none">
-      <span class="result-label">Сума отримання</span>
-      <span class="result-value computed" id="resReceivedCalc"></span>
-    </div>
-    <div class="result-row">
-      <span class="result-label">Прибуток</span>
-      <span class="result-value profit" id="resProfit"></span>
-    </div>
-    <div class="result-row" id="profitPerBondRow" style="display:none">
-      <span class="result-label">Прибуток на 1 облігацію</span>
-      <span class="result-value profit" id="resProfitPerBond"></span>
-    </div>
-    <div class="result-row">
-      <span class="result-label">Термін</span>
-      <span class="result-value" id="resTerm"></span>
-    </div>
-    <div class="result-row">
-      <span class="result-label">Дохідність за період</span>
-      <span class="result-value profit" id="resPeriodRate"></span>
-    </div>
-    <div class="result-row" id="annualRateCalcRow">
-      <span class="result-label">Річна дохідність</span>
-      <span class="result-value rate" id="resAnnualRate"></span>
-    </div>
-
-    <div class="result-section">Чистий прибуток</div>
-    <div class="result-row">
-      <span class="result-label">Чистий прибуток (отримано − вкладено)</span>
-      <span class="result-value profit" id="resNetProfit"></span>
-    </div>
-    <div class="result-row" id="netPerBondRow" style="display:none">
-      <span class="result-label">Чистий прибуток на 1 облігацію</span>
-      <span class="result-value profit" id="resNetPerBond"></span>
+      <!-- Best combos -->
+      <div class="a-card">
+        <h3 id="aComboTitle">Найкращі комбінації</h3>
+        <div class="a-sub-tabs">
+          <button class="a-sub-tab active" onclick="switchComboTab('efficiency', this)">За ефективністю</button>
+          <button class="a-sub-tab" onclick="switchComboTab('profit', this)">За прибутком</button>
+        </div>
+        <div id="aCombosContainer"></div>
       </div>
-    </div> <!-- /results -->
-    </div> <!-- /panel-right -->
-  </div> <!-- /main-layout -->
 
-  <!-- Saved records -->
-  <div class="saved-section" id="savedSection">
-    <div class="saved-title">
-      📋 Збережені облігації
-      <span class="saved-count" id="savedCount"></span>
+      <!-- Reinvestment strategy -->
+      <div class="a-card">
+        <h3>Стратегія реінвестування</h3>
+        <p style="font-size:12px;color:#64748b;margin-bottom:14px;">Спочатку вкладаємо в коротку облігацію, потім реінвестуємо все в довшу — гроші працюють двічі.</p>
+        <div id="aReinvestContainer"></div>
+      </div>
     </div>
-    <div class="table-wrap">
-      <table class="saved-table">
-        <thead>
-          <tr>
-            <th>Назва</th>
-            <th>Ціна</th>
-            <th>К-сть</th>
-            <th>Вкладено</th>
-            <th>Отримано</th>
-            <th>Різниця</th>
-            <th>Дата від</th>
-            <th>Дата до</th>
-            <th>Днів</th>
-            <th>Місяців</th>
-            <th>Ставка</th>
-            <th>Річна %</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="savedBody"></tbody>
-        <tfoot id="savedFoot"></tfoot>
-      </table>
-    </div>
-    <button class="btn-export" onclick="exportToExcel()" style="margin-top:12px;">📥 Експорт у Excel</button>
   </div>
 </div>
 
 <script>
+  // ============ TAB SWITCHING ============
+  function switchMainTab(tab, btn) {
+    document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + tab).classList.add('active');
+    if (tab === 'analytics') checkAnalyticsReady();
+  }
+
   // ============ STATE ============
   let activeField = null;
   let savedRecords = [];
@@ -602,7 +842,6 @@
     const periodRate = (profit / invested) * 100;
     const annualRate = periodRate / diffDays * 365.25;
 
-    // Bonds section
     let showBonds = hasBondPrice || hasBondCount;
     if (showBonds) {
       let bc = hasBondCount ? Math.floor(bondCount) : Math.floor(invested / bondPrice);
@@ -657,8 +896,6 @@
       } else { showRow('netPerBondRow', false); }
     } else { showRow('netPerBondRow', false); }
 
-    var ph = document.getElementById('resultsPlaceholder');
-    if (ph) ph.style.display = 'none';
     resultsEl.classList.add('show');
   }
 
@@ -708,11 +945,11 @@
     savedRecords.push(record);
     renderSaved();
 
-    // Show success
     const msg = document.getElementById('successMsg');
+    msg.textContent = 'Запис збережено!';
     msg.style.display = 'block';
     msg.style.animation = 'none';
-    msg.offsetHeight; // reflow
+    msg.offsetHeight;
     msg.style.animation = 'fadeOut 3s forwards';
     setTimeout(() => { msg.style.display = 'none'; }, 3000);
   }
@@ -739,7 +976,6 @@
       totalReceived += r.received;
       totalProfit += r.profit;
 
-      // Calculate days and months
       let days = 0, months = 0;
       if (r.dateStart && r.dateEnd) {
         const d1 = new Date(r.dateStart), d2 = new Date(r.dateEnd);
@@ -766,7 +1002,6 @@
       body.appendChild(tr);
     });
 
-    // Totals
     const avgAnnual = savedRecords.reduce((s, r) => s + r.annualRate, 0) / savedRecords.length;
     foot.innerHTML = `
       <tr class="total-row">
@@ -776,7 +1011,7 @@
         <td class="num profit-cell">${formatShort(totalProfit)}</td>
         <td colspan="4"></td>
         <td></td>
-        <td class="num rate-cell">⌀ ${avgAnnual.toFixed(2)}%</td>
+        <td class="num rate-cell">${avgAnnual.toFixed(2)}%</td>
         <td></td>
       </tr>
     `;
@@ -860,7 +1095,6 @@
       alignment: { horizontal: 'left', vertical: 'center' }
     };
 
-    // Title row
     const titleStyle = {
       font: { name: 'Arial', bold: true, color: { rgb: white }, sz: 16 },
       fill: { fgColor: { rgb: headerBg } },
@@ -884,14 +1118,12 @@
 
     const ws = {};
 
-    // Title (row 1, merged)
-    ws['A1'] = { v: '💰 Калькулятор інвестицій — Облігації', s: titleStyle };
+    ws['A1'] = { v: 'Калькулятор інвестицій — Облігації', s: titleStyle };
     ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: colCount - 1 } }];
     for (let c = 1; c < colCount; c++) {
       ws[XLSX.utils.encode_cell({ r: 0, c })] = { v: '', s: titleStyle };
     }
 
-    // Subtitle (row 2)
     const dateGenerated = 'Згенеровано: ' + new Date().toLocaleDateString('uk-UA');
     ws['A2'] = { v: dateGenerated, s: subtitleStyle };
     ws['!merges'].push({ s: { r: 1, c: 0 }, e: { r: 1, c: colCount - 1 } });
@@ -899,12 +1131,10 @@
       ws[XLSX.utils.encode_cell({ r: 1, c })] = { v: '', s: subtitleStyle };
     }
 
-    // Headers (row 3)
     headers.forEach((h, i) => {
       ws[XLSX.utils.encode_cell({ r: 2, c: i })] = { v: h, s: headerStyle };
     });
 
-    // Data rows (starting row 4)
     savedRecords.forEach((r, ri) => {
       const row = ri + 3;
       const dateStyle = { ...cellStyle, alignment: { horizontal: 'center', vertical: 'center' } };
@@ -932,7 +1162,6 @@
       ws[XLSX.utils.encode_cell({ r: row, c: 12 })] = { v: Math.round(r.periodRate * 100) / 100, s: { ...profitStyle, numFmt: '0.00"%"' }, t: 'n' };
     });
 
-    // Totals row
     const totalRow = savedRecords.length + 3;
     const totalInvested = savedRecords.reduce((s, r) => s + r.invested, 0);
     const totalReceived = savedRecords.reduce((s, r) => s + r.received, 0);
@@ -948,17 +1177,14 @@
     ws[XLSX.utils.encode_cell({ r: totalRow, c: 11 })] = { v: Math.round(avgAnnual * 100) / 100, s: { ...totalStyle, font: { name: 'Arial', color: { rgb: yellow }, sz: 13, bold: true }, numFmt: '"⌀ "0.00"%"' }, t: 'n' };
     ws[XLSX.utils.encode_cell({ r: totalRow, c: 12 })] = { v: '', s: totalStyle };
 
-    // Set range
     ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: totalRow, c: colCount - 1 } });
 
-    // Column widths
     ws['!cols'] = [
       { wch: 32 }, { wch: 12 }, { wch: 8 }, { wch: 16 },
       { wch: 16 }, { wch: 14 }, { wch: 12 }, { wch: 12 },
       { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 14 }
     ];
 
-    // Row heights
     ws['!rows'] = [{ hpt: 32 }, { hpt: 22 }];
 
     const wb = XLSX.utils.book_new();
@@ -981,7 +1207,6 @@
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-        // Find header row (skip title rows)
         let headerIdx = -1;
         for (let i = 0; i < Math.min(rows.length, 5); i++) {
           const row = rows[i];
@@ -1040,12 +1265,12 @@
         renderSaved();
 
         const msg = document.getElementById('successMsg');
-        msg.textContent = '✓ Імпортовано ' + imported + ' записів з файлу!';
+        msg.textContent = 'Імпортовано ' + imported + ' записів з файлу!';
         msg.style.display = 'block';
         msg.style.animation = 'none';
         msg.offsetHeight;
         msg.style.animation = 'fadeOut 3s forwards';
-        setTimeout(() => { msg.style.display = 'none'; msg.textContent = '✓ Запис збережено!'; }, 3000);
+        setTimeout(() => { msg.style.display = 'none'; msg.textContent = 'Запис збережено!'; }, 3000);
 
       } catch (err) {
         alert('Помилка при читанні файлу: ' + err.message);
@@ -1065,8 +1290,6 @@
     document.getElementById('bondName').value = '';
     activeField = null;
     document.getElementById('results').classList.remove('show');
-    var ph = document.getElementById('resultsPlaceholder');
-    if (ph) ph.style.display = '';
     document.getElementById('error').style.display = 'none';
     const t = new Date();
     document.getElementById('dateStart').value = t.toISOString().split('T')[0];
@@ -1115,17 +1338,12 @@
     } catch(e) { console.warn('Storage load failed:', e); }
   }
 
-  // Override saveRecord and deleteRecord to persist
-  const _origSave = saveRecord;
-  const _origRender = renderSaved;
-
   const origRenderSaved = renderSaved;
   renderSaved = function() {
     origRenderSaved();
     saveToStorage();
   };
 
-  // Load saved data on startup
   loadFromStorage();
 
   // ============ PWA INSTALL ============
@@ -1146,9 +1364,292 @@
     }
   }
 
-  // Register Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW:', err));
+  }
+
+  // ================================================================
+  // ==================== ANALYTICS ENGINE ==========================
+  // ================================================================
+
+  let aComboTab = 'efficiency';
+
+  function checkAnalyticsReady() {
+    const hasData = savedRecords.length >= 2;
+    document.getElementById('analyticsEmpty').style.display = hasData ? 'none' : 'block';
+    document.getElementById('analyticsContent').style.display = hasData ? 'block' : 'none';
+    if (hasData) runAnalytics();
+  }
+
+  function getAnalyzedBonds(horizonMonths) {
+    return savedRecords.map(r => {
+      let days = 0;
+      if (r.dateStart && r.dateEnd) {
+        days = Math.round((new Date(r.dateEnd) - new Date(r.dateStart)) / 86400000);
+      }
+      if (days <= 0) return null;
+      const months = +(days / 30.44).toFixed(1);
+      const profitPerUnit = r.bondCount && r.bondCount > 0 ? r.profit / r.bondCount : r.profit;
+      const pricePerUnit = r.bondPrice || (r.bondCount > 0 ? r.invested / r.bondCount : r.invested);
+      const periodReturn = r.profit / r.invested * 100;
+      const effAnnual = (Math.pow(1 + r.profit / r.invested, 365 / days) - 1) * 100;
+      const dailyProfit = r.profit / days;
+
+      return {
+        ...r,
+        days, months,
+        profitPerUnit, pricePerUnit,
+        periodReturn, effAnnual, dailyProfit,
+        receivedPerUnit: r.bondCount > 0 ? r.received / r.bondCount : r.received
+      };
+    }).filter(b => {
+      if (!b) return false;
+      if (horizonMonths === 0) return true;
+      const minDays = (horizonMonths - 2) * 30.44;
+      const maxDays = (horizonMonths + 2) * 30.44;
+      return b.days >= minDays && b.days <= maxDays;
+    });
+  }
+
+  function runAnalytics() {
+    const horizonMonths = +document.getElementById('aHorizon').value;
+    const bonds = getAnalyzedBonds(horizonMonths);
+
+    renderRankingTable(bonds);
+    findAndRenderCombos(bonds);
+    findAndRenderReinvest();
+  }
+
+  // ---- Ranking Table ----
+  let aSortCol = 'effAnnual';
+  let aSortAsc = false;
+
+  function renderRankingTable(bonds) {
+    if (bonds.length === 0) {
+      document.getElementById('aRankTable').innerHTML = '<tr><td style="color:#475569;padding:20px;text-align:center">Немає облігацій для обраного горизонту</td></tr>';
+      return;
+    }
+
+    const sorted = [...bonds].sort((a, b) => aSortAsc ? a[aSortCol] - b[aSortCol] : b[aSortCol] - a[aSortCol]);
+    const bestName = sorted[0]?.name;
+
+    const cols = [
+      { key: 'name', label: 'Назва', fmt: v => v },
+      { key: 'pricePerUnit', label: 'Ціна', fmt: v => formatShort(v) },
+      { key: 'days', label: 'Днів', fmt: v => v },
+      { key: 'months', label: 'Міс.', fmt: v => v },
+      { key: 'rateInput', label: 'Ставка', fmt: v => v ? v.toFixed(1) + '%' : '—' },
+      { key: 'periodReturn', label: 'За період', fmt: v => v.toFixed(2) + '%' },
+      { key: 'effAnnual', label: 'Ефект. річна', fmt: v => v.toFixed(2) + '%' },
+      { key: 'dailyProfit', label: 'Прибуток/день', fmt: v => formatShort(v) + ' грн' },
+    ];
+
+    const arrow = k => aSortCol === k ? (aSortAsc ? ' ▲' : ' ▼') : '';
+
+    let html = '<thead><tr>';
+    cols.forEach(c => {
+      html += `<th onclick="aChangeSort('${c.key}')">${c.label}${arrow(c.key)}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+
+    sorted.forEach(b => {
+      const best = b.name === bestName;
+      html += `<tr class="${best ? 'a-best' : ''}">`;
+      cols.forEach(c => {
+        let val = c.fmt(b[c.key]);
+        if (c.key === 'effAnnual' && best) val += ' <span class="a-badge a-badge-green">ТОП</span>';
+        html += `<td>${val}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody>';
+
+    document.getElementById('aRankTable').innerHTML = html;
+    window._aBonds = bonds;
+  }
+
+  function aChangeSort(col) {
+    if (aSortCol === col) aSortAsc = !aSortAsc;
+    else { aSortCol = col; aSortAsc = false; }
+    if (window._aBonds) renderRankingTable(window._aBonds);
+  }
+
+  // ---- Combinations ----
+  function getCombos(arr, k) {
+    if (k === 1) return arr.map(x => [x]);
+    const res = [];
+    for (let i = 0; i <= arr.length - k; i++) {
+      getCombos(arr.slice(i + 1), k - 1).forEach(c => res.push([arr[i], ...c]));
+    }
+    return res;
+  }
+
+  function findAndRenderCombos(bonds) {
+    const budget = +document.getElementById('aBudget').value || 600000;
+    let count = +document.getElementById('aComboCount').value || 2;
+    if (count > bonds.length) count = bonds.length;
+
+    document.getElementById('aComboTitle').textContent =
+      `Найкращі комбінації (${count} облігаці${count === 1 ? 'я' : count < 5 ? 'ї' : 'й'})`;
+
+    if (bonds.length < count || count === 0) {
+      document.getElementById('aCombosContainer').innerHTML =
+        '<p style="color:#475569;text-align:center;padding:16px">Недостатньо облігацій для комбінації</p>';
+      return;
+    }
+
+    const combos = getCombos(bonds, count);
+    const results = [];
+
+    const splits = count === 1 ? [[1.0]] :
+      count === 2 ? [[0.3,0.7],[0.4,0.6],[0.5,0.5],[0.6,0.4],[0.7,0.3]] :
+      [[0.2,0.4,0.4],[0.33,0.33,0.34],[0.4,0.3,0.3],[0.5,0.25,0.25],[0.25,0.5,0.25],[0.25,0.25,0.5]];
+
+    combos.forEach(combo => {
+      splits.forEach(split => {
+        const alloc = combo.map((b, i) => {
+          const qty = Math.floor((budget * split[i]) / b.pricePerUnit);
+          return { ...b, qty, allocInvested: qty * b.pricePerUnit, allocProfit: qty * b.profitPerUnit };
+        });
+        if (alloc.some(a => a.qty === 0)) return;
+        const totalInv = alloc.reduce((s, a) => s + a.allocInvested, 0);
+        if (totalInv > budget) return;
+        const totalProf = alloc.reduce((s, a) => s + a.allocProfit, 0);
+        const wAnnual = alloc.reduce((s, a) => s + a.effAnnual * a.allocInvested, 0) / totalInv;
+
+        results.push({ alloc, totalInv, totalProf, wAnnual, leftover: budget - totalInv, label: alloc.map(a => a.name).join(' + ') });
+      });
+    });
+
+    window._aComboResults = results;
+    renderCombos(aComboTab);
+  }
+
+  function renderCombos(tab) {
+    const results = window._aComboResults || [];
+    if (results.length === 0) {
+      document.getElementById('aCombosContainer').innerHTML = '<p style="color:#475569;text-align:center;padding:16px">Немає підходящих комбінацій</p>';
+      return;
+    }
+
+    const sorted = tab === 'efficiency'
+      ? [...results].sort((a, b) => b.wAnnual - a.wAnnual)
+      : [...results].sort((a, b) => b.totalProf - a.totalProf);
+
+    const seen = new Set();
+    const top = [];
+    for (const r of sorted) {
+      if (!seen.has(r.label)) { seen.add(r.label); top.push(r); }
+      if (top.length >= 5) break;
+    }
+
+    document.getElementById('aCombosContainer').innerHTML = top.map((r, i) => `
+      <div class="a-combo">
+        <h4><span class="a-combo-rank">#${i + 1}</span> ${r.label} ${i === 0 ? '<span class="a-badge a-badge-green">НАЙКРАЩИЙ</span>' : ''}</h4>
+        <div class="a-combo-items">
+          ${r.alloc.map(a => `
+            <div class="a-combo-item">
+              <div class="name">${a.name}</div>
+              <div>${a.qty} шт × ${formatShort(a.pricePerUnit)} = <b>${formatShort(a.allocInvested)} грн</b></div>
+              <div style="color:#4ade80">+${formatShort(a.allocProfit)} грн за ${a.days} дн. (${a.months} міс.)</div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="a-combo-summary">
+          <div class="a-stat"><div class="a-stat-label">Вкладено</div><div class="a-stat-value">${formatShort(r.totalInv)} грн</div></div>
+          <div class="a-stat"><div class="a-stat-label">Прибуток</div><div class="a-stat-value green">+${formatShort(r.totalProf)} грн</div></div>
+          <div class="a-stat"><div class="a-stat-label">Ефект. річна</div><div class="a-stat-value yellow">${r.wAnnual.toFixed(2)}%</div></div>
+          <div class="a-stat"><div class="a-stat-label">Залишок</div><div class="a-stat-value">${formatShort(r.leftover)} грн</div></div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function switchComboTab(tab, btn) {
+    aComboTab = tab;
+    document.querySelectorAll('.a-sub-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    renderCombos(tab);
+  }
+
+  // ---- Reinvestment Strategy ----
+  function findAndRenderReinvest() {
+    const budget = +document.getElementById('aBudget').value || 600000;
+    const allBonds = getAnalyzedBonds(0);
+    if (allBonds.length < 2) {
+      document.getElementById('aReinvestContainer').innerHTML = '<p style="color:#475569;text-align:center">Потрібно мінімум 2 облігації</p>';
+      return;
+    }
+
+    const sorted = [...allBonds].sort((a, b) => a.days - b.days);
+    const results = [];
+
+    for (let i = 0; i < sorted.length; i++) {
+      const first = sorted[i];
+      for (let j = 0; j < sorted.length; j++) {
+        if (i === j) continue;
+        const second = sorted[j];
+        if (!first.dateEnd || !second.dateEnd) continue;
+        const firstEnd = new Date(first.dateEnd);
+        const secondEnd = new Date(second.dateEnd);
+        if (secondEnd <= firstEnd) continue;
+
+        const qty1 = Math.floor(budget / first.pricePerUnit);
+        if (qty1 === 0) continue;
+        const inv1 = qty1 * first.pricePerUnit;
+        const prof1 = qty1 * first.profitPerUnit;
+        const afterFirst = inv1 + prof1 + (budget - inv1);
+
+        const qty2 = Math.floor(afterFirst / second.pricePerUnit);
+        if (qty2 === 0) continue;
+        const inv2 = qty2 * second.pricePerUnit;
+        const prof2 = qty2 * second.profitPerUnit;
+
+        const totalProfit = prof1 + prof2;
+        const totalDays = Math.round((secondEnd - new Date(first.dateStart)) / 86400000);
+        const effAnnual = totalDays > 0 ? (Math.pow(1 + totalProfit / budget, 365 / totalDays) - 1) * 100 : 0;
+
+        results.push({ first, second, qty1, inv1, prof1, qty2, inv2, prof2, afterFirst, totalProfit, totalDays, effAnnual });
+      }
+    }
+
+    results.sort((a, b) => b.effAnnual - a.effAnnual);
+    const top = results.slice(0, 3);
+
+    if (top.length === 0) {
+      document.getElementById('aReinvestContainer').innerHTML = '<p style="color:#475569;text-align:center">Немає варіантів для реінвестування</p>';
+      return;
+    }
+
+    document.getElementById('aReinvestContainer').innerHTML = top.map((r, i) => `
+      <div class="a-combo" style="margin-bottom:12px">
+        <h4>
+          <span class="a-combo-rank">#${i + 1}</span>
+          ${r.first.name} → ${r.second.name}
+          ${i === 0 ? '<span class="a-badge a-badge-yellow">НАЙВИГІДНІШЕ</span>' : ''}
+        </h4>
+        <div class="a-reinvest-chain">
+          <div class="a-reinvest-step">
+            <div style="font-weight:600;margin-bottom:4px">${r.first.name}</div>
+            <div>${r.qty1} шт × ${formatShort(r.first.pricePerUnit)} грн</div>
+            <div style="color:#4ade80">+${formatShort(r.prof1)} грн за ${r.first.days} дн.</div>
+            <div style="color:#64748b;font-size:12px">до ${formatDate(r.first.dateEnd)}</div>
+          </div>
+          <div class="a-reinvest-arrow">→</div>
+          <div class="a-reinvest-step">
+            <div style="font-weight:600;margin-bottom:4px">${r.second.name}</div>
+            <div>${r.qty2} шт × ${formatShort(r.second.pricePerUnit)} грн</div>
+            <div style="color:#4ade80">+${formatShort(r.prof2)} грн</div>
+            <div style="color:#64748b;font-size:12px">до ${formatDate(r.second.dateEnd)}</div>
+          </div>
+        </div>
+        <div class="a-combo-summary">
+          <div class="a-stat"><div class="a-stat-label">Загальний прибуток</div><div class="a-stat-value green">+${formatShort(r.totalProfit)} грн</div></div>
+          <div class="a-stat"><div class="a-stat-label">Загальний строк</div><div class="a-stat-value">${r.totalDays} дн. (${(r.totalDays / 30.44).toFixed(1)} міс.)</div></div>
+          <div class="a-stat"><div class="a-stat-label">Ефект. річна</div><div class="a-stat-value yellow">${r.effAnnual.toFixed(2)}%</div></div>
+        </div>
+      </div>
+    `).join('');
   }
 </script>
 
