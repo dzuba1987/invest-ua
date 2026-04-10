@@ -783,16 +783,23 @@ function updateAuthUI() {
   const loginBtn = document.getElementById('btnLogin');
   const logoutBtn = document.getElementById('btnLogout');
 
+  const saveBtn = document.getElementById('btnSaveRecord');
+  const importBtn = document.getElementById('btnImportExcel');
+
   if (currentUser) {
     info.style.display = 'flex';
     loginBtn.style.display = 'none';
     logoutBtn.style.display = 'inline-block';
     document.getElementById('userAvatar').src = currentUser.photoURL || '';
     document.getElementById('userName').textContent = userProfile.displayName || currentUser.displayName || currentUser.email;
+    saveBtn.style.display = '';
+    importBtn.style.display = '';
   } else {
     info.style.display = 'none';
     loginBtn.style.display = 'flex';
     logoutBtn.style.display = 'none';
+    saveBtn.style.display = 'none';
+    importBtn.style.display = 'none';
   }
   updatePortfolioUI();
   updateProfileUI();

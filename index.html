@@ -112,10 +112,10 @@
 
     <button onclick="calculate()" data-i18n="calc.calculate">Розрахувати</button>
     <div class="btn-row">
-      <button class="btn-save" onclick="saveRecord()" data-i18n="calc.save">Зберегти запис</button>
+      <button class="btn-save" id="btnSaveRecord" onclick="saveRecord()" data-i18n="calc.save" style="display:none">Зберегти запис</button>
       <button class="btn-clear" onclick="clearAll()" data-i18n="calc.clear">Очистити</button>
     </div>
-    <button class="btn-import" onclick="document.getElementById('importFile').click()" data-i18n="calc.import">Імпорт з Excel</button>
+    <button class="btn-import" id="btnImportExcel" onclick="document.getElementById('importFile').click()" data-i18n="calc.import" style="display:none">Імпорт з Excel</button>
     <input type="file" id="importFile" accept=".xlsx,.xls" style="display:none" onchange="importFromExcel(event)">
     <p class="error" id="error"></p>
     <p class="success-msg" id="successMsg"></p>
