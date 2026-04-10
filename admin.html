@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1e293b">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<title>Admin — Invest UA</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  body { line-height: 1.5; }
+  .admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  .admin-header h1 { text-align: left; margin: 0; }
+  .admin-stats {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .admin-stat {
+    flex: 1;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+  .admin-stat-value { font-size: 28px; font-weight: 700; color: #f1f5f9; }
+  .admin-stat-label { font-size: 12px; color: #64748b; margin-top: 4px; }
+  .admin-stat-value.green { color: #4ade80; }
+  .admin-stat-value.blue { color: #60a5fa; }
+  .admin-stat-value.yellow { color: #facc15; }
+  .user-list { display: flex; flex-direction: column; gap: 8px; }
+  .user-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 14px 16px;
+    transition: border-color 0.2s;
+  }
+  .user-card:hover { border-color: #475569; }
+  .user-card img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid #334155;
+  }
+  .user-card-info { flex: 1; min-width: 0; }
+  .user-card-name { font-size: 14px; font-weight: 600; color: #f1f5f9; }
+  .user-card-email { font-size: 12px; color: #64748b; }
+  .user-card-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: #475569;
+    margin-top: 2px;
+  }
+  .user-card-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .admin-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(59,130,246,0.12);
+    color: #60a5fa;
+    margin-left: 6px;
+  }
+  .disabled-badge {
+    background: rgba(248,113,113,0.12);
+    color: #f87171;
+  }
+  .btn-sm {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid #334155;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    width: auto;
+    margin: 0;
+    transition: all 0.2s;
+  }
+  .btn-sm:hover { border-color: #3b82f6; color: #e2e8f0; }
+  .btn-sm.danger { border-color: #f87171; color: #f87171; }
+  .btn-sm.danger:hover { background: rgba(248,113,113,0.1); }
+  .btn-sm.success { border-color: #4ade80; color: #4ade80; }
+  .search-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    background: #0f172a;
+    color: #f1f5f9;
+    font-size: 14px;
+    outline: none;
+    margin-bottom: 16px;
+  }
+  .search-input:focus { border-color: #3b82f6; }
+  .search-input::placeholder { color: #475569; }
+  .access-denied {
+    text-align: center;
+    padding: 80px 20px;
+    color: #64748b;
+    font-size: 15px;
+  }
+  .access-denied .icon { font-size: 48px; margin-bottom: 16px; }
+  @media (max-width: 768px) {
+    .admin-stats { flex-direction: column; }
+    .user-card { flex-wrap: wrap; }
+    .user-card-actions { width: 100%; justify-content: flex-end; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div id="loading" class="access-denied">
+    <div class="icon">⏳</div>
+    <p>Завантаження...</p>
+  </div>
+
+  <div id="accessDenied" class="access-denied" style="display:none">
+    <div class="icon">🚫</div>
+    <p>Доступ заборонено</p>
+    <p style="font-size:13px;margin-top:8px">Ця сторінка доступна тільки адміністраторам.</p>
+    <a href="index.html" class="back-link" style="margin-top:16px">← Повернутися до додатку</a>
+  </div>
+
+  <div id="adminContent" style="display:none">
+    <div class="admin-header">
+      <div>
+        <h1>Admin Panel</h1>
+        <p style="font-size:13px;color:#64748b">Invest UA — управління користувачами</p>
+      </div>
+      <a href="index.html" class="back-link">← Назад</a>
+    </div>
+
+    <div class="admin-stats" id="adminStats"></div>
+
+    <input type="text" class="search-input" id="searchInput" placeholder="Пошук за ім'ям або email..." oninput="filterUsers()">
+
+    <div class="user-list" id="userList"></div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+  let db, currentUser, allUsers = [];
+
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.firestore();
+
+  firebase.auth().onAuthStateChanged(async user => {
+    document.getElementById('loading').style.display = 'none';
+
+    if (!user) {
+      document.getElementById('accessDenied').style.display = 'block';
+      return;
+    }
+    currentUser = user;
+
+    // Check if admin
+    try {
+      const doc = await db.collection('users').doc(user.uid).get();
+      if (!doc.exists || !doc.data().meta || !doc.data().meta.isAdmin) {
+        document.getElementById('accessDenied').style.display = 'block';
+        return;
+      }
+    } catch(e) {
+      document.getElementById('accessDenied').style.display = 'block';
+      return;
+    }
+
+    document.getElementById('adminContent').style.display = 'block';
+    loadUsers();
+  });
+
+  async function loadUsers() {
+    try {
+      const snapshot = await db.collection('users').get();
+      allUsers = [];
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.meta) {
+          allUsers.push({ id: doc.id, ...data.meta, profile: data.profile || {} });
+        }
+      });
+      allUsers.sort((a, b) => (b.lastLogin || '').localeCompare(a.lastLogin || ''));
+      renderStats();
+      renderUsers(allUsers);
+    } catch(e) {
+      console.error('Load users failed:', e);
+    }
+  }
+
+  function renderStats() {
+    const now = new Date();
+    const day = 24 * 60 * 60 * 1000;
+    const activeToday = allUsers.filter(u => u.lastLogin && (now - new Date(u.lastLogin)) < day).length;
+    const activeWeek = allUsers.filter(u => u.lastLogin && (now - new Date(u.lastLogin)) < 7 * day).length;
+
+    document.getElementById('adminStats').innerHTML = `
+      <div class="admin-stat">
+        <div class="admin-stat-value">${allUsers.length}</div>
+        <div class="admin-stat-label">Всього користувачів</div>
+      </div>
+      <div class="admin-stat">
+        <div class="admin-stat-value green">${activeToday}</div>
+        <div class="admin-stat-label">Активних сьогодні</div>
+      </div>
+      <div class="admin-stat">
+        <div class="admin-stat-value blue">${activeWeek}</div>
+        <div class="admin-stat-label">Активних за тиждень</div>
+      </div>
+      <div class="admin-stat">
+        <div class="admin-stat-value yellow">${allUsers.filter(u => u.isAdmin).length}</div>
+        <div class="admin-stat-label">Адміністраторів</div>
+      </div>
+    `;
+  }
+
+  function renderUsers(users) {
+    if (users.length === 0) {
+      document.getElementById('userList').innerHTML = '<p style="text-align:center;color:#475569;padding:20px">Користувачів не знайдено</p>';
+      return;
+    }
+
+    document.getElementById('userList').innerHTML = users.map(u => {
+      const lastLogin = u.lastLogin ? new Date(u.lastLogin).toLocaleString('uk-UA') : '—';
+      const isMe = u.uid === currentUser.uid;
+      const disabled = u.disabled;
+
+      return `
+        <div class="user-card" id="user-${u.id}">
+          <img src="${u.photoURL || ''}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'">
+          <div class="user-card-info">
+            <div class="user-card-name">
+              ${u.profile?.displayName || u.displayName || 'Без імені'}
+              ${u.isAdmin ? '<span class="admin-badge">Admin</span>' : ''}
+              ${disabled ? '<span class="admin-badge disabled-badge">Заблоковано</span>' : ''}
+              ${isMe ? '<span style="color:#64748b;font-size:11px;margin-left:4px">(ви)</span>' : ''}
+            </div>
+            <div class="user-card-email">${u.email || '—'}</div>
+            <div class="user-card-meta">
+              <span>Останній вхід: ${lastLogin}</span>
+              <span>${u.provider || ''}</span>
+              ${u.profile?.phone ? '<span>' + u.profile.phone + '</span>' : ''}
+              ${u.profile?.language ? '<span>' + u.profile.language.toUpperCase() + '</span>' : ''}
+            </div>
+          </div>
+          <div class="user-card-actions">
+            ${!isMe ? (u.isAdmin
+              ? '<button class="btn-sm danger" onclick="toggleAdmin(\'' + u.id + '\', false)">Зняти admin</button>'
+              : '<button class="btn-sm" onclick="toggleAdmin(\'' + u.id + '\', true)">Зробити admin</button>'
+            ) : ''}
+            ${!isMe ? (disabled
+              ? '<button class="btn-sm success" onclick="toggleDisabled(\'' + u.id + '\', false)">Розблокувати</button>'
+              : '<button class="btn-sm danger" onclick="toggleDisabled(\'' + u.id + '\', true)">Заблокувати</button>'
+            ) : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function filterUsers() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    if (!q) { renderUsers(allUsers); return; }
+    const filtered = allUsers.filter(u =>
+      (u.displayName || '').toLowerCase().includes(q) ||
+      (u.email || '').toLowerCase().includes(q) ||
+      (u.profile?.displayName || '').toLowerCase().includes(q) ||
+      (u.profile?.phone || '').includes(q)
+    );
+    renderUsers(filtered);
+  }
+
+  async function toggleAdmin(uid, makeAdmin) {
+    try {
+      await db.collection('users').doc(uid).set({
+        meta: { isAdmin: makeAdmin }
+      }, { merge: true });
+      const user = allUsers.find(u => u.id === uid);
+      if (user) user.isAdmin = makeAdmin;
+      renderStats();
+      renderUsers(allUsers);
+    } catch(e) {
+      alert('Помилка: ' + e.message);
+    }
+  }
+
+  async function toggleDisabled(uid, disable) {
+    try {
+      await db.collection('users').doc(uid).set({
+        meta: { disabled: disable }
+      }, { merge: true });
+      const user = allUsers.find(u => u.id === uid);
+      if (user) user.disabled = disable;
+      renderUsers(allUsers);
+    } catch(e) {
+      alert('Помилка: ' + e.message);
+    }
+  }
+</script>
+
+</body>
+</html>

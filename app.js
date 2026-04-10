@@ -767,6 +767,7 @@ function initFirebase() {
       currentUser = user;
       updateAuthUI();
       if (user) {
+        saveUserMeta(user);
         loadFromFirestore();
         loadPortfolioFromFirestore();
         loadProfileFromFirestore();
@@ -776,6 +777,20 @@ function initFirebase() {
     console.warn('Firebase init failed:', e);
     document.getElementById('firebaseNotice').classList.add('show');
   }
+}
+
+function saveUserMeta(user) {
+  if (!firebaseReady || !user) return;
+  db.collection('users').doc(user.uid).set({
+    meta: {
+      uid: user.uid,
+      email: user.email || '',
+      displayName: user.displayName || '',
+      photoURL: user.photoURL || '',
+      lastLogin: new Date().toISOString(),
+      provider: user.providerData[0]?.providerId || 'unknown'
+    }
+  }, { merge: true }).catch(e => console.warn('User meta save failed:', e));
 }
 
 function updateAuthUI() {
@@ -1436,14 +1451,26 @@ async function loadProfileFromFirestore() {
   if (!firebaseReady || !currentUser) return;
   try {
     const doc = await db.collection('users').doc(currentUser.uid).get();
-    if (doc.exists && doc.data().profile) {
-      userProfile = doc.data().profile;
-      if (userProfile.language) {
-        localStorage.setItem('appLang', userProfile.language);
-        setAppLanguage(userProfile.language);
+    if (doc.exists) {
+      const meta = doc.data().meta;
+      // Check if user is blocked by admin
+      if (meta && meta.disabled) {
+        alert('Ваш акаунт заблоковано. Зверніться до адміністратора.');
+        firebase.auth().signOut();
+        return;
       }
-      updateProfileUI();
-      checkPinOnLogin();
+      if (doc.data().profile) {
+        userProfile = doc.data().profile;
+        if (userProfile.language) {
+          localStorage.setItem('appLang', userProfile.language);
+          setAppLanguage(userProfile.language);
+        }
+        updateProfileUI();
+        checkPinOnLogin();
+      }
+      // Show admin link if admin
+      const adminLink = document.getElementById('adminLink');
+      if (adminLink) adminLink.style.display = (meta && meta.isAdmin) ? '' : 'none';
     }
   } catch(e) {
     console.warn('Profile load failed:', e);

@@ -1,8 +1,9 @@
-const CACHE_NAME = 'invest-calc-v6';
+const CACHE_NAME = 'invest-calc-v7';
 const ASSETS = [
   './',
   './index.html',
   './help.html',
+  './admin.html',
   './styles.css',
   './app.js',
   './i18n.js',
