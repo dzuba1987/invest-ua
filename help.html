@@ -17,13 +17,13 @@
 <body>
 
 <div class="container">
-  <a href="index.html" class="back-link">← Назад до калькулятора</a>
-  <h1>Довідка</h1>
-  <p class="subtitle">Все, що потрібно знати про Invest UA</p>
+  <a href="index.html" class="back-link" id="helpBack">← Назад</a>
+  <h1 id="helpTitle">Довідка</h1>
+  <p class="subtitle" id="helpSubtitle">Все, що потрібно знати про Invest UA</p>
 
-  <div class="help-columns">
+  <!-- ===== UKRAINIAN ===== -->
+  <div id="help-uk" class="help-columns">
     <div>
-      <!-- OVERVIEW -->
       <div class="section">
         <h2><span class="icon icon-blue">1</span> Що це за додаток?</h2>
         <p>Invest UA — це PWA-додаток для управління портфелем інвестицій, розрахунку дохідності ОВДП, депозитів та інших вкладень. Працює офлайн, синхронізується через Google.</p>
@@ -47,40 +47,18 @@
         </div>
       </div>
 
-      <!-- CALCULATOR TAB -->
       <div class="section">
         <h2><span class="icon icon-blue">2</span> Вкладка «Калькулятор»</h2>
         <p>Основний інструмент для розрахунку однієї облігації. Заповніть будь-які відомі поля — решта розрахується автоматично.</p>
-        <div class="step">
-          <div class="step-num">1</div>
-          <div class="step-text"><strong>Введіть назву</strong> облігації (необов'язково, але зручно для збереження).</div>
-        </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <div class="step-text"><strong>Вартість 1 облігації</strong> та <strong>кількість</strong> — сума вкладення розрахується автоматично. Або введіть загальну суму вручну.</div>
-        </div>
-        <div class="step">
-          <div class="step-num">3</div>
-          <div class="step-text"><strong>Річна ставка (%)</strong> — вкажіть номінальну ставку. Сума отримання та різниця розрахуються автоматично.</div>
-        </div>
-        <div class="step">
-          <div class="step-num">4</div>
-          <div class="step-text"><strong>Дати вкладення / отримання</strong> — визначають термін інвестиції та розрахунок дохідності.</div>
-        </div>
-        <div class="step">
-          <div class="step-num">5</div>
-          <div class="step-text"><strong>«Розрахувати»</strong> або <span class="kbd">Enter</span> — побачите прибуток, дохідність за період та річну дохідність.</div>
-        </div>
-        <div class="step">
-          <div class="step-num">6</div>
-          <div class="step-text"><strong>«Зберегти запис»</strong> — додає облігацію до таблиці та зберігає в базу.</div>
-        </div>
-        <div class="tip">
-          Поля з блакитним текстом — авторозрахунки. Якщо ви вручну вводите значення, воно стає «фіксованим» і решта полів підлаштовуються. «Очистити» — скинути всі поля.
-        </div>
+        <div class="step"><div class="step-num">1</div><div class="step-text"><strong>Введіть назву</strong> облігації (необов'язково, але зручно для збереження).</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text"><strong>Вартість 1 облігації</strong> та <strong>кількість</strong> — сума вкладення розрахується автоматично.</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text"><strong>Річна ставка (%)</strong> — вкажіть номінальну ставку. Сума отримання розрахується автоматично.</div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-text"><strong>Дати вкладення / отримання</strong> — визначають термін інвестиції та розрахунок дохідності.</div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-text"><strong>«Розрахувати»</strong> або <span class="kbd">Enter</span> — побачите прибуток та дохідність.</div></div>
+        <div class="step"><div class="step-num">6</div><div class="step-text"><strong>«Зберегти запис»</strong> — додає облігацію до таблиці та зберігає в базу.</div></div>
+        <div class="tip">Поля з блакитним текстом — авторозрахунки. Якщо ви вручну вводите значення, воно стає «фіксованим» і решта полів підлаштовуються.</div>
       </div>
 
-      <!-- FORMULAS -->
       <div class="section">
         <h2><span class="icon icon-yellow">4</span> Формули розрахунку</h2>
         <p><strong>Дохідність за період:</strong></p>
@@ -91,89 +69,161 @@
         <div class="formula">Ефективна = ((1 + Прибуток/Вкладено) ^ (365/Днів) − 1) × 100%</div>
         <p><strong>Зважена річна дохідність портфеля:</strong></p>
         <div class="formula">Зважена = Σ(Ефект.річна_i × Вкладено_i) / Σ(Вкладено_i)</div>
-        <div class="tip">
-          У «Калькуляторі» — проста річна дохідність (як у банку). У «Аналітиці» — ефективна річна, яка точніше показує реальний прибуток при реінвестуванні.
-        </div>
+        <div class="tip">У «Калькуляторі» — проста річна дохідність. У «Аналітиці» — ефективна річна, яка точніше показує реальний прибуток при реінвестуванні.</div>
       </div>
     </div>
 
     <div>
-      <!-- ANALYTICS TAB -->
       <div class="section">
         <h2><span class="icon icon-green">3</span> Вкладка «Аналітика»</h2>
         <p>Доступна після збереження мінімум 2 облігацій. Аналізує ваш портфель та пропонує оптимальні варіанти.</p>
-
         <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Параметри аналізу</h3>
-        <div class="step">
-          <div class="step-num">$</div>
-          <div class="step-text"><strong>Бюджет</strong> — загальна сума, яку ви готові вкласти. Алгоритм підбере оптимальний розподіл.</div>
-        </div>
-        <div class="step">
-          <div class="step-num">#</div>
-          <div class="step-text"><strong>Облігацій у портфелі</strong> — скільки різних облігацій купити (1, 2 або 3).</div>
-        </div>
-        <div class="step">
-          <div class="step-num">T</div>
-          <div class="step-text"><strong>Горизонт</strong> — фільтр по строку. Наприклад, «~6 місяців» покаже тільки облігації зі строком 4-8 місяців.</div>
-        </div>
-
+        <div class="step"><div class="step-num">$</div><div class="step-text"><strong>Бюджет</strong> — загальна сума для вкладення.</div></div>
+        <div class="step"><div class="step-num">#</div><div class="step-text"><strong>Облігацій у портфелі</strong> — скільки різних облігацій купити.</div></div>
+        <div class="step"><div class="step-num">T</div><div class="step-text"><strong>Горизонт</strong> — фільтр по строку інвестиції.</div></div>
         <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Рейтинг облігацій</h3>
-        <p>Таблиця всіх облігацій, відсортованих за ефективною річною дохідністю. Клікніть по заголовку стовпця для сортування.</p>
-
+        <p>Таблиця облігацій за ефективною річною дохідністю. Клікніть заголовок для сортування.</p>
         <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Найкращі комбінації</h3>
-        <p>Алгоритм перебирає всі комбінації та розподіли бюджету (30/70, 40/60, 50/50 тощо), знаходить топ-5 варіантів.</p>
-        <p><strong>«За ефективністю»</strong> — максимальна зважена річна дохідність; <strong>«За прибутком»</strong> — максимальна сума прибутку.</p>
-
+        <p>Алгоритм перебирає комбінації та розподіли бюджету, знаходить топ-5 варіантів.</p>
         <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Стратегія реінвестування</h3>
-        <p>Вкласти в коротку облігацію, після погашення реінвестувати весь капітал у довшу. Гроші працюють двічі, ефективна дохідність зростає до 20-25%.</p>
+        <p>Вкласти в коротку облігацію, після погашення реінвестувати в довшу. Ефективна дохідність зростає до 20-25%.</p>
       </div>
 
-      <!-- IMPORT/EXPORT -->
       <div class="section">
         <h2><span class="icon icon-purple">5</span> Імпорт та експорт</h2>
-        <p><strong>Імпорт з Excel:</strong> натисніть «Імпорт з Excel» і виберіть .xlsx файл. Калькулятор автоматично знайде заголовки та дані.</p>
-        <p><strong>Експорт у Excel:</strong> натисніть «Експорт у Excel» під таблицею збережених записів. Файл з темною темою та кольоровим виділенням.</p>
-        <div class="tip">
-          Для імпорту файл повинен мати стовпці: Назва, Ціна, Кількість, Вкладено, Отримано, Різниця, Дата від, Дата до. Рядок «РАЗОМ» ігнорується.
-        </div>
+        <p><strong>Імпорт з Excel:</strong> натисніть «Імпорт з Excel» і виберіть .xlsx файл.</p>
+        <p><strong>Експорт у Excel:</strong> натисніть «Експорт у Excel» під таблицею збережених записів.</p>
+        <div class="tip">Стовпці: Назва, Ціна, Кількість, Вкладено, Отримано, Різниця, Дата від, Дата до.</div>
       </div>
 
-      <!-- CLOUD SYNC -->
       <div class="section">
         <h2><span class="icon icon-blue">6</span> Хмарна синхронізація</h2>
-        <p>При вході через Google збережені облігації автоматично синхронізуються між пристроями через Firebase.</p>
-        <div class="step">
-          <div class="step-num">1</div>
-          <div class="step-text"><strong>«Увійти через Google»</strong> у верхній частині калькулятора.</div>
-        </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <div class="step-text">Оберіть Google-акаунт та надайте дозвіл.</div>
-        </div>
-        <div class="step">
-          <div class="step-num">3</div>
-          <div class="step-text">Дані автоматично синхронізуються. З іншого пристрою — підтягнуться.</div>
-        </div>
-        <div class="tip">
-          Без входу дані зберігаються локально в IndexedDB. Google потрібен тільки для синхронізації між пристроями.
-        </div>
+        <p>При вході через Google дані синхронізуються між пристроями через Firebase.</p>
+        <div class="step"><div class="step-num">1</div><div class="step-text"><strong>«Увійти через Google»</strong> у верхній частині.</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">Оберіть Google-акаунт.</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">Дані автоматично синхронізуються між пристроями.</div></div>
+        <div class="tip">Без входу дані зберігаються локально. Google потрібен тільки для синхронізації.</div>
       </div>
 
-      <!-- PWA -->
       <div class="section">
         <h2><span class="icon icon-green">7</span> Встановлення на пристрій</h2>
         <p>Додаток можна встановити як програму. Працюватиме офлайн.</p>
-        <p><strong>Android/Chrome:</strong> банер «Встановити додаток» або меню (⋮) → «Встановити додаток».</p>
+        <p><strong>Android/Chrome:</strong> меню (⋮) → «Встановити додаток».</p>
         <p><strong>iPhone/Safari:</strong> «Поділитися» (□↑) → «На початковий екран».</p>
         <p><strong>Desktop:</strong> іконка встановлення в адресному рядку Chrome.</p>
       </div>
     </div>
   </div>
 
+  <!-- ===== ENGLISH ===== -->
+  <div id="help-en" class="help-columns" style="display:none">
+    <div>
+      <div class="section">
+        <h2><span class="icon icon-blue">1</span> What is this app?</h2>
+        <p>Invest UA is a PWA app for managing your investment portfolio, calculating returns on government bonds (OVDP), deposits and other investments. Works offline, syncs via Google.</p>
+        <div class="feature-grid">
+          <div class="feature">
+            <div class="feature-title">Calculator</div>
+            <div class="feature-desc">Calculate profit, period return and annual return</div>
+          </div>
+          <div class="feature">
+            <div class="feature-title">Analytics</div>
+            <div class="feature-desc">Rankings, combinations and reinvestment strategies</div>
+          </div>
+          <div class="feature">
+            <div class="feature-title">Excel import/export</div>
+            <div class="feature-desc">Import and export data in .xlsx format</div>
+          </div>
+          <div class="feature">
+            <div class="feature-title">Cloud sync</div>
+            <div class="feature-desc">Sign in with Google — access data from any device</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2><span class="icon icon-blue">2</span> Calculator tab</h2>
+        <p>Main tool for calculating a single bond. Fill in any known fields — the rest will be calculated automatically.</p>
+        <div class="step"><div class="step-num">1</div><div class="step-text"><strong>Enter the name</strong> of the bond (optional but useful for saving).</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text"><strong>Price per bond</strong> and <strong>quantity</strong> — the investment amount is calculated automatically.</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text"><strong>Annual rate (%)</strong> — enter the nominal rate. Received amount is calculated automatically.</div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-text"><strong>Investment / maturity dates</strong> — determine the investment term and return calculation.</div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-text"><strong>"Calculate"</strong> or <span class="kbd">Enter</span> — see profit and returns.</div></div>
+        <div class="step"><div class="step-num">6</div><div class="step-text"><strong>"Save record"</strong> — adds the bond to the table and saves to database.</div></div>
+        <div class="tip">Blue-colored fields are auto-calculated. If you manually enter a value, it becomes "fixed" and other fields adjust accordingly.</div>
+      </div>
+
+      <div class="section">
+        <h2><span class="icon icon-yellow">4</span> Calculation formulas</h2>
+        <p><strong>Period return:</strong></p>
+        <div class="formula">Return = (Profit / Invested) × 100%</div>
+        <p><strong>Simple annual return:</strong></p>
+        <div class="formula">Annual = Period return / Days × 365.25</div>
+        <p><strong>Effective annual return</strong> (compound interest):</p>
+        <div class="formula">Effective = ((1 + Profit/Invested) ^ (365/Days) − 1) × 100%</div>
+        <p><strong>Weighted annual portfolio return:</strong></p>
+        <div class="formula">Weighted = Σ(EffAnnual_i × Invested_i) / Σ(Invested_i)</div>
+        <div class="tip">"Calculator" uses simple annual return. "Analytics" uses effective annual return, which better reflects actual profit with reinvestment.</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section">
+        <h2><span class="icon icon-green">3</span> Analytics tab</h2>
+        <p>Available after saving at least 2 bonds. Analyzes your portfolio and suggests optimal options.</p>
+        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Analysis parameters</h3>
+        <div class="step"><div class="step-num">$</div><div class="step-text"><strong>Budget</strong> — total amount to invest.</div></div>
+        <div class="step"><div class="step-num">#</div><div class="step-text"><strong>Bonds in portfolio</strong> — how many different bonds to buy.</div></div>
+        <div class="step"><div class="step-num">T</div><div class="step-text"><strong>Horizon</strong> — filter by investment term.</div></div>
+        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Bond ranking</h3>
+        <p>Table of bonds sorted by effective annual return. Click column headers to sort.</p>
+        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Best combinations</h3>
+        <p>Algorithm tries all combinations and budget splits, finds top 5 options.</p>
+        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Reinvestment strategy</h3>
+        <p>Invest in a short bond first, then reinvest everything into a longer one. Effective return grows to 20-25%.</p>
+      </div>
+
+      <div class="section">
+        <h2><span class="icon icon-purple">5</span> Import & export</h2>
+        <p><strong>Import from Excel:</strong> click "Import from Excel" and select an .xlsx file.</p>
+        <p><strong>Export to Excel:</strong> click "Export to Excel" below the saved records table.</p>
+        <div class="tip">Columns: Name, Price, Quantity, Invested, Received, Difference, Date from, Date to.</div>
+      </div>
+
+      <div class="section">
+        <h2><span class="icon icon-blue">6</span> Cloud sync</h2>
+        <p>Sign in with Google to sync data across devices via Firebase.</p>
+        <div class="step"><div class="step-num">1</div><div class="step-text"><strong>"Sign in with Google"</strong> at the top of the app.</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">Choose your Google account.</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">Data syncs automatically across devices.</div></div>
+        <div class="tip">Without sign-in, data is stored locally. Google is only needed for cross-device sync.</div>
+      </div>
+
+      <div class="section">
+        <h2><span class="icon icon-green">7</span> Install on device</h2>
+        <p>The app can be installed like a native app. Works offline.</p>
+        <p><strong>Android/Chrome:</strong> menu (⋮) → "Install app".</p>
+        <p><strong>iPhone/Safari:</strong> "Share" (□↑) → "Add to Home Screen".</p>
+        <p><strong>Desktop:</strong> install icon in Chrome address bar.</p>
+      </div>
+    </div>
+  </div>
+
   <p style="text-align:center;color:#475569;font-size:12px;margin-top:20px">
-    Invest UA v2.0 — портфель інвестицій
+    Invest UA v2.0
   </p>
 </div>
+
+<script>
+  const lang = localStorage.getItem('appLang') || 'uk';
+  document.documentElement.lang = lang;
+  document.getElementById('help-uk').style.display = lang === 'uk' ? '' : 'none';
+  document.getElementById('help-en').style.display = lang === 'en' ? '' : 'none';
+  document.getElementById('helpTitle').textContent = lang === 'en' ? 'Help' : 'Довідка';
+  document.getElementById('helpSubtitle').textContent = lang === 'en' ? 'Everything you need to know about Invest UA' : 'Все, що потрібно знати про Invest UA';
+  document.getElementById('helpBack').textContent = lang === 'en' ? '← Back' : '← Назад';
+  document.title = lang === 'en' ? 'Help — Invest UA' : 'Довідка — Invest UA';
+</script>
 
 </body>
 </html>

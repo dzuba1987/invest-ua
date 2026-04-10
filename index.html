@@ -23,11 +23,11 @@
 
 <div class="container">
   <div class="top-bar">
-    <a href="help.html" class="help-link">Довідка</a>
+    <a href="help.html" class="help-link" data-i18n="help">Довідка</a>
   </div>
 
   <h1>Invest UA</h1>
-  <p class="subtitle">Портфель інвестицій — ОВДП, депозити та інші вкладення</p>
+  <p class="subtitle" data-i18n="app.subtitle">Портфель інвестицій — ОВДП, депозити та інші вкладення</p>
 
   <!-- Firebase config notice -->
   <div class="firebase-notice" id="firebaseNotice">
@@ -39,82 +39,83 @@
     <div class="user-info" id="userInfo" style="display:none">
       <img id="userAvatar" src="" alt="" referrerpolicy="no-referrer">
       <span class="user-name" id="userName"></span>
-      <span class="sync-status" id="syncStatus">синхронізовано</span>
+      <span class="sync-status" id="syncStatus" data-i18n="synced">синхронізовано</span>
     </div>
     <div id="authActions">
       <button class="btn-auth btn-google" id="btnLogin" onclick="googleLogin()">
         <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-        Увійти через Google
+        <span data-i18n="login">Увійти через Google</span>
       </button>
-      <button class="btn-auth btn-logout" id="btnLogout" onclick="googleLogout()" style="display:none">Вийти</button>
+      <button class="btn-auth btn-logout" id="btnLogout" onclick="googleLogout()" style="display:none" data-i18n="logout">Вийти</button>
     </div>
   </div>
 
   <div class="install-banner" id="installBanner" onclick="installApp()">
-    Встановити додаток на пристрій
+    <span data-i18n="install">Встановити додаток на пристрій</span>
   </div>
 
   <!-- TAB NAVIGATION -->
   <div class="main-tabs">
-    <button class="main-tab active" onclick="switchMainTab('calc', this)">Калькулятор</button>
-    <button class="main-tab" onclick="switchMainTab('analytics', this)">Аналітика</button>
-    <button class="main-tab" onclick="switchMainTab('portfolio', this)">Портфель</button>
+    <button class="main-tab active" onclick="switchMainTab('calc', this)" data-i18n="tab.calc">Калькулятор</button>
+    <button class="main-tab" onclick="switchMainTab('analytics', this)" data-i18n="tab.analytics">Аналітика</button>
+    <button class="main-tab" onclick="switchMainTab('portfolio', this)" data-i18n="tab.portfolio">Портфель</button>
+    <button class="main-tab" onclick="switchMainTab('profile', this)" data-i18n="tab.profile">Профіль</button>
   </div>
 
   <!-- ====== TAB 1: CALCULATOR (original) ====== -->
   <div class="tab-panel active" id="panel-calc">
-    <p class="hint">Заповніть будь-які відомі поля — решта розрахується автоматично</p>
+    <p class="hint" data-i18n="calc.hint">Заповніть будь-які відомі поля — решта розрахується автоматично</p>
     <div class="main-layout">
     <div class="panel-left">
     <div class="form-grid">
       <div class="field field-full">
-        <label>Назва облігації</label>
+        <label data-i18n="calc.bondName">Назва облігації</label>
         <input type="text" id="bondName" placeholder="Військові ОВДП серія 123/456">
       </div>
       <div class="field">
-        <label>Вартість 1 облігації (грн)</label>
+        <label data-i18n="calc.bondPrice">Вартість 1 облігації (грн)</label>
         <input type="text" id="bondPrice" placeholder="1 000" inputmode="decimal">
       </div>
       <div class="field">
-        <label>Кількість облігацій</label>
+        <label data-i18n="calc.bondCount">Кількість облігацій</label>
         <input type="text" id="bondCount" placeholder="500" inputmode="numeric">
       </div>
       <div class="field">
-        <label>Сума вкладення (грн)</label>
+        <label data-i18n="calc.invested">Сума вкладення (грн)</label>
         <input type="text" id="invested" placeholder="561 870" inputmode="decimal">
       </div>
       <div class="field">
-        <label>Річна ставка (%)</label>
+        <label data-i18n="calc.rate">Річна ставка (%)</label>
         <input type="text" id="annualRateInput" placeholder="15" inputmode="decimal">
       </div>
       <div class="field">
-        <label>Дата вкладення</label>
+        <label data-i18n="calc.dateStart">Дата вкладення</label>
         <input type="date" id="dateStart">
       </div>
       <div class="field">
-        <label>Дата отримання</label>
+        <label data-i18n="calc.dateEnd">Дата отримання</label>
         <input type="date" id="dateEnd">
       </div>
       <div class="field">
-        <label>Сума отримання (грн)</label>
+        <label data-i18n="calc.received">Сума отримання (грн)</label>
         <input type="text" id="received" placeholder="607 231" inputmode="decimal">
       </div>
       <div class="field">
-        <label>Різниця (грн)</label>
+        <label data-i18n="calc.diff">Різниця (грн)</label>
         <input type="text" id="diffAmount" placeholder="45 361" inputmode="decimal">
       </div>
       <div class="field">
-        <label>Податок від доходу (%)</label>
+        <label data-i18n="calc.tax">Податок від доходу (%)</label>
         <input type="text" id="bonusPercent" placeholder="19.5" inputmode="decimal">
       </div>
     </div>
 
-    <button onclick="calculate()">Розрахувати</button>
+    <button onclick="calculate()" data-i18n="calc.calculate">Розрахувати</button>
     <div class="btn-row">
-      <button class="btn-save" onclick="saveRecord()">Зберегти запис</button>
-      <button class="btn-clear" onclick="clearAll()">Очистити</button>
+      <button class="btn-save" onclick="saveRecord()" data-i18n="calc.save">Зберегти запис</button>
+      <button class="btn-clear" onclick="clearAll()" data-i18n="calc.clear">Очистити</button>
     </div>
-    <button class="btn-import" onclick="document.getElementById('importFile').click()">Імпорт з Excel</button>
+    <button class="btn-import" onclick="document.getElementById('importFile').click()" data-i18n="calc.import">Імпорт з Excel</button>
     <input type="file" id="importFile" accept=".xlsx,.xls" style="display:none" onchange="importFromExcel(event)">
     <p class="error" id="error"></p>
     <p class="success-msg" id="successMsg"></p>
@@ -123,62 +124,62 @@
     <div class="panel-right">
     <div class="results" id="results">
       <div class="results-placeholder" id="resultsPlaceholder">
-        <p style="text-align:center;color:#475569;font-size:14px;padding:20px 0;">Заповніть поля зліва та натисніть «Розрахувати»</p>
+        <p style="text-align:center;color:#475569;font-size:14px;padding:20px 0;" data-i18n="calc.placeholder">Заповніть поля зліва та натисніть «Розрахувати»</p>
       </div>
-      <div class="result-section" id="bondsSectionLabel" style="display:none">Облігації</div>
+      <div class="result-section" id="bondsSectionLabel" style="display:none" data-i18n="res.bonds">Облігації</div>
       <div class="result-row" id="bondNameRow" style="display:none">
-        <span class="result-label">Назва</span>
+        <span class="result-label" data-i18n="res.name">Назва</span>
         <span class="result-value" id="resBondName" style="font-size:14px;"></span>
       </div>
       <div class="result-row" id="bondsCountRow" style="display:none">
-        <span class="result-label">Кількість облігацій</span>
+        <span class="result-label" data-i18n="res.bondCount">Кількість облігацій</span>
         <span class="result-value" id="resBondsCount"></span>
       </div>
       <div class="result-row" id="investedCalcRow" style="display:none">
-        <span class="result-label">Сума вкладення</span>
+        <span class="result-label" data-i18n="res.investedCalc">Сума вкладення</span>
         <span class="result-value computed" id="resInvestedCalc"></span>
       </div>
-      <div class="result-section">Результат</div>
+      <div class="result-section" data-i18n="res.result">Результат</div>
       <div class="result-row" id="receivedCalcRow" style="display:none">
-        <span class="result-label">Сума отримання</span>
+        <span class="result-label" data-i18n="res.receivedCalc">Сума отримання</span>
         <span class="result-value computed" id="resReceivedCalc"></span>
       </div>
       <div class="result-row">
-        <span class="result-label">Прибуток</span>
+        <span class="result-label" data-i18n="res.profit">Прибуток</span>
         <span class="result-value profit" id="resProfit"></span>
       </div>
       <div class="result-row" id="profitPerBondRow" style="display:none">
-        <span class="result-label">Прибуток на 1 облігацію</span>
+        <span class="result-label" data-i18n="res.profitPerBond">Прибуток на 1 облігацію</span>
         <span class="result-value profit" id="resProfitPerBond"></span>
       </div>
       <div class="result-row">
-        <span class="result-label">Термін</span>
+        <span class="result-label" data-i18n="res.term">Термін</span>
         <span class="result-value" id="resTerm"></span>
       </div>
       <div class="result-row">
-        <span class="result-label">Дохідність за період</span>
+        <span class="result-label" data-i18n="res.periodRate">Дохідність за період</span>
         <span class="result-value profit" id="resPeriodRate"></span>
       </div>
       <div class="result-row" id="annualRateCalcRow">
-        <span class="result-label">Річна дохідність</span>
+        <span class="result-label" data-i18n="res.annualRate">Річна дохідність</span>
         <span class="result-value rate" id="resAnnualRate"></span>
       </div>
-      <div class="result-section">Чистий прибуток</div>
+      <div class="result-section" data-i18n="res.netSection">Чистий прибуток</div>
       <div class="result-row">
-        <span class="result-label">Чистий прибуток (отримано − вкладено)</span>
+        <span class="result-label" data-i18n="res.netProfit">Чистий прибуток (отримано − вкладено)</span>
         <span class="result-value profit" id="resNetProfit"></span>
       </div>
       <div class="result-row" id="netPerBondRow" style="display:none">
-        <span class="result-label">Чистий прибуток на 1 облігацію</span>
+        <span class="result-label" data-i18n="res.netPerBond">Чистий прибуток на 1 облігацію</span>
         <span class="result-value profit" id="resNetPerBond"></span>
       </div>
-      <div class="result-section" id="bonusSectionLabel" style="display:none">Після оподаткування</div>
+      <div class="result-section" id="bonusSectionLabel" style="display:none" data-i18n="res.taxSection">Після оподаткування</div>
       <div class="result-row" id="bonusAmountRow" style="display:none">
         <span class="result-label">Податок (<span id="resBonusPct"></span>% від доходу)</span>
         <span class="result-value" id="resBonusAmount" style="color:#f87171"></span>
       </div>
       <div class="result-row" id="totalWithBonusRow" style="display:none">
-        <span class="result-label">Чистий прибуток після податку</span>
+        <span class="result-label" data-i18n="res.netAfterTax">Чистий прибуток після податку</span>
         <span class="result-value profit" id="resTotalWithBonus"></span>
       </div>
     </div> <!-- /results -->
@@ -188,7 +189,7 @@
     <!-- Saved records -->
     <div class="saved-section" id="savedSection">
       <div class="saved-title">
-        Збережені облігації
+        <span data-i18n="saved.title">Збережені облігації</span>
         <span class="saved-count" id="savedCount"></span>
       </div>
       <div class="table-wrap">
@@ -204,27 +205,27 @@
           <tfoot id="savedFoot"></tfoot>
         </table>
       </div>
-      <button class="btn-export" onclick="exportToExcel()" style="margin-top:12px;">Експорт у Excel</button>
+      <button class="btn-export" onclick="exportToExcel()" style="margin-top:12px;" data-i18n="saved.export">Експорт у Excel</button>
     </div>
   </div>
 
   <!-- ====== TAB 2: ANALYTICS ====== -->
   <div class="tab-panel" id="panel-analytics">
-    <div id="analyticsEmpty" class="a-empty">
+    <div id="analyticsEmpty" class="a-empty" data-i18n="analytics.empty" data-i18n-html>
       Збережи хоча б 2 облігації у вкладці «Калькулятор»,<br>щоб побачити аналітику та рекомендації.
     </div>
     <div id="analyticsContent" style="display:none;">
 
       <!-- Budget & params -->
       <div class="a-card">
-        <h3>Параметри аналізу</h3>
+        <h3 data-i18n="analytics.params">Параметри аналізу</h3>
         <div class="a-params">
           <div class="a-field">
-            <label>Бюджет (грн)</label>
+            <label data-i18n="analytics.budget">Бюджет (грн)</label>
             <input type="number" id="aBudget" value="600000" step="10000">
           </div>
           <div class="a-field">
-            <label>Облігацій у портфелі</label>
+            <label data-i18n="analytics.comboCount">Облігацій у портфелі</label>
             <select id="aComboCount">
               <option value="1">1</option>
               <option value="2" selected>2</option>
@@ -232,22 +233,22 @@
             </select>
           </div>
           <div class="a-field">
-            <label>Горизонт інвестування</label>
+            <label data-i18n="analytics.horizon">Горизонт інвестування</label>
             <select id="aHorizon">
-              <option value="0">Будь-який</option>
+              <option value="0" data-i18n="analytics.horizonAny">Будь-який</option>
               <option value="3">~3 місяці</option>
               <option value="6" selected>~6 місяців</option>
               <option value="9">~9 місяців</option>
               <option value="12">~12 місяців</option>
             </select>
           </div>
-          <button class="a-btn-calc" onclick="runAnalytics()">Аналізувати</button>
+          <button class="a-btn-calc" onclick="runAnalytics()" data-i18n="analytics.analyze">Аналізувати</button>
         </div>
       </div>
 
       <!-- Ranking -->
       <div class="a-card">
-        <h3>Рейтинг облігацій</h3>
+        <h3 data-i18n="analytics.ranking">Рейтинг облігацій</h3>
         <div style="overflow-x:auto">
           <table class="a-rank-table" id="aRankTable"></table>
         </div>
@@ -255,17 +256,17 @@
 
       <!-- Best combos -->
       <div class="a-card">
-        <h3 id="aComboTitle">Найкращі комбінації</h3>
+        <h3 id="aComboTitle" data-i18n="analytics.combos">Найкращі комбінації</h3>
         <div class="a-sub-tabs">
-          <button class="a-sub-tab active" onclick="switchComboTab('efficiency', this)">За ефективністю</button>
-          <button class="a-sub-tab" onclick="switchComboTab('profit', this)">За прибутком</button>
+          <button class="a-sub-tab active" onclick="switchComboTab('efficiency', this)" data-i18n="analytics.byEfficiency">За ефективністю</button>
+          <button class="a-sub-tab" onclick="switchComboTab('profit', this)" data-i18n="analytics.byProfit">За прибутком</button>
         </div>
         <div id="aCombosContainer"></div>
       </div>
 
       <!-- Reinvestment strategy -->
       <div class="a-card">
-        <h3>Стратегія реінвестування</h3>
+        <h3 data-i18n="analytics.reinvest">Стратегія реінвестування</h3>
         <p style="font-size:12px;color:#64748b;margin-bottom:14px;">Спочатку вкладаємо в коротку облігацію, потім реінвестуємо все в довшу — гроші працюють двічі.</p>
         <div id="aReinvestContainer"></div>
       </div>
@@ -277,8 +278,8 @@
     <!-- Not logged in -->
     <div id="portfolioAuth" class="a-empty">
       <div style="font-size:40px;margin-bottom:16px">🔐</div>
-      <p style="color:#94a3b8;font-size:15px;margin-bottom:8px">Для перегляду портфеля потрібна авторизація</p>
-      <p style="color:#64748b;font-size:13px;margin-bottom:20px">Увійдіть через Google, щоб зберігати та переглядати свої інвестиції з будь-якого пристрою</p>
+      <p style="color:#94a3b8;font-size:15px;margin-bottom:8px" data-i18n="portfolio.authTitle">Для перегляду портфеля потрібна авторизація</p>
+      <p style="color:#64748b;font-size:13px;margin-bottom:20px" data-i18n="portfolio.authDesc">Увійдіть через Google, щоб зберігати та переглядати свої інвестиції з будь-якого пристрою</p>
       <button class="btn-auth btn-google" onclick="googleLogin()" style="display:inline-flex;width:auto;margin:0 auto">
         <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
         Увійти через Google
@@ -288,18 +289,18 @@
     <!-- Logged in -->
     <div id="portfolioContent" style="display:none">
       <div class="a-card">
-        <h3>Мої інвестиції</h3>
+        <h3 data-i18n="portfolio.title">Мої інвестиції</h3>
         <div class="form-grid" style="margin-bottom:16px">
           <div class="field">
-            <label>Назва інвестиції</label>
+            <label data-i18n="portfolio.name">Назва інвестиції</label>
             <input type="text" id="pName" placeholder="ОВДП серія 456">
           </div>
           <div class="field">
-            <label>Тип</label>
+            <label data-i18n="portfolio.type">Тип</label>
             <select id="pType" style="width:100%;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none">
-              <option value="ovdp">ОВДП</option>
-              <option value="deposit">Депозит</option>
-              <option value="other">Інше</option>
+              <option value="ovdp" data-i18n="portfolio.typeOvdp">ОВДП</option>
+              <option value="deposit" data-i18n="portfolio.typeDeposit">Депозит</option>
+              <option value="other" data-i18n="portfolio.typeOther">Інше</option>
             </select>
           </div>
           <div class="field">
@@ -319,26 +320,26 @@
             <input type="date" id="pDateEnd">
           </div>
           <div class="field">
-            <label>Виведення коштів (банк)</label>
+            <label data-i18n="portfolio.bank">Виведення коштів (банк)</label>
             <input type="text" id="pBank" placeholder="Приватбанк">
           </div>
           <div class="field">
-            <label>Номер картки / рахунку</label>
+            <label data-i18n="portfolio.card">Номер картки / рахунку</label>
             <input type="text" id="pCard" placeholder="5168 **** **** 1234">
           </div>
           <div class="field field-full">
-            <label>Нотатки</label>
+            <label data-i18n="portfolio.notes">Нотатки</label>
             <input type="text" id="pNotes" placeholder="Додаткова інформація">
           </div>
         </div>
-        <button class="btn-save" onclick="addPortfolioItem()">Додати до портфеля</button>
+        <button class="btn-save" onclick="addPortfolioItem()" data-i18n="portfolio.add">Додати до портфеля</button>
         <p class="error" id="pError"></p>
         <p class="success-msg" id="pSuccess"></p>
       </div>
 
       <div id="portfolioSummary" style="display:none">
         <div class="a-card">
-          <h3>Зведення портфеля</h3>
+          <h3 data-i18n="portfolio.summary">Зведення портфеля</h3>
           <div class="a-combo-summary" id="pSummaryRow"></div>
         </div>
       </div>
@@ -346,8 +347,111 @@
       <div id="portfolioList"></div>
     </div>
   </div>
+
+  <!-- ====== TAB 4: PROFILE ====== -->
+  <div class="tab-panel" id="panel-profile">
+    <!-- Not logged in -->
+    <div id="profileAuth" class="a-empty">
+      <div style="font-size:40px;margin-bottom:16px">👤</div>
+      <p style="color:#94a3b8;font-size:15px;margin-bottom:8px" data-i18n="profile.authTitle">Для перегляду профілю потрібна авторизація</p>
+      <p style="color:#64748b;font-size:13px;margin-bottom:20px" data-i18n="profile.authDesc">Увійдіть через Google, щоб налаштувати свій акаунт</p>
+      <button class="btn-auth btn-google" onclick="googleLogin()" style="display:inline-flex;width:auto;margin:0 auto">
+        <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Увійти через Google
+      </button>
+    </div>
+
+    <!-- Logged in -->
+    <div id="profileContent" style="display:none">
+
+      <!-- User info -->
+      <div class="a-card">
+        <h3 data-i18n="profile.account">Обліковий запис</h3>
+        <div class="profile-user">
+          <img id="profileAvatar" src="" alt="" referrerpolicy="no-referrer" class="profile-avatar">
+          <div>
+            <div class="profile-name" id="profileName"></div>
+            <div class="profile-email" id="profileEmail"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Language -->
+      <div class="a-card">
+        <h3 data-i18n="profile.language">Мова / Language</h3>
+        <div class="profile-lang-options">
+          <button class="profile-lang-btn active" id="langBtnUk" onclick="setAppLanguage('uk')">
+            <span class="profile-lang-flag">🇺🇦</span> Українська
+          </button>
+          <button class="profile-lang-btn" id="langBtnEn" onclick="setAppLanguage('en')">
+            <span class="profile-lang-flag">🇬🇧</span> English
+          </button>
+        </div>
+      </div>
+
+      <!-- Contact info -->
+      <div class="a-card">
+        <h3 data-i18n="profile.contact">Контактна інформація</h3>
+        <div class="form-grid">
+          <div class="field">
+            <label data-i18n="profile.displayName">Ім'я</label>
+            <input type="text" id="profileDisplayName" placeholder="Олександр">
+          </div>
+          <div class="field">
+            <label data-i18n="profile.contactEmail">Контактний email</label>
+            <input type="email" id="profileContactEmail" placeholder="your@email.com">
+          </div>
+          <div class="field">
+            <label data-i18n="profile.phone">Номер телефону</label>
+            <input type="tel" id="profilePhone" placeholder="+380 99 123 4567">
+          </div>
+        </div>
+        <button class="btn-save" onclick="saveProfile()" style="max-width:200px" data-i18n="profile.save">Зберегти</button>
+        <p class="success-msg" id="profileSuccess"></p>
+      </div>
+
+      <!-- Security -->
+      <div class="a-card">
+        <h3 data-i18n="profile.security">Безпека</h3>
+        <div class="profile-2fa-option" style="border-bottom:none">
+          <div class="profile-2fa-info">
+            <div class="profile-2fa-title" data-i18n="profile.googleProtection">Захист Google</div>
+            <div class="profile-2fa-desc" data-i18n="profile.googleProtectionDesc">Ваш акаунт захищений двофакторною автентифікацією Google. Керуйте налаштуваннями безпеки у вашому Google акаунті.</div>
+          </div>
+          <div class="profile-2fa-action">
+            <span class="profile-2fa-status active" data-i18n="profile.active">Активно</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- PIN code -->
+      <div class="a-card">
+        <h3 data-i18n="profile.pinTitle">PIN-код додатку</h3>
+        <p style="font-size:13px;color:#64748b;margin-bottom:16px" data-i18n="profile.pinDesc">Додатковий код для входу в додаток. Запитується після авторизації через Google.</p>
+        <div class="form-grid">
+          <div class="field">
+            <label data-i18n="profile.pinNew">PIN-код (4-6 цифр)</label>
+            <input type="password" id="pinCode" placeholder="••••" inputmode="numeric" maxlength="6" autocomplete="off">
+          </div>
+          <div class="field">
+            <label data-i18n="profile.pinConfirm">Підтвердити PIN</label>
+            <input type="password" id="pinCodeConfirm" placeholder="••••" inputmode="numeric" maxlength="6" autocomplete="off">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-save" onclick="savePin()" style="max-width:200px" data-i18n="profile.pinSave">Зберегти PIN</button>
+          <button class="btn-clear" onclick="removePin()" style="max-width:200px" id="pinRemoveBtn" data-i18n="profile.pinRemove">Видалити PIN</button>
+        </div>
+        <p class="error" id="pinError"></p>
+        <p class="success-msg" id="pinSuccess"></p>
+        <p style="font-size:12px;color:#64748b;margin-top:8px" id="pinStatus"></p>
+      </div>
+
+    </div>
+  </div>
 </div>
 
+<script src="i18n.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
 

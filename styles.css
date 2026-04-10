@@ -585,6 +585,114 @@ button:hover { opacity: 0.9; }
 .p-status-active { color: #4ade80; }
 .p-status-ended { color: #64748b; }
 
+/* Profile */
+.profile-user {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.profile-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid #334155;
+}
+.profile-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin-bottom: 2px;
+}
+.profile-email {
+  font-size: 13px;
+  color: #64748b;
+}
+.profile-lang-options {
+  display: flex;
+  gap: 8px;
+}
+.profile-lang-btn {
+  flex: 1;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid #334155;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.2s;
+  margin: 0;
+  width: auto;
+}
+.profile-lang-btn:hover { border-color: #475569; color: #e2e8f0; }
+.profile-lang-btn.active {
+  border-color: #3b82f6;
+  background: rgba(59,130,246,0.1);
+  color: #f1f5f9;
+}
+.profile-lang-flag { font-size: 20px; }
+.profile-2fa-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid #1e293b;
+}
+.profile-2fa-option:last-of-type { border-bottom: none; }
+.profile-2fa-info { flex: 1; }
+.profile-2fa-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin-bottom: 2px;
+}
+.profile-2fa-desc {
+  font-size: 12px;
+  color: #64748b;
+}
+.profile-2fa-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.profile-2fa-status {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+.profile-2fa-status.active {
+  color: #4ade80;
+}
+.profile-2fa-soon {
+  color: #475569;
+  font-style: italic;
+}
+.profile-2fa-btn {
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  width: auto;
+  margin: 0;
+  transition: all 0.2s;
+}
+.profile-2fa-btn:hover { border-color: #3b82f6; color: #e2e8f0; }
+.profile-2fa-btn.danger {
+  border-color: #f87171;
+  color: #f87171;
+}
+.profile-2fa-btn.danger:hover { background: rgba(248,113,113,0.1); }
+
 /* Help page */
 .back-link {
   display: inline-block;

@@ -6,6 +6,7 @@ function switchMainTab(tab, btn) {
   document.getElementById('panel-' + tab).classList.add('active');
   if (tab === 'analytics') checkAnalyticsReady();
   if (tab === 'portfolio') updatePortfolioUI();
+  if (tab === 'profile') updateProfileUI();
 }
 
 // ============ STATE ============
@@ -768,6 +769,7 @@ function initFirebase() {
       if (user) {
         loadFromFirestore();
         loadPortfolioFromFirestore();
+        loadProfileFromFirestore();
       }
     });
   } catch(e) {
@@ -786,13 +788,14 @@ function updateAuthUI() {
     loginBtn.style.display = 'none';
     logoutBtn.style.display = 'inline-block';
     document.getElementById('userAvatar').src = currentUser.photoURL || '';
-    document.getElementById('userName').textContent = currentUser.displayName || currentUser.email;
+    document.getElementById('userName').textContent = userProfile.displayName || currentUser.displayName || currentUser.email;
   } else {
     info.style.display = 'none';
     loginBtn.style.display = 'flex';
     logoutBtn.style.display = 'none';
   }
   updatePortfolioUI();
+  updateProfileUI();
 }
 
 function googleLogin() {
@@ -814,10 +817,15 @@ function googleLogout() {
   clearAll();
   savedRecords = [];
   portfolioItems = [];
+  userProfile = {};
+  pinVerified = false;
+  sessionStorage.removeItem('pinVerifiedAt');
   // Only clear UI and local storage, NOT Firestore (signOut is async,
   // currentUser is still set — calling saveToFirestore would erase cloud data)
   origRenderSaved();
   saveToStorage();
+  updateProfileUI();
+  updatePortfolioUI();
 }
 
 async function saveToFirestore() {
@@ -1332,6 +1340,229 @@ async function loadPortfolioFromFirestore() {
 }
 
 // ================================================================
+// ==================== PROFILE & SETTINGS ========================
+// ================================================================
+
+let userProfile = {};
+
+function updateProfileUI() {
+  const auth = document.getElementById('profileAuth');
+  const content = document.getElementById('profileContent');
+  if (currentUser) {
+    auth.style.display = 'none';
+    content.style.display = 'block';
+    document.getElementById('profileAvatar').src = currentUser.photoURL || '';
+    document.getElementById('profileName').textContent = userProfile.displayName || currentUser.displayName || '';
+    document.getElementById('profileEmail').textContent = userProfile.contactEmail || currentUser.email || '';
+    document.getElementById('profileDisplayName').value = userProfile.displayName || currentUser.displayName || '';
+    document.getElementById('profileContactEmail').value = userProfile.contactEmail || '';
+    document.getElementById('profilePhone').value = userProfile.phone || '';
+    updatePinStatus();
+  } else {
+    auth.style.display = 'block';
+    content.style.display = 'none';
+  }
+}
+
+function setAppLanguage(lang) {
+  _currentLang = lang;
+  document.getElementById('langBtnUk').classList.toggle('active', lang === 'uk');
+  document.getElementById('langBtnEn').classList.toggle('active', lang === 'en');
+  document.documentElement.lang = lang;
+  userProfile.language = lang;
+  localStorage.setItem('appLang', lang);
+  applyTranslations();
+  if (currentUser) saveProfileToFirestore();
+}
+
+async function saveProfile() {
+  userProfile.displayName = document.getElementById('profileDisplayName').value.trim();
+  userProfile.contactEmail = document.getElementById('profileContactEmail').value.trim();
+  userProfile.phone = document.getElementById('profilePhone').value.trim();
+  await saveProfileToFirestore();
+
+  // Update header and profile card with new data
+  document.getElementById('userName').textContent = userProfile.displayName || currentUser.displayName || currentUser.email;
+  document.getElementById('profileName').textContent = userProfile.displayName || currentUser.displayName || '';
+  document.getElementById('profileEmail').textContent = userProfile.contactEmail || currentUser.email || '';
+
+  const msg = document.getElementById('profileSuccess');
+  msg.textContent = '✓ Збережено!';
+  msg.style.display = 'block';
+  msg.style.animation = 'none';
+  msg.offsetHeight;
+  msg.style.animation = 'fadeOut 3s forwards';
+  setTimeout(() => { msg.style.display = 'none'; }, 3000);
+}
+
+async function saveProfileToFirestore() {
+  if (!firebaseReady || !currentUser) return;
+  try {
+    await db.collection('users').doc(currentUser.uid).set({
+      profile: {
+        displayName: userProfile.displayName || '',
+        phone: userProfile.phone || '',
+        contactEmail: userProfile.contactEmail || '',
+        language: userProfile.language || 'uk',
+        pin: userProfile.pin || null,
+        updatedAt: new Date().toISOString()
+      }
+    }, { merge: true });
+  } catch(e) {
+    console.warn('Profile save failed:', e);
+  }
+}
+
+async function loadProfileFromFirestore() {
+  if (!firebaseReady || !currentUser) return;
+  try {
+    const doc = await db.collection('users').doc(currentUser.uid).get();
+    if (doc.exists && doc.data().profile) {
+      userProfile = doc.data().profile;
+      if (userProfile.language) {
+        localStorage.setItem('appLang', userProfile.language);
+        setAppLanguage(userProfile.language);
+      }
+      updateProfileUI();
+      checkPinOnLogin();
+    }
+  } catch(e) {
+    console.warn('Profile load failed:', e);
+  }
+}
+
+// ---- PIN CODE ----
+const PIN_TIMEOUT = 60 * 60 * 1000; // 60 minutes
+let pinVerified = false;
+let lastActivityTime = Date.now();
+
+// Track user activity
+['click', 'keydown', 'scroll', 'touchstart'].forEach(evt => {
+  document.addEventListener(evt, () => { lastActivityTime = Date.now(); }, { passive: true });
+});
+
+// Check inactivity every minute + on tab focus
+function checkPinTimeout() {
+  if (pinVerified && userProfile.pin && (Date.now() - lastActivityTime > PIN_TIMEOUT)) {
+    pinVerified = false;
+    showPinPrompt();
+  }
+}
+setInterval(checkPinTimeout, 60000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) checkPinTimeout();
+});
+
+function savePin() {
+  const pin = document.getElementById('pinCode').value.trim();
+  const confirm = document.getElementById('pinCodeConfirm').value.trim();
+  const err = document.getElementById('pinError');
+
+  if (!pin || pin.length < 4 || pin.length > 6 || !/^\d+$/.test(pin)) {
+    err.textContent = t('profile.pinErrorFormat') || 'PIN має бути 4-6 цифр';
+    err.style.display = 'block';
+    return;
+  }
+  if (pin !== confirm) {
+    err.textContent = t('profile.pinErrorMatch') || 'PIN-коди не збігаються';
+    err.style.display = 'block';
+    return;
+  }
+  err.style.display = 'none';
+
+  userProfile.pin = pin;
+  saveProfileToFirestore();
+
+  document.getElementById('pinCode').value = '';
+  document.getElementById('pinCodeConfirm').value = '';
+  updatePinStatus();
+
+  const msg = document.getElementById('pinSuccess');
+  msg.textContent = '✓ PIN збережено!';
+  msg.style.display = 'block';
+  msg.style.animation = 'none';
+  msg.offsetHeight;
+  msg.style.animation = 'fadeOut 3s forwards';
+  setTimeout(() => { msg.style.display = 'none'; }, 3000);
+}
+
+function removePin() {
+  userProfile.pin = null;
+  saveProfileToFirestore();
+  updatePinStatus();
+}
+
+function updatePinStatus() {
+  const status = document.getElementById('pinStatus');
+  const removeBtn = document.getElementById('pinRemoveBtn');
+  if (userProfile.pin) {
+    status.textContent = t('profile.pinActive') || 'PIN-код встановлено';
+    status.style.color = '#4ade80';
+    removeBtn.style.display = '';
+  } else {
+    status.textContent = t('profile.pinInactive') || 'PIN-код не встановлено';
+    status.style.color = '#64748b';
+    removeBtn.style.display = 'none';
+  }
+}
+
+function checkPinOnLogin() {
+  if (!userProfile.pin) {
+    pinVerified = true;
+    return;
+  }
+  // Check if PIN was verified recently (within timeout)
+  const lastVerified = parseInt(sessionStorage.getItem('pinVerifiedAt') || '0');
+  if (Date.now() - lastVerified < PIN_TIMEOUT) {
+    pinVerified = true;
+    lastActivityTime = Date.now();
+    return;
+  }
+  pinVerified = false;
+  showPinPrompt();
+}
+
+function showPinPrompt() {
+  const overlay = document.createElement('div');
+  overlay.id = 'pinOverlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.95);display:flex;align-items:center;justify-content:center;z-index:9999';
+  overlay.innerHTML = `
+    <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;padding:36px;max-width:360px;width:100%;text-align:center">
+      <div style="font-size:40px;margin-bottom:16px">🔒</div>
+      <h2 style="color:#f1f5f9;font-size:18px;margin-bottom:8px" data-i18n="profile.pinPromptTitle">Введіть PIN-код</h2>
+      <p style="color:#64748b;font-size:13px;margin-bottom:20px" data-i18n="profile.pinPromptDesc">Для доступу до додатку введіть ваш PIN</p>
+      <input type="password" id="pinInput" placeholder="••••" inputmode="numeric" maxlength="6" autocomplete="off"
+        style="width:120px;text-align:center;font-size:24px;letter-spacing:8px;padding:12px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;outline:none;margin:0 auto;display:block">
+      <p id="pinPromptError" style="color:#f87171;font-size:13px;margin-top:8px;display:none"></p>
+      <button onclick="verifyPin()" style="margin-top:16px;width:100%;padding:14px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer" data-i18n="profile.pinPromptBtn">Увійти</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  applyTranslations();
+  document.getElementById('pinInput').focus();
+  document.getElementById('pinInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') verifyPin();
+  });
+}
+
+function verifyPin() {
+  const input = document.getElementById('pinInput').value.trim();
+  if (input === userProfile.pin) {
+    pinVerified = true;
+    lastActivityTime = Date.now();
+    sessionStorage.setItem('pinVerifiedAt', String(Date.now()));
+    const overlay = document.getElementById('pinOverlay');
+    if (overlay) overlay.remove();
+  } else {
+    const err = document.getElementById('pinPromptError');
+    err.textContent = t('profile.pinWrong') || 'Невірний PIN-код';
+    err.style.display = 'block';
+    document.getElementById('pinInput').value = '';
+    document.getElementById('pinInput').focus();
+  }
+}
+
+// ================================================================
 // ==================== INITIALIZATION ============================
 // ================================================================
 
@@ -1346,6 +1577,10 @@ async function loadPortfolioFromFirestore() {
     pde.value = f.toISOString().split('T')[0];
   }
 })();
+
+// Apply saved language
+const savedLang = localStorage.getItem('appLang');
+if (savedLang) setAppLanguage(savedLang);
 
 initFirebase();
 loadFromStorage();

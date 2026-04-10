@@ -1,10 +1,11 @@
-const CACHE_NAME = 'invest-calc-v4';
+const CACHE_NAME = 'invest-calc-v6';
 const ASSETS = [
   './',
   './index.html',
   './help.html',
   './styles.css',
   './app.js',
+  './i18n.js',
   './config.js',
   './manifest.json',
   './icon-192.png',
