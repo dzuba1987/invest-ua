@@ -1185,6 +1185,8 @@ function addPortfolioItem() {
   const rate = parseNum(document.getElementById('pRate').value);
   const dateStart = document.getElementById('pDateStart').value;
   const dateEnd = document.getElementById('pDateEnd').value;
+  const bank = document.getElementById('pBank').value.trim();
+  const card = document.getElementById('pCard').value.trim();
   const notes = document.getElementById('pNotes').value.trim();
 
   if (!name || isNaN(invested) || invested <= 0) {
@@ -1198,7 +1200,7 @@ function addPortfolioItem() {
   portfolioItems.push({
     id: Date.now(),
     name, type, invested, rate: isNaN(rate) ? null : rate,
-    dateStart, dateEnd, notes,
+    dateStart, dateEnd, bank, card, notes,
     createdAt: new Date().toISOString()
   });
 
@@ -1209,6 +1211,8 @@ function addPortfolioItem() {
   document.getElementById('pName').value = '';
   document.getElementById('pInvested').value = '';
   document.getElementById('pRate').value = '';
+  document.getElementById('pBank').value = '';
+  document.getElementById('pCard').value = '';
   document.getElementById('pNotes').value = '';
   const t = new Date();
   document.getElementById('pDateStart').value = t.toISOString().split('T')[0];
@@ -1273,6 +1277,7 @@ function renderPortfolio() {
             ${days > 0 ? '<span>Строк: <strong>' + days + ' дн.</strong></span>' : ''}
             ${p.dateStart ? '<span>' + formatDate(p.dateStart) + ' → ' + (p.dateEnd ? formatDate(p.dateEnd) : '...') + '</span>' : ''}
           </div>
+          ${p.bank || p.card ? '<div class="p-item-details" style="margin-top:4px"><span>Виведення: <strong>' + (p.bank || '') + (p.bank && p.card ? ' · ' : '') + (p.card || '') + '</strong></span></div>' : ''}
           ${p.notes ? '<div class="p-item-notes">' + p.notes + '</div>' : ''}
         </div>
         <div class="p-item-actions">
