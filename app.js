@@ -1430,14 +1430,14 @@ function renderPortfolio() {
     <div class="a-stat"><div class="a-stat-label">Очікуваний дохід</div><div class="a-stat-value green">+${formatShort(totalExpectedProfit)} грн</div></div>
   `;
 
-  renderPortfolioChart(portfolioItems, totalInvested, totalExpectedProfit);
+  renderPortfolioChart(portfolioItems);
   loadCurrencyRates(totalInvested, totalExpectedProfit);
 }
 
 // ---- Portfolio Chart ----
 let portfolioChartInstance = null;
 
-function renderPortfolioChart(items, totalInvested, totalExpectedProfit) {
+function renderPortfolioChart(items) {
   const canvas = document.getElementById('portfolioChart');
   if (!canvas || typeof Chart === 'undefined') return;
 
@@ -1445,11 +1445,17 @@ function renderPortfolioChart(items, totalInvested, totalExpectedProfit) {
     portfolioChartInstance.destroy();
   }
 
-  // Find date range across all items
   const now = new Date();
-  let minDate = now, maxDate = now;
   const activeItems = items.filter(p => p.dateStart && p.dateEnd && p.rate);
 
+  if (activeItems.length === 0) {
+    canvas.parentElement.innerHTML = '<p style="text-align:center;color:#475569;padding:40px;font-size:13px">Додайте інвестиції зі ставкою та датами для графіку</p>';
+    return;
+  }
+
+  // Find date range — start from earliest investment date
+  let minDate = new Date(activeItems[0].dateStart);
+  let maxDate = new Date(activeItems[0].dateEnd);
   activeItems.forEach(p => {
     const s = new Date(p.dateStart);
     const e = new Date(p.dateEnd);
@@ -1457,23 +1463,19 @@ function renderPortfolioChart(items, totalInvested, totalExpectedProfit) {
     if (e > maxDate) maxDate = e;
   });
 
-  if (activeItems.length === 0) {
-    canvas.parentElement.innerHTML = '<p style="text-align:center;color:#475569;padding:40px;font-size:13px">Додайте інвестиції зі ставкою та датами для графіку</p>';
-    return;
-  }
-
-  // Generate daily points
-  const labels = [];
-  const investedLine = [];
-  const valueLine = [];
-  const projectedLine = [];
-  let todayIndex = -1;
-
   const dayMs = 86400000;
   const startTime = minDate.getTime();
   const endTime = maxDate.getTime();
   const totalDays = Math.ceil((endTime - startTime) / dayMs);
-  const step = totalDays > 365 ? 7 : 1;
+  const step = totalDays > 365 ? 7 : totalDays > 180 ? 3 : 1;
+
+  const labels = [];
+  const investedLine = [];
+  const valueLine = [];
+  const projectedLine = [];
+  const todayPointInvested = [];
+  const todayPointValue = [];
+  let todayIndex = -1;
 
   for (let d = 0; d <= totalDays; d += step) {
     const date = new Date(startTime + d * dayMs);
@@ -1484,7 +1486,6 @@ function renderPortfolioChart(items, totalInvested, totalExpectedProfit) {
       const s = new Date(p.dateStart).getTime();
       const e = new Date(p.dateEnd).getTime();
       const curTime = date.getTime();
-
       if (curTime >= s) {
         inv += p.invested;
         const elapsed = Math.min(curTime, e) - s;
@@ -1495,25 +1496,28 @@ function renderPortfolioChart(items, totalInvested, totalExpectedProfit) {
     });
 
     const isPast = date <= now;
+    investedLine.push(inv);
     if (isPast) {
-      investedLine.push(inv);
       valueLine.push(val);
       projectedLine.push(null);
     } else {
-      investedLine.push(inv);
       valueLine.push(null);
       projectedLine.push(val);
     }
 
-    // Mark today
+    // Detect today
+    todayPointInvested.push(null);
+    todayPointValue.push(null);
     if (todayIndex === -1 && date >= now) {
       todayIndex = labels.length - 1;
+      todayPointInvested[todayIndex] = inv;
+      todayPointValue[todayIndex] = valueLine[todayIndex] || projectedLine[todayIndex];
     }
   }
 
-  // Connect projected line to value line
-  if (todayIndex > 0 && todayIndex < projectedLine.length) {
-    projectedLine[todayIndex - 1] = valueLine[todayIndex - 1];
+  // Connect projected to value at today
+  if (todayIndex > 0 && todayIndex < projectedLine.length && valueLine[todayIndex - 1] != null) {
+    projectedLine[todayIndex] = valueLine[todayIndex - 1];
   }
 
   portfolioChartInstance = new Chart(canvas, {
@@ -1525,7 +1529,7 @@ function renderPortfolioChart(items, totalInvested, totalExpectedProfit) {
           label: 'Вкладено',
           data: investedLine,
           borderColor: '#3b82f6',
-          backgroundColor: 'rgba(59,130,246,0.1)',
+          backgroundColor: 'rgba(59,130,246,0.08)',
           fill: true,
           tension: 0.3,
           pointRadius: 0,
@@ -1535,7 +1539,7 @@ function renderPortfolioChart(items, totalInvested, totalExpectedProfit) {
           label: 'Поточна вартість',
           data: valueLine,
           borderColor: '#4ade80',
-          backgroundColor: 'rgba(74,222,128,0.1)',
+          backgroundColor: 'rgba(74,222,128,0.08)',
           fill: true,
           tension: 0.3,
           pointRadius: 0,
@@ -1550,6 +1554,17 @@ function renderPortfolioChart(items, totalInvested, totalExpectedProfit) {
           pointRadius: 0,
           borderWidth: 2,
           fill: false
+        },
+        {
+          label: 'Сьогодні',
+          data: todayPointValue,
+          borderColor: '#f87171',
+          backgroundColor: '#f87171',
+          pointRadius: 7,
+          pointHoverRadius: 9,
+          pointStyle: 'circle',
+          borderWidth: 2,
+          showLine: false
         }
       ]
     },
@@ -1561,19 +1576,14 @@ function renderPortfolioChart(items, totalInvested, totalExpectedProfit) {
         legend: {
           labels: { color: '#94a3b8', font: { size: 12 } }
         },
-        annotation: todayIndex > -1 ? {
-          annotations: {
-            todayLine: {
-              type: 'line',
-              xMin: todayIndex,
-              xMax: todayIndex,
-              borderColor: '#f87171',
-              borderWidth: 2,
-              borderDash: [4, 4],
-              label: { display: true, content: 'Сьогодні', color: '#f87171', font: { size: 11 } }
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              if (ctx.raw == null) return null;
+              return ctx.dataset.label + ': ' + formatShort(ctx.raw) + ' грн';
             }
           }
-        } : {}
+        }
       },
       scales: {
         x: {
