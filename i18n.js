@@ -69,6 +69,8 @@ const I18N = {
     'saved.export': 'Експорт у Excel',
 
     // Analytics
+    'analytics.authTitle': 'Увійдіть, щоб користуватися аналітикою',
+    'analytics.authDesc': 'Аналітика доступна після авторизації та збереження облігацій',
     'analytics.empty': 'Збережи хоча б 2 облігації у вкладці «Калькулятор»,<br>щоб побачити аналітику та рекомендації.',
     'analytics.params': 'Параметри аналізу',
     'analytics.budget': 'Бюджет (грн)',
@@ -203,6 +205,8 @@ const I18N = {
     'saved.export': 'Export to Excel',
 
     // Analytics
+    'analytics.authTitle': 'Sign in to use analytics',
+    'analytics.authDesc': 'Analytics available after signing in and saving bonds',
     'analytics.empty': 'Save at least 2 bonds in the "Calculator" tab<br>to see analytics and recommendations.',
     'analytics.params': 'Analysis parameters',
     'analytics.budget': 'Budget (UAH)',

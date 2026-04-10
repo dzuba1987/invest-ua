@@ -890,9 +890,21 @@ async function loadFromFirestore() {
 let aComboTab = 'efficiency';
 
 function checkAnalyticsReady() {
+  const authGate = document.getElementById('analyticsAuth');
+  const empty = document.getElementById('analyticsEmpty');
+  const content = document.getElementById('analyticsContent');
+
+  if (!currentUser) {
+    authGate.style.display = 'block';
+    empty.style.display = 'none';
+    content.style.display = 'none';
+    return;
+  }
+
+  authGate.style.display = 'none';
   const hasData = savedRecords.length >= 2;
-  document.getElementById('analyticsEmpty').style.display = hasData ? 'none' : 'block';
-  document.getElementById('analyticsContent').style.display = hasData ? 'block' : 'none';
+  empty.style.display = hasData ? 'none' : 'block';
+  content.style.display = hasData ? 'block' : 'none';
   if (hasData) runAnalytics();
 }
 

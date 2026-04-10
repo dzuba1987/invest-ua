@@ -211,7 +211,50 @@
 
   <!-- ====== TAB 2: ANALYTICS ====== -->
   <div class="tab-panel" id="panel-analytics">
-    <div id="analyticsEmpty" class="a-empty" data-i18n="analytics.empty" data-i18n-html>
+    <!-- Auth gate for analytics -->
+    <div id="analyticsAuth" style="display:none">
+      <div class="a-empty" style="padding:20px 20px 0">
+        <div style="font-size:40px;margin-bottom:16px">📊</div>
+        <p style="color:#94a3b8;font-size:15px;margin-bottom:8px" data-i18n="analytics.authTitle">Увійдіть, щоб користуватися аналітикою</p>
+        <p style="color:#64748b;font-size:13px;margin-bottom:20px" data-i18n="analytics.authDesc">Аналітика доступна після авторизації та збереження облігацій</p>
+        <button class="btn-auth btn-google" onclick="googleLogin()" style="display:inline-flex;width:auto;margin:0 auto">
+          <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          <span data-i18n="login">Увійти через Google</span>
+        </button>
+      </div>
+
+      <!-- Fake preview -->
+      <div style="opacity:0.4;pointer-events:none;filter:blur(1px);margin-top:24px">
+        <div class="a-card">
+          <h3>Рейтинг облігацій</h3>
+          <table class="a-rank-table">
+            <thead><tr><th>Назва</th><th>Ціна</th><th>Днів</th><th>Міс.</th><th>Ставка</th><th>За період</th><th>Ефект. річна</th></tr></thead>
+            <tbody>
+              <tr class="a-best"><td>ОВДП серія 456 <span class="a-badge a-badge-green">ТОП</span></td><td>1 000</td><td>182</td><td>6.0</td><td>15.0%</td><td>7.47%</td><td>15.52%</td></tr>
+              <tr><td>Військові ОВДП 789</td><td>1 000</td><td>273</td><td>9.0</td><td>14.5%</td><td>10.84%</td><td>14.83%</td></tr>
+              <tr><td>ОВДП серія 123</td><td>1 000</td><td>365</td><td>12.0</td><td>14.0%</td><td>14.00%</td><td>14.00%</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="a-card">
+          <h3>Найкращі комбінації</h3>
+          <div class="a-combo">
+            <h4><span class="a-combo-rank">#1</span> ОВДП 456 + Військові 789 <span class="a-badge a-badge-green">НАЙКРАЩИЙ</span></h4>
+            <div class="a-combo-items">
+              <div class="a-combo-item"><div class="name">ОВДП серія 456</div><div>300 шт × 1 000 = <b>300 000 грн</b></div><div style="color:#4ade80">+22 410 грн</div></div>
+              <div class="a-combo-item"><div class="name">Військові ОВДП 789</div><div>300 шт × 1 000 = <b>300 000 грн</b></div><div style="color:#4ade80">+32 520 грн</div></div>
+            </div>
+            <div class="a-combo-summary">
+              <div class="a-stat"><div class="a-stat-label">Вкладено</div><div class="a-stat-value">600 000 грн</div></div>
+              <div class="a-stat"><div class="a-stat-label">Прибуток</div><div class="a-stat-value green">+54 930 грн</div></div>
+              <div class="a-stat"><div class="a-stat-label">Ефект. річна</div><div class="a-stat-value yellow">15.18%</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="analyticsEmpty" class="a-empty" style="display:none" data-i18n="analytics.empty" data-i18n-html>
       Збережи хоча б 2 облігації у вкладці «Калькулятор»,<br>щоб побачити аналітику та рекомендації.
     </div>
     <div id="analyticsContent" style="display:none;">
