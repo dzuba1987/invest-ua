@@ -18,7 +18,7 @@
     background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
     min-height: 100vh;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     padding: 20px;
     color: #e2e8f0;
@@ -29,7 +29,7 @@
     border-radius: 16px;
     padding: 36px;
     width: 100%;
-    max-width: 1100px;
+    max-width: 1200px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.4);
   }
   h1 { text-align: center; font-size: 22px; margin-bottom: 8px; color: #f1f5f9; }
@@ -218,6 +218,44 @@
     font-weight: 500;
   }
   .install-banner.show { display: block; }
+
+  /* Two-column desktop layout */
+  .main-layout {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+  .panel-left {
+    flex: 1;
+    min-width: 0;
+  }
+  .panel-right {
+    flex: 1;
+    min-width: 0;
+    position: sticky;
+    top: 20px;
+  }
+  .panel-right .results {
+    display: block;
+    margin-top: 0;
+    min-height: 200px;
+  }
+
+  @media (max-width: 900px) {
+    .main-layout {
+      flex-direction: column;
+    }
+    .panel-right {
+      position: static;
+    }
+    .panel-right .results {
+      margin-top: 24px;
+      display: none;
+    }
+    .panel-right .results.show {
+      display: block;
+    }
+  }
   @media (max-width: 768px) {
     body { padding: 8px; align-items: flex-start; }
     .container { padding: 16px; border-radius: 12px; }
@@ -242,60 +280,67 @@
     📲 Встановити додаток на пристрій
   </div>
 
-  <div class="form-grid">
-    <div class="field field-full">
-      <label>Назва облігації</label>
-      <input type="text" id="bondName" placeholder="Військові ОВДП серія 123/456">
+  <div class="main-layout">
+    <div class="panel-left">
+      <div class="form-grid">
+        <div class="field field-full">
+          <label>Назва облігації</label>
+          <input type="text" id="bondName" placeholder="Військові ОВДП серія 123/456">
+        </div>
+
+        <div class="field">
+          <label>Вартість 1 облігації (грн)</label>
+          <input type="text" id="bondPrice" placeholder="1 000" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label>Кількість облігацій</label>
+          <input type="text" id="bondCount" placeholder="500" inputmode="numeric">
+        </div>
+
+        <div class="field">
+          <label>Сума вкладення (грн)</label>
+          <input type="text" id="invested" placeholder="561 870" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label>Річна ставка (%)</label>
+          <input type="text" id="annualRateInput" placeholder="15" inputmode="decimal">
+        </div>
+
+        <div class="field">
+          <label>Дата вкладення</label>
+          <input type="date" id="dateStart">
+        </div>
+        <div class="field">
+          <label>Дата отримання</label>
+          <input type="date" id="dateEnd">
+        </div>
+
+        <div class="field">
+          <label>Сума отримання (грн)</label>
+          <input type="text" id="received" placeholder="607 231" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label>Різниця (грн)</label>
+          <input type="text" id="diffAmount" placeholder="45 361" inputmode="decimal">
+        </div>
+      </div>
+
+      <button onclick="calculate()">Розрахувати</button>
+      <div class="btn-row">
+        <button class="btn-save" onclick="saveRecord()">💾 Зберегти запис</button>
+        <button class="btn-clear" onclick="clearAll()">Очистити</button>
+      </div>
+      <button class="btn-import" onclick="document.getElementById('importFile').click()">📂 Імпорт з Excel</button>
+      <input type="file" id="importFile" accept=".xlsx,.xls" style="display:none" onchange="importFromExcel(event)">
+      <p class="error" id="error"></p>
+      <p class="success-msg" id="successMsg">✓ Запис збережено!</p>
     </div>
 
-    <div class="field">
-      <label>Вартість 1 облігації (грн)</label>
-      <input type="text" id="bondPrice" placeholder="1 000" inputmode="decimal">
+    <div class="panel-right">
+      <div class="results" id="results">
+    <div class="results-placeholder" id="resultsPlaceholder">
+      <p style="text-align:center;color:#475569;font-size:14px;padding:20px 0;">Заповніть поля зліва та натисніть «Розрахувати»</p>
     </div>
-    <div class="field">
-      <label>Кількість облігацій</label>
-      <input type="text" id="bondCount" placeholder="500" inputmode="numeric">
-    </div>
-
-    <div class="field">
-      <label>Сума вкладення (грн)</label>
-      <input type="text" id="invested" placeholder="561 870" inputmode="decimal">
-    </div>
-    <div class="field">
-      <label>Річна ставка (%)</label>
-      <input type="text" id="annualRateInput" placeholder="15" inputmode="decimal">
-    </div>
-
-    <div class="field">
-      <label>Дата вкладення</label>
-      <input type="date" id="dateStart">
-    </div>
-    <div class="field">
-      <label>Дата отримання</label>
-      <input type="date" id="dateEnd">
-    </div>
-
-    <div class="field">
-      <label>Сума отримання (грн)</label>
-      <input type="text" id="received" placeholder="607 231" inputmode="decimal">
-    </div>
-    <div class="field">
-      <label>Різниця (грн)</label>
-      <input type="text" id="diffAmount" placeholder="45 361" inputmode="decimal">
-    </div>
-  </div>
-
-  <button onclick="calculate()">Розрахувати</button>
-  <div class="btn-row">
-    <button class="btn-save" onclick="saveRecord()">💾 Зберегти запис</button>
-    <button class="btn-clear" onclick="clearAll()">Очистити</button>
-  </div>
-  <button class="btn-import" onclick="document.getElementById('importFile').click()">📂 Імпорт з Excel</button>
-  <input type="file" id="importFile" accept=".xlsx,.xls" style="display:none" onchange="importFromExcel(event)">
-  <p class="error" id="error"></p>
-  <p class="success-msg" id="successMsg">✓ Запис збережено!</p>
-
-  <div class="results" id="results">
     <div class="result-section" id="bondsSectionLabel" style="display:none">Облігації</div>
     <div class="result-row" id="bondNameRow" style="display:none">
       <span class="result-label">Назва</span>
@@ -344,8 +389,10 @@
     <div class="result-row" id="netPerBondRow" style="display:none">
       <span class="result-label">Чистий прибуток на 1 облігацію</span>
       <span class="result-value profit" id="resNetPerBond"></span>
-    </div>
-  </div>
+      </div>
+    </div> <!-- /results -->
+    </div> <!-- /panel-right -->
+  </div> <!-- /main-layout -->
 
   <!-- Saved records -->
   <div class="saved-section" id="savedSection">
@@ -610,6 +657,8 @@
       } else { showRow('netPerBondRow', false); }
     } else { showRow('netPerBondRow', false); }
 
+    var ph = document.getElementById('resultsPlaceholder');
+    if (ph) ph.style.display = 'none';
     resultsEl.classList.add('show');
   }
 
@@ -1016,6 +1065,8 @@
     document.getElementById('bondName').value = '';
     activeField = null;
     document.getElementById('results').classList.remove('show');
+    var ph = document.getElementById('resultsPlaceholder');
+    if (ph) ph.style.display = '';
     document.getElementById('error').style.display = 'none';
     const t = new Date();
     document.getElementById('dateStart').value = t.toISOString().split('T')[0];
