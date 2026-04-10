@@ -1325,8 +1325,14 @@ function addPortfolioItem() {
   const f = new Date(t); f.setMonth(f.getMonth() + 3);
   document.getElementById('pDateEnd').value = f.toISOString().split('T')[0];
 
+  // Reset button to "Add"
+  const addBtn = document.getElementById('btnAddPortfolio');
+  addBtn.textContent = t('portfolio.add') || 'Додати до портфеля';
+  addBtn.classList.remove('btn-export');
+  addBtn.classList.add('btn-save');
+
   const msg = document.getElementById('pSuccess');
-  msg.textContent = '✓ Додано до портфеля!';
+  msg.textContent = '✓ Збережено!';
   msg.style.display = 'block';
   msg.style.animation = 'none';
   msg.offsetHeight;
@@ -1359,6 +1365,12 @@ function editPortfolioItem(id) {
   portfolioItems = portfolioItems.filter(p => String(p.id) !== String(id));
   renderPortfolio();
   savePortfolioToFirestore();
+
+  // Change button text
+  const btn = document.getElementById('btnAddPortfolio');
+  btn.textContent = t('portfolio.update') || 'Зберегти зміни';
+  btn.classList.remove('btn-save');
+  btn.classList.add('btn-export');
 
   // Scroll to form
   document.getElementById('pName').focus();
