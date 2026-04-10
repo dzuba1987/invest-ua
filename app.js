@@ -1340,6 +1340,31 @@ function deletePortfolioItem(id) {
   savePortfolioToFirestore();
 }
 
+function editPortfolioItem(id) {
+  const item = portfolioItems.find(p => p.id === id);
+  if (!item) return;
+
+  document.getElementById('pName').value = item.name || '';
+  document.getElementById('pType').value = item.type || 'ovdp';
+  document.getElementById('pInvested').value = item.invested ? Math.round(item.invested).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '';
+  document.getElementById('pRate').value = item.rate || '';
+  document.getElementById('pTax').value = item.tax || '';
+  document.getElementById('pDateStart').value = item.dateStart || '';
+  document.getElementById('pDateEnd').value = item.dateEnd || '';
+  document.getElementById('pBank').value = item.bank || '';
+  document.getElementById('pCard').value = item.card || '';
+  document.getElementById('pNotes').value = item.notes || '';
+
+  // Remove old item
+  portfolioItems = portfolioItems.filter(p => p.id !== id);
+  renderPortfolio();
+  savePortfolioToFirestore();
+
+  // Scroll to form
+  document.getElementById('pName').focus();
+  document.getElementById('pName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 function renderPortfolio() {
   const list = document.getElementById('portfolioList');
   const summary = document.getElementById('portfolioSummary');
@@ -1389,6 +1414,7 @@ function renderPortfolio() {
         </div>
         <div class="p-item-actions">
           ${expectedProfit > 0 ? '<div class="p-item-profit"><div class="amount">+' + formatShort(expectedProfit) + ' грн</div><div class="label">очікуваний дохід</div>' + (p.tax && expectedProfit > 0 ? '<div style="color:#f87171;font-size:12px;margin-top:2px">−' + formatShort(expectedProfit * p.tax / 100) + ' податок</div><div style="color:#4ade80;font-size:13px;font-weight:700">=' + formatShort(expectedProfit - expectedProfit * p.tax / 100) + ' чистими</div>' : '') + '</div>' : ''}
+          <button class="btn-delete" onclick="editPortfolioItem(${p.id})" style="color:#60a5fa">✎</button>
           <button class="btn-delete" onclick="deletePortfolioItem(${p.id})">✕</button>
         </div>
       </div>
