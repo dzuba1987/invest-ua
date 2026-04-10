@@ -1,10 +1,15 @@
-const CACHE_NAME = 'invest-calc-v2';
+const CACHE_NAME = 'invest-calc-v4';
 const ASSETS = [
   './',
   './index.html',
+  './help.html',
+  './styles.css',
+  './app.js',
+  './config.js',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './icon.svg'
 ];
 
 self.addEventListener('install', e => {
@@ -20,14 +25,19 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Let CDN requests go to network first
-  if (e.request.url.includes('cdn.jsdelivr.net')) {
+  // CDN requests — network first
+  if (e.request.url.includes('cdn.jsdelivr.net') || e.request.url.includes('gstatic.com')) {
     e.respondWith(
       fetch(e.request).catch(() => caches.match(e.request))
     );
     return;
   }
+  // App files — network first, fallback to cache (always fresh)
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request))
+    fetch(e.request).then(response => {
+      const clone = response.clone();
+      caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+      return response;
+    }).catch(() => caches.match(e.request))
   );
 });
