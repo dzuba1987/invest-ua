@@ -781,16 +781,26 @@ function initFirebase() {
 
 function saveUserMeta(user) {
   if (!firebaseReady || !user) return;
-  db.collection('users').doc(user.uid).set({
-    meta: {
-      uid: user.uid,
-      email: user.email || '',
-      displayName: user.displayName || '',
-      photoURL: user.photoURL || '',
-      lastLogin: new Date().toISOString(),
-      provider: user.providerData[0]?.providerId || 'unknown'
-    }
-  }, { merge: true }).catch(e => console.warn('User meta save failed:', e));
+  db.collection('users').doc(user.uid).update({
+    'meta.uid': user.uid,
+    'meta.email': user.email || '',
+    'meta.displayName': user.displayName || '',
+    'meta.photoURL': user.photoURL || '',
+    'meta.lastLogin': new Date().toISOString(),
+    'meta.provider': user.providerData[0]?.providerId || 'unknown'
+  }).catch(() => {
+    // Document doesn't exist yet — create it
+    db.collection('users').doc(user.uid).set({
+      meta: {
+        uid: user.uid,
+        email: user.email || '',
+        displayName: user.displayName || '',
+        photoURL: user.photoURL || '',
+        lastLogin: new Date().toISOString(),
+        provider: user.providerData[0]?.providerId || 'unknown'
+      }
+    }).catch(e => console.warn('User meta save failed:', e));
+  });
 }
 
 function updateAuthUI() {
