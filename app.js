@@ -1335,13 +1335,13 @@ function addPortfolioItem() {
 }
 
 function deletePortfolioItem(id) {
-  portfolioItems = portfolioItems.filter(p => p.id !== id);
+  portfolioItems = portfolioItems.filter(p => String(p.id) !== String(id));
   renderPortfolio();
   savePortfolioToFirestore();
 }
 
 function editPortfolioItem(id) {
-  const item = portfolioItems.find(p => p.id === id);
+  const item = portfolioItems.find(p => String(p.id) === String(id));
   if (!item) return;
 
   document.getElementById('pName').value = item.name || '';
@@ -1356,7 +1356,7 @@ function editPortfolioItem(id) {
   document.getElementById('pNotes').value = item.notes || '';
 
   // Remove old item
-  portfolioItems = portfolioItems.filter(p => p.id !== id);
+  portfolioItems = portfolioItems.filter(p => String(p.id) !== String(id));
   renderPortfolio();
   savePortfolioToFirestore();
 
@@ -1414,8 +1414,8 @@ function renderPortfolio() {
         </div>
         <div class="p-item-actions">
           ${expectedProfit > 0 ? '<div class="p-item-profit"><div class="amount">+' + formatShort(expectedProfit) + ' грн</div><div class="label">очікуваний дохід</div>' + (p.tax && expectedProfit > 0 ? '<div style="color:#f87171;font-size:12px;margin-top:2px">−' + formatShort(expectedProfit * p.tax / 100) + ' податок</div><div style="color:#4ade80;font-size:13px;font-weight:700">=' + formatShort(expectedProfit - expectedProfit * p.tax / 100) + ' чистими</div>' : '') + '</div>' : ''}
-          <button class="btn-delete" onclick="editPortfolioItem(${p.id})" style="color:#60a5fa">✎</button>
-          <button class="btn-delete" onclick="deletePortfolioItem(${p.id})">✕</button>
+          <button class="btn-delete" onclick="editPortfolioItem('${p.id}')" style="color:#60a5fa">✎</button>
+          <button class="btn-delete" onclick="deletePortfolioItem('${p.id}')">✕</button>
         </div>
       </div>
     `;
