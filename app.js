@@ -1286,6 +1286,7 @@ function addPortfolioItem() {
   const type = document.getElementById('pType').value;
   const invested = parseNum(document.getElementById('pInvested').value);
   const rate = parseNum(document.getElementById('pRate').value);
+  const tax = parseNum(document.getElementById('pTax').value);
   const dateStart = document.getElementById('pDateStart').value;
   const dateEnd = document.getElementById('pDateEnd').value;
   const bank = document.getElementById('pBank').value.trim();
@@ -1303,6 +1304,7 @@ function addPortfolioItem() {
   portfolioItems.push({
     id: Date.now(),
     name, type, invested, rate: isNaN(rate) ? null : rate,
+    tax: isNaN(tax) ? null : tax,
     dateStart, dateEnd, bank, card, notes,
     createdAt: new Date().toISOString()
   });
@@ -1314,6 +1316,7 @@ function addPortfolioItem() {
   document.getElementById('pName').value = '';
   document.getElementById('pInvested').value = '';
   document.getElementById('pRate').value = '';
+  document.getElementById('pTax').value = '';
   document.getElementById('pBank').value = '';
   document.getElementById('pCard').value = '';
   document.getElementById('pNotes').value = '';
@@ -1377,6 +1380,7 @@ function renderPortfolio() {
           <div class="p-item-details">
             <span>Вкладено: <strong>${formatShort(p.invested)} грн</strong></span>
             ${p.rate ? '<span>Ставка: <strong>' + p.rate + '%</strong></span>' : ''}
+            ${p.tax ? '<span>Податок: <strong>' + p.tax + '%</strong></span>' : ''}
             ${days > 0 ? '<span>Строк: <strong>' + days + ' дн.</strong></span>' : ''}
             ${p.dateStart ? '<span>' + formatDate(p.dateStart) + ' → ' + (p.dateEnd ? formatDate(p.dateEnd) : '...') + '</span>' : ''}
           </div>
@@ -1384,7 +1388,7 @@ function renderPortfolio() {
           ${p.notes ? '<div class="p-item-notes">' + p.notes + '</div>' : ''}
         </div>
         <div class="p-item-actions">
-          ${expectedProfit > 0 ? '<div class="p-item-profit"><div class="amount">+' + formatShort(expectedProfit) + ' грн</div><div class="label">очікуваний дохід</div></div>' : ''}
+          ${expectedProfit > 0 ? '<div class="p-item-profit"><div class="amount">+' + formatShort(expectedProfit) + ' грн</div><div class="label">очікуваний дохід</div>' + (p.tax && expectedProfit > 0 ? '<div style="color:#f87171;font-size:12px;margin-top:2px">−' + formatShort(expectedProfit * p.tax / 100) + ' податок</div><div style="color:#4ade80;font-size:13px;font-weight:700">=' + formatShort(expectedProfit - expectedProfit * p.tax / 100) + ' чистими</div>' : '') + '</div>' : ''}
           <button class="btn-delete" onclick="deletePortfolioItem(${p.id})">✕</button>
         </div>
       </div>
