@@ -492,7 +492,7 @@ function exportToExcel() {
 
   const ws = {};
 
-  ws['A1'] = { v: '💰 Калькулятор інвестицій — Облігації', s: titleStyle };
+  ws['A1'] = { v: 'Invest UA — Облігації', s: titleStyle };
   ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: colCount - 1 } }];
   for (let c = 1; c < colCount; c++) {
     ws[XLSX.utils.encode_cell({ r: 0, c })] = { v: '', s: titleStyle };
