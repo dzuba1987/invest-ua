@@ -5,6 +5,7 @@ function switchMainTab(tab, btn) {
   btn.classList.add('active');
   document.getElementById('panel-' + tab).classList.add('active');
   if (tab === 'analytics') checkAnalyticsReady();
+  if (tab === 'portfolio') updatePortfolioUI();
 }
 
 // ============ STATE ============
@@ -766,6 +767,7 @@ function initFirebase() {
       updateAuthUI();
       if (user) {
         loadFromFirestore();
+        loadPortfolioFromFirestore();
       }
     });
   } catch(e) {
@@ -790,6 +792,7 @@ function updateAuthUI() {
     loginBtn.style.display = 'flex';
     logoutBtn.style.display = 'none';
   }
+  updatePortfolioUI();
 }
 
 function googleLogin() {
@@ -810,6 +813,7 @@ function googleLogout() {
   }
   clearAll();
   savedRecords = [];
+  portfolioItems = [];
   // Only clear UI and local storage, NOT Firestore (signOut is async,
   // currentUser is still set — calling saveToFirestore would erase cloud data)
   origRenderSaved();
@@ -1156,7 +1160,187 @@ function findAndRenderReinvest() {
 }
 
 // ================================================================
+// ==================== PORTFOLIO ================================
+// ================================================================
+
+let portfolioItems = [];
+
+function updatePortfolioUI() {
+  const auth = document.getElementById('portfolioAuth');
+  const content = document.getElementById('portfolioContent');
+  if (currentUser) {
+    auth.style.display = 'none';
+    content.style.display = 'block';
+    renderPortfolio();
+  } else {
+    auth.style.display = 'block';
+    content.style.display = 'none';
+  }
+}
+
+function addPortfolioItem() {
+  const name = document.getElementById('pName').value.trim();
+  const type = document.getElementById('pType').value;
+  const invested = parseNum(document.getElementById('pInvested').value);
+  const rate = parseNum(document.getElementById('pRate').value);
+  const dateStart = document.getElementById('pDateStart').value;
+  const dateEnd = document.getElementById('pDateEnd').value;
+  const notes = document.getElementById('pNotes').value.trim();
+
+  if (!name || isNaN(invested) || invested <= 0) {
+    const err = document.getElementById('pError');
+    err.textContent = 'Вкажіть назву та суму вкладення';
+    err.style.display = 'block';
+    return;
+  }
+  document.getElementById('pError').style.display = 'none';
+
+  portfolioItems.push({
+    id: Date.now(),
+    name, type, invested, rate: isNaN(rate) ? null : rate,
+    dateStart, dateEnd, notes,
+    createdAt: new Date().toISOString()
+  });
+
+  renderPortfolio();
+  savePortfolioToFirestore();
+
+  // Clear form
+  document.getElementById('pName').value = '';
+  document.getElementById('pInvested').value = '';
+  document.getElementById('pRate').value = '';
+  document.getElementById('pNotes').value = '';
+  const t = new Date();
+  document.getElementById('pDateStart').value = t.toISOString().split('T')[0];
+  const f = new Date(t); f.setMonth(f.getMonth() + 3);
+  document.getElementById('pDateEnd').value = f.toISOString().split('T')[0];
+
+  const msg = document.getElementById('pSuccess');
+  msg.textContent = '✓ Додано до портфеля!';
+  msg.style.display = 'block';
+  msg.style.animation = 'none';
+  msg.offsetHeight;
+  msg.style.animation = 'fadeOut 3s forwards';
+  setTimeout(() => { msg.style.display = 'none'; }, 3000);
+}
+
+function deletePortfolioItem(id) {
+  portfolioItems = portfolioItems.filter(p => p.id !== id);
+  renderPortfolio();
+  savePortfolioToFirestore();
+}
+
+function renderPortfolio() {
+  const list = document.getElementById('portfolioList');
+  const summary = document.getElementById('portfolioSummary');
+
+  if (portfolioItems.length === 0) {
+    list.innerHTML = '<div class="a-empty">Ще немає інвестицій у портфелі.<br>Додайте першу вище.</div>';
+    summary.style.display = 'none';
+    return;
+  }
+
+  const now = new Date();
+  let totalInvested = 0, totalExpectedProfit = 0, activeCount = 0;
+
+  const typeLabels = { ovdp: 'ОВДП', deposit: 'Депозит', other: 'Інше' };
+
+  list.innerHTML = portfolioItems.map(p => {
+    const isActive = p.dateEnd ? new Date(p.dateEnd) > now : true;
+    if (isActive) activeCount++;
+    totalInvested += p.invested;
+
+    let days = 0, expectedProfit = 0;
+    if (p.dateStart && p.dateEnd) {
+      days = Math.round((new Date(p.dateEnd) - new Date(p.dateStart)) / 86400000);
+      if (p.rate && days > 0) {
+        expectedProfit = p.invested * (p.rate / 100) * (days / 365.25);
+        totalExpectedProfit += expectedProfit;
+      }
+    }
+
+    return `
+      <div class="p-item">
+        <div class="p-item-info">
+          <div class="p-item-name">
+            ${p.name}
+            <span class="p-item-type p-type-${p.type}">${typeLabels[p.type] || p.type}</span>
+            <span class="${isActive ? 'p-status-active' : 'p-status-ended'}" style="font-size:11px">${isActive ? '● Активна' : '○ Завершена'}</span>
+          </div>
+          <div class="p-item-details">
+            <span>Вкладено: <strong>${formatShort(p.invested)} грн</strong></span>
+            ${p.rate ? '<span>Ставка: <strong>' + p.rate + '%</strong></span>' : ''}
+            ${days > 0 ? '<span>Строк: <strong>' + days + ' дн.</strong></span>' : ''}
+            ${p.dateStart ? '<span>' + formatDate(p.dateStart) + ' → ' + (p.dateEnd ? formatDate(p.dateEnd) : '...') + '</span>' : ''}
+          </div>
+          ${p.notes ? '<div class="p-item-notes">' + p.notes + '</div>' : ''}
+        </div>
+        <div class="p-item-actions">
+          ${expectedProfit > 0 ? '<div class="p-item-profit"><div class="amount">+' + formatShort(expectedProfit) + ' грн</div><div class="label">очікуваний дохід</div></div>' : ''}
+          <button class="btn-delete" onclick="deletePortfolioItem(${p.id})">✕</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Summary
+  summary.style.display = 'block';
+  document.getElementById('pSummaryRow').innerHTML = `
+    <div class="a-stat"><div class="a-stat-label">Всього інвестицій</div><div class="a-stat-value">${portfolioItems.length}</div></div>
+    <div class="a-stat"><div class="a-stat-label">Активних</div><div class="a-stat-value">${activeCount}</div></div>
+    <div class="a-stat"><div class="a-stat-label">Вкладено</div><div class="a-stat-value">${formatShort(totalInvested)} грн</div></div>
+    <div class="a-stat"><div class="a-stat-label">Очікуваний дохід</div><div class="a-stat-value green">+${formatShort(totalExpectedProfit)} грн</div></div>
+  `;
+}
+
+async function savePortfolioToFirestore() {
+  if (!firebaseReady || !currentUser) return;
+  try {
+    const ref = db.collection('users').doc(currentUser.uid).collection('portfolio');
+    const existing = await ref.get();
+    const deletePromises = [];
+    existing.forEach(doc => deletePromises.push(doc.ref.delete()));
+    await Promise.all(deletePromises);
+
+    const writePromises = portfolioItems.map(p =>
+      ref.doc(String(p.id)).set(p)
+    );
+    await Promise.all(writePromises);
+  } catch(e) {
+    console.warn('Portfolio save failed:', e);
+  }
+}
+
+async function loadPortfolioFromFirestore() {
+  if (!firebaseReady || !currentUser) return;
+  try {
+    const ref = db.collection('users').doc(currentUser.uid).collection('portfolio');
+    const snapshot = await ref.get();
+    if (!snapshot.empty) {
+      portfolioItems = [];
+      snapshot.forEach(doc => portfolioItems.push(doc.data()));
+      renderPortfolio();
+    }
+  } catch(e) {
+    console.warn('Portfolio load failed:', e);
+  }
+}
+
+// ================================================================
 // ==================== INITIALIZATION ============================
 // ================================================================
+
+// Set default dates for portfolio form
+(function() {
+  const t = new Date();
+  const pds = document.getElementById('pDateStart');
+  const pde = document.getElementById('pDateEnd');
+  if (pds) pds.value = t.toISOString().split('T')[0];
+  if (pde) {
+    const f = new Date(t); f.setMonth(f.getMonth() + 3);
+    pde.value = f.toISOString().split('T')[0];
+  }
+})();
+
 initFirebase();
 loadFromStorage();

@@ -25,14 +25,17 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // CDN requests — network first
-  if (e.request.url.includes('cdn.jsdelivr.net') || e.request.url.includes('gstatic.com')) {
+  // Only handle GET requests — POST/etc go straight to network
+  if (e.request.method !== 'GET') return;
+
+  // CDN & Firebase requests — network only
+  if (e.request.url.includes('cdn.jsdelivr.net') || e.request.url.includes('gstatic.com') || e.request.url.includes('googleapis.com') || e.request.url.includes('firestore.googleapis.com')) {
     e.respondWith(
       fetch(e.request).catch(() => caches.match(e.request))
     );
     return;
   }
-  // App files — network first, fallback to cache (always fresh)
+  // App files — network first, fallback to cache
   e.respondWith(
     fetch(e.request).then(response => {
       const clone = response.clone();
