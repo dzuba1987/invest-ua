@@ -1403,7 +1403,223 @@ function renderPortfolio() {
     <div class="a-stat"><div class="a-stat-label">Вкладено</div><div class="a-stat-value">${formatShort(totalInvested)} грн</div></div>
     <div class="a-stat"><div class="a-stat-label">Очікуваний дохід</div><div class="a-stat-value green">+${formatShort(totalExpectedProfit)} грн</div></div>
   `;
+
+  renderPortfolioChart(portfolioItems, totalInvested, totalExpectedProfit);
+  loadCurrencyRates(totalInvested, totalExpectedProfit);
 }
+
+// ---- Portfolio Chart ----
+let portfolioChartInstance = null;
+
+function renderPortfolioChart(items, totalInvested, totalExpectedProfit) {
+  const canvas = document.getElementById('portfolioChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  if (portfolioChartInstance) {
+    portfolioChartInstance.destroy();
+  }
+
+  // Find date range across all items
+  const now = new Date();
+  let minDate = now, maxDate = now;
+  const activeItems = items.filter(p => p.dateStart && p.dateEnd && p.rate);
+
+  activeItems.forEach(p => {
+    const s = new Date(p.dateStart);
+    const e = new Date(p.dateEnd);
+    if (s < minDate) minDate = s;
+    if (e > maxDate) maxDate = e;
+  });
+
+  if (activeItems.length === 0) {
+    canvas.parentElement.innerHTML = '<p style="text-align:center;color:#475569;padding:40px;font-size:13px">Додайте інвестиції зі ставкою та датами для графіку</p>';
+    return;
+  }
+
+  // Generate daily points
+  const labels = [];
+  const investedLine = [];
+  const valueLine = [];
+  const projectedLine = [];
+  let todayIndex = -1;
+
+  const dayMs = 86400000;
+  const startTime = minDate.getTime();
+  const endTime = maxDate.getTime();
+  const totalDays = Math.ceil((endTime - startTime) / dayMs);
+  const step = totalDays > 365 ? 7 : 1;
+
+  for (let d = 0; d <= totalDays; d += step) {
+    const date = new Date(startTime + d * dayMs);
+    labels.push(date.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' }));
+
+    let inv = 0, val = 0;
+    activeItems.forEach(p => {
+      const s = new Date(p.dateStart).getTime();
+      const e = new Date(p.dateEnd).getTime();
+      const curTime = date.getTime();
+
+      if (curTime >= s) {
+        inv += p.invested;
+        const elapsed = Math.min(curTime, e) - s;
+        const elapsedDays = elapsed / dayMs;
+        const profit = p.invested * (p.rate / 100) * (elapsedDays / 365.25);
+        val += p.invested + Math.max(0, profit);
+      }
+    });
+
+    const isPast = date <= now;
+    if (isPast) {
+      investedLine.push(inv);
+      valueLine.push(val);
+      projectedLine.push(null);
+    } else {
+      investedLine.push(inv);
+      valueLine.push(null);
+      projectedLine.push(val);
+    }
+
+    // Mark today
+    if (todayIndex === -1 && date >= now) {
+      todayIndex = labels.length - 1;
+    }
+  }
+
+  // Connect projected line to value line
+  if (todayIndex > 0 && todayIndex < projectedLine.length) {
+    projectedLine[todayIndex - 1] = valueLine[todayIndex - 1];
+  }
+
+  portfolioChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Вкладено',
+          data: investedLine,
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59,130,246,0.1)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,
+          borderWidth: 2
+        },
+        {
+          label: 'Поточна вартість',
+          data: valueLine,
+          borderColor: '#4ade80',
+          backgroundColor: 'rgba(74,222,128,0.1)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,
+          borderWidth: 2
+        },
+        {
+          label: 'Прогноз',
+          data: projectedLine,
+          borderColor: '#facc15',
+          borderDash: [6, 4],
+          tension: 0.3,
+          pointRadius: 0,
+          borderWidth: 2,
+          fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          labels: { color: '#94a3b8', font: { size: 12 } }
+        },
+        annotation: todayIndex > -1 ? {
+          annotations: {
+            todayLine: {
+              type: 'line',
+              xMin: todayIndex,
+              xMax: todayIndex,
+              borderColor: '#f87171',
+              borderWidth: 2,
+              borderDash: [4, 4],
+              label: { display: true, content: 'Сьогодні', color: '#f87171', font: { size: 11 } }
+            }
+          }
+        } : {}
+      },
+      scales: {
+        x: {
+          ticks: { color: '#475569', maxTicksLimit: 12, font: { size: 11 } },
+          grid: { color: 'rgba(51,65,85,0.3)' }
+        },
+        y: {
+          ticks: {
+            color: '#475569',
+            font: { size: 11 },
+            callback: v => v >= 1000000 ? (v / 1000000).toFixed(1) + 'M' : v >= 1000 ? (v / 1000).toFixed(0) + 'K' : v
+          },
+          grid: { color: 'rgba(51,65,85,0.3)' }
+        }
+      }
+    }
+  });
+}
+
+// ---- Currency Rates (NBU API) ----
+let cachedRates = null;
+let ratesCacheTime = 0;
+
+async function loadCurrencyRates(totalInvested, totalExpectedProfit) {
+  const container = document.getElementById('pCurrencyRow');
+  const dateEl = document.getElementById('pCurrencyDate');
+  if (!container) return;
+
+  const totalValue = totalInvested + totalExpectedProfit;
+
+  try {
+    // Cache for 1 hour
+    if (!cachedRates || Date.now() - ratesCacheTime > 3600000) {
+      const res = await fetch('https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json');
+      const data = await res.json();
+      cachedRates = {};
+      data.forEach(r => { cachedRates[r.cc] = r.rate; });
+      cachedRates._date = data[0]?.exchangedate || '';
+      ratesCacheTime = Date.now();
+    }
+
+    const usd = cachedRates['USD'];
+    const eur = cachedRates['EUR'];
+
+    if (!usd || !eur) {
+      container.innerHTML = '<p style="color:#475569;font-size:13px">Курси недоступні</p>';
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="a-stat">
+        <div class="a-stat-label">Вкладено (UAH)</div>
+        <div class="a-stat-value">${formatShort(totalInvested)} грн</div>
+      </div>
+      <div class="a-stat">
+        <div class="a-stat-label">USD ($${usd.toFixed(2)})</div>
+        <div class="a-stat-value blue">$${(totalValue / usd).toFixed(0)}</div>
+      </div>
+      <div class="a-stat">
+        <div class="a-stat-label">EUR (€${eur.toFixed(2)})</div>
+        <div class="a-stat-value yellow">€${(totalValue / eur).toFixed(0)}</div>
+      </div>
+      <div class="a-stat">
+        <div class="a-stat-label">Очікуваний дохід (USD)</div>
+        <div class="a-stat-value green">+$${(totalExpectedProfit / usd).toFixed(0)}</div>
+      </div>
+    `;
+    dateEl.textContent = 'Курс НБУ: ' + cachedRates._date;
+  } catch(e) {
+    container.innerHTML = '<p style="color:#475569;font-size:13px">Не вдалося завантажити курси валют</p>';
+    console.warn('Currency rates failed:', e);
+  }
 
 async function savePortfolioToFirestore() {
   if (!firebaseReady || !currentUser) return;

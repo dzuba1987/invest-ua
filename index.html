@@ -13,6 +13,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <title>Invest UA — портфель інвестицій</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -446,6 +447,21 @@
         <div class="a-card">
           <h3 data-i18n="portfolio.summary">Зведення портфеля</h3>
           <div class="a-combo-summary" id="pSummaryRow"></div>
+        </div>
+
+        <!-- Currency conversion -->
+        <div class="a-card" id="portfolioCurrency">
+          <h3 data-i18n="portfolio.currency">Вартість портфеля у валюті</h3>
+          <div class="a-combo-summary" id="pCurrencyRow"></div>
+          <p style="font-size:11px;color:#475569;margin-top:8px" id="pCurrencyDate"></p>
+        </div>
+
+        <!-- Chart -->
+        <div class="a-card">
+          <h3 data-i18n="portfolio.chart">Графік приросту портфеля</h3>
+          <div style="position:relative;height:300px">
+            <canvas id="portfolioChart"></canvas>
+          </div>
         </div>
       </div>
 

@@ -104,6 +104,8 @@ const I18N = {
     'portfolio.notes': 'Нотатки',
     'portfolio.add': 'Додати до портфеля',
     'portfolio.summary': 'Зведення портфеля',
+    'portfolio.currency': 'Вартість портфеля у валюті',
+    'portfolio.chart': 'Графік приросту портфеля',
     'portfolio.empty': 'Ще немає інвестицій у портфелі.<br>Додайте першу вище.',
 
     // Profile
@@ -241,6 +243,8 @@ const I18N = {
     'portfolio.notes': 'Notes',
     'portfolio.add': 'Add to portfolio',
     'portfolio.summary': 'Portfolio summary',
+    'portfolio.currency': 'Portfolio value in currency',
+    'portfolio.chart': 'Portfolio growth chart',
     'portfolio.empty': 'No investments in portfolio yet.<br>Add your first one above.',
 
     // Profile
