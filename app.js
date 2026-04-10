@@ -1620,6 +1620,7 @@ async function loadCurrencyRates(totalInvested, totalExpectedProfit) {
     container.innerHTML = '<p style="color:#475569;font-size:13px">Не вдалося завантажити курси валют</p>';
     console.warn('Currency rates failed:', e);
   }
+}
 
 async function savePortfolioToFirestore() {
   if (!firebaseReady || !currentUser) return;

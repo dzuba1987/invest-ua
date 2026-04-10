@@ -27,8 +27,9 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Only handle GET requests — POST/etc go straight to network
+  // Only handle GET requests with http(s) scheme
   if (e.request.method !== 'GET') return;
+  if (!e.request.url.startsWith('http')) return;
 
   // CDN & Firebase requests — network only
   if (e.request.url.includes('cdn.jsdelivr.net') || e.request.url.includes('gstatic.com') || e.request.url.includes('googleapis.com') || e.request.url.includes('firestore.googleapis.com')) {
