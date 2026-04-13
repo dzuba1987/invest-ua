@@ -6,7 +6,8 @@ function switchMainTab(tab, btn) {
   document.getElementById('panel-' + tab).classList.add('active');
   if (tab === 'analytics') checkAnalyticsReady();
   if (tab === 'portfolio') updatePortfolioUI();
-  if (tab === 'profile') updateProfileUI();
+  if (tab === 'currencies') loadCurrenciesPage();
+  if (tab === 'profile') { updateProfileUI(); renderDashboardCurrencySettings(); }
 }
 
 // ============ STATE ============
@@ -1268,6 +1269,29 @@ function findAndRenderReinvest() {
 
 let portfolioItems = [];
 
+function togglePortfolioForm(forceOpen) {
+  const card = document.getElementById('portfolioFormCard');
+  const toggleBtn = document.getElementById('btnTogglePortfolioForm');
+  const isHidden = card.style.display === 'none';
+  const shouldOpen = forceOpen !== undefined ? forceOpen : isHidden;
+  if (shouldOpen) {
+    card.style.display = 'block';
+    toggleBtn.textContent = '− ' + (t('portfolio.cancel') || 'Скасувати');
+    toggleBtn.classList.remove('btn-save');
+    toggleBtn.classList.add('btn-export');
+  } else {
+    card.style.display = 'none';
+    toggleBtn.textContent = '+ ' + (t('portfolio.addNew') || 'Додати інвестицію');
+    toggleBtn.classList.remove('btn-export');
+    toggleBtn.classList.add('btn-save');
+    // Reset form state when closing
+    const addBtn = document.getElementById('btnAddPortfolio');
+    addBtn.textContent = t('portfolio.add') || 'Додати до портфеля';
+    addBtn.classList.remove('btn-export');
+    addBtn.classList.add('btn-save');
+  }
+}
+
 function updatePortfolioUI() {
   const auth = document.getElementById('portfolioAuth');
   const content = document.getElementById('portfolioContent');
@@ -1320,16 +1344,13 @@ function addPortfolioItem() {
   document.getElementById('pBank').value = '';
   document.getElementById('pCard').value = '';
   document.getElementById('pNotes').value = '';
-  const t = new Date();
-  document.getElementById('pDateStart').value = t.toISOString().split('T')[0];
-  const f = new Date(t); f.setMonth(f.getMonth() + 3);
+  const now = new Date();
+  document.getElementById('pDateStart').value = now.toISOString().split('T')[0];
+  const f = new Date(now); f.setMonth(f.getMonth() + 3);
   document.getElementById('pDateEnd').value = f.toISOString().split('T')[0];
 
-  // Reset button to "Add"
-  const addBtn = document.getElementById('btnAddPortfolio');
-  addBtn.textContent = t('portfolio.add') || 'Додати до портфеля';
-  addBtn.classList.remove('btn-export');
-  addBtn.classList.add('btn-save');
+  // Collapse form after adding (also resets button)
+  togglePortfolioForm(false);
 
   const msg = document.getElementById('pSuccess');
   msg.textContent = '✓ Збережено!';
@@ -1372,7 +1393,8 @@ function editPortfolioItem(id) {
   btn.classList.remove('btn-save');
   btn.classList.add('btn-export');
 
-  // Scroll to form
+  // Open form and scroll to it
+  togglePortfolioForm(true);
   document.getElementById('pName').focus();
   document.getElementById('pName').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
@@ -1388,7 +1410,10 @@ function renderPortfolio() {
   }
 
   const now = new Date();
-  let totalInvested = 0, totalExpectedProfit = 0, activeCount = 0;
+  const endOfYear = new Date(now.getFullYear(), 11, 31);
+  let totalInvested = 0, totalExpectedProfit = 0, totalEarnedSoFar = 0, activeCount = 0;
+  let totalDailyGross = 0, totalDailyNet = 0, totalProfitToEOY = 0;
+  const dailyBreakdown = [];
 
   const typeLabels = { ovdp: 'ОВДП', deposit: 'Депозит', other: 'Інше' };
 
@@ -1397,12 +1422,40 @@ function renderPortfolio() {
     if (isActive) activeCount++;
     totalInvested += p.invested;
 
-    let days = 0, expectedProfit = 0;
+    let days = 0, expectedProfit = 0, dailyGross = 0, dailyNet = 0, earnedSoFar = 0;
     if (p.dateStart && p.dateEnd) {
       days = Math.round((new Date(p.dateEnd) - new Date(p.dateStart)) / 86400000);
       if (p.rate && days > 0) {
         expectedProfit = p.invested * (p.rate / 100) * (days / 365.25);
         totalExpectedProfit += expectedProfit;
+
+        // Daily earnings (only for active investments)
+        if (isActive && new Date(p.dateStart) <= now) {
+          dailyGross = p.invested * (p.rate / 100) / 365.25;
+          const taxRate = p.tax ? p.tax / 100 : 0;
+          dailyNet = dailyGross * (1 - taxRate);
+          totalDailyGross += dailyGross;
+          totalDailyNet += dailyNet;
+
+          // Earned so far
+          const elapsedDays = (now - new Date(p.dateStart)) / 86400000;
+          earnedSoFar = p.invested * (p.rate / 100) * (elapsedDays / 365.25);
+          earnedSoFar = Math.min(earnedSoFar, expectedProfit);
+          totalEarnedSoFar += earnedSoFar;
+
+          // Profit from now to end of year (or dateEnd if earlier)
+          const eoyLimit = new Date(p.dateEnd) < endOfYear ? new Date(p.dateEnd) : endOfYear;
+          const daysToEOY = Math.max(0, (eoyLimit - now) / 86400000);
+          totalProfitToEOY += dailyGross * daysToEOY;
+
+          dailyBreakdown.push({
+            name: p.name,
+            type: p.type,
+            dailyGross,
+            dailyNet,
+            taxRate: p.tax || 0
+          });
+        }
       }
     }
 
@@ -1433,17 +1486,38 @@ function renderPortfolio() {
     `;
   }).join('');
 
-  // Summary
+  // Dashboard
   summary.style.display = 'block';
-  document.getElementById('pSummaryRow').innerHTML = `
-    <div class="a-stat"><div class="a-stat-label">Всього інвестицій</div><div class="a-stat-value">${portfolioItems.length}</div></div>
-    <div class="a-stat"><div class="a-stat-label">Активних</div><div class="a-stat-value">${activeCount}</div></div>
-    <div class="a-stat"><div class="a-stat-label">Вкладено</div><div class="a-stat-value">${formatShort(totalInvested)} грн</div></div>
-    <div class="a-stat"><div class="a-stat-label">Очікуваний дохід</div><div class="a-stat-value green">+${formatShort(totalExpectedProfit)} грн</div></div>
-  `;
+  const totalValue = totalInvested + totalEarnedSoFar;
+  document.getElementById('dashTotalValue').textContent = formatShort(totalValue) + ' грн';
+  document.getElementById('dashDailyTotal').innerHTML =
+    '<span class="dash-daily-badge">+' + formatShort(Math.round(totalDailyNet)) + ' грн сьогодні (чисті)</span>';
+  document.getElementById('dashInvested').textContent = formatShort(totalInvested) + ' грн';
+  document.getElementById('dashEarned').textContent = '+' + formatShort(Math.round(totalEarnedSoFar)) + ' грн';
+  document.getElementById('dashDailyNet').textContent = '+' + formatShort(Math.round(totalDailyNet)) + ' грн';
+  document.getElementById('dashActiveCount').textContent = activeCount;
+
+  // Daily breakdown
+  const breakdownEl = document.getElementById('dashDailyBreakdown');
+  if (dailyBreakdown.length === 0) {
+    breakdownEl.innerHTML = '<p style="color:#475569;font-size:13px;text-align:center;padding:12px 0">Немає активних інвестицій з нарахуванням</p>';
+  } else {
+    breakdownEl.innerHTML = dailyBreakdown.map(d => `
+      <div class="dash-breakdown-item">
+        <div class="dash-breakdown-name">
+          <span class="p-item-type p-type-${d.type}">${typeLabels[d.type] || d.type}</span>
+          ${d.name}
+        </div>
+        <div class="dash-breakdown-values">
+          <div class="dash-breakdown-gross">+${d.dailyGross.toFixed(2)} грн</div>
+          <div class="dash-breakdown-net">${d.taxRate > 0 ? 'чисті: ' + d.dailyNet.toFixed(2) + ' грн (−' + d.taxRate + '%)' : 'без податку'}</div>
+        </div>
+      </div>
+    `).join('');
+  }
 
   renderPortfolioChart(portfolioItems);
-  loadCurrencyRates(totalInvested, totalExpectedProfit);
+  loadCurrencyRates(totalInvested, totalExpectedProfit, totalProfitToEOY);
 }
 
 // ---- Portfolio Chart ----
@@ -1617,9 +1691,14 @@ function renderPortfolioChart(items) {
 
 // ---- Currency Rates (NBU API) ----
 let cachedRates = null;
+let cachedRatesArray = null;
 let ratesCacheTime = 0;
+let dashboardCurrencies = JSON.parse(localStorage.getItem('dashboardCurrencies') || '["USD","EUR"]');
 
-async function loadCurrencyRates(totalInvested, totalExpectedProfit) {
+const currencySymbols = { USD:'$', EUR:'€', GBP:'£', PLN:'zł', CHF:'Fr', JPY:'¥', CAD:'C$', CZK:'Kč', SEK:'kr', CNY:'¥', TRY:'₺' };
+function getCurrencySymbol(cc) { return currencySymbols[cc] || cc + ' '; }
+
+async function loadCurrencyRates(totalInvested, totalExpectedProfit, totalProfitToEOY) {
   const container = document.getElementById('pCurrencyRow');
   const dateEl = document.getElementById('pCurrencyDate');
   if (!container) return;
@@ -1631,43 +1710,152 @@ async function loadCurrencyRates(totalInvested, totalExpectedProfit) {
     if (!cachedRates || Date.now() - ratesCacheTime > 3600000) {
       const res = await fetch('https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json');
       const data = await res.json();
+      cachedRatesArray = data;
       cachedRates = {};
       data.forEach(r => { cachedRates[r.cc] = r.rate; });
       cachedRates._date = data[0]?.exchangedate || '';
       ratesCacheTime = Date.now();
     }
 
-    const usd = cachedRates['USD'];
-    const eur = cachedRates['EUR'];
-
-    if (!usd || !eur) {
+    let html = '';
+    const eoyYear = new Date().getFullYear();
+    dashboardCurrencies.forEach(cc => {
+      const rate = cachedRates[cc];
+      if (!rate) return;
+      const sym = getCurrencySymbol(cc);
+      html += `
+        <div class="a-stat">
+          <div class="a-stat-label">Вкладено в ${cc} (курс ${sym}${rate.toFixed(2)})</div>
+          <div class="a-stat-value">${sym}${formatShort(Math.round(totalInvested / rate))}</div>
+        </div>
+        <div class="a-stat">
+          <div class="a-stat-label">Очікуваний дохід за весь строк (${cc})</div>
+          <div class="a-stat-value green">+${sym}${formatShort(Math.round(totalExpectedProfit / rate))}</div>
+        </div>
+        <div class="a-stat">
+          <div class="a-stat-label">Очікуваний дохід до кінця ${eoyYear} (${cc})</div>
+          <div class="a-stat-value green">+${sym}${formatShort(Math.round((totalProfitToEOY || 0) / rate))}</div>
+        </div>`;
+    });
+    if (!html) {
       container.innerHTML = '<p style="color:#475569;font-size:13px">Курси недоступні</p>';
       return;
     }
-
-    container.innerHTML = `
-      <div class="a-stat">
-        <div class="a-stat-label">Вкладено (UAH)</div>
-        <div class="a-stat-value">${formatShort(totalInvested)} грн</div>
-      </div>
-      <div class="a-stat">
-        <div class="a-stat-label">USD ($${usd.toFixed(2)})</div>
-        <div class="a-stat-value blue">$${(totalValue / usd).toFixed(0)}</div>
-      </div>
-      <div class="a-stat">
-        <div class="a-stat-label">EUR (€${eur.toFixed(2)})</div>
-        <div class="a-stat-value yellow">€${(totalValue / eur).toFixed(0)}</div>
-      </div>
-      <div class="a-stat">
-        <div class="a-stat-label">Очікуваний дохід (USD)</div>
-        <div class="a-stat-value green">+$${(totalExpectedProfit / usd).toFixed(0)}</div>
-      </div>
-    `;
+    container.innerHTML = html;
     dateEl.textContent = 'Курс НБУ: ' + cachedRates._date;
   } catch(e) {
     container.innerHTML = '<p style="color:#475569;font-size:13px">Не вдалося завантажити курси валют</p>';
     console.warn('Currency rates failed:', e);
   }
+}
+
+// ---- Currencies Page ----
+async function loadCurrenciesPage(forceRefresh) {
+  if (forceRefresh) { cachedRates = null; ratesCacheTime = 0; }
+  const pinnedEl = document.getElementById('currenciesPinned');
+  const listEl = document.getElementById('currencyList');
+  const dateEl = document.getElementById('currenciesDate');
+  if (!pinnedEl) return;
+
+  try {
+    if (!cachedRates || Date.now() - ratesCacheTime > 3600000) {
+      const res = await fetch('https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json');
+      const data = await res.json();
+      cachedRatesArray = data;
+      cachedRates = {};
+      data.forEach(r => { cachedRates[r.cc] = r.rate; });
+      cachedRates._date = data[0]?.exchangedate || '';
+      ratesCacheTime = Date.now();
+    }
+
+    dateEl.textContent = cachedRates._date || '';
+
+    // Pinned cards
+    pinnedEl.innerHTML = dashboardCurrencies.map(cc => {
+      const rate = cachedRates[cc];
+      const info = cachedRatesArray ? cachedRatesArray.find(r => r.cc === cc) : null;
+      if (!rate) return '';
+      return `<div class="currency-pinned-card">
+        <div class="currency-pinned-code">${cc}</div>
+        <div class="currency-pinned-rate">${rate.toFixed(4)} ₴</div>
+        <div class="currency-pinned-name">${info ? info.txt : ''}</div>
+      </div>`;
+    }).join('');
+
+    // Full list
+    if (!cachedRatesArray) return;
+    listEl.innerHTML = cachedRatesArray.map(r => {
+      const isPinned = dashboardCurrencies.includes(r.cc);
+      return `<div class="currency-row" data-cc="${r.cc}" data-name="${r.txt.toLowerCase()}">
+        <span class="currency-code">${r.cc}</span>
+        <span class="currency-name">${r.txt}</span>
+        <span class="currency-rate">${r.rate.toFixed(4)}</span>
+        <button class="currency-star${isPinned ? ' active' : ''}" onclick="toggleDashboardCurrency('${r.cc}')">${isPinned ? '★' : '☆'}</button>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    listEl.innerHTML = '<p style="color:#475569;font-size:13px;text-align:center;padding:20px">' + (t('currencies.noRates') || 'Не вдалося завантажити курси') + '</p>';
+    console.warn('Currencies page load failed:', e);
+  }
+}
+
+function filterCurrencyList() {
+  const q = document.getElementById('currencySearch').value.toLowerCase().trim();
+  document.querySelectorAll('#currencyList .currency-row').forEach(row => {
+    const cc = row.dataset.cc.toLowerCase();
+    const name = row.dataset.name;
+    row.style.display = (!q || cc.includes(q) || name.includes(q)) ? '' : 'none';
+  });
+}
+
+function toggleDashboardCurrency(code) {
+  const idx = dashboardCurrencies.indexOf(code);
+  if (idx >= 0) {
+    dashboardCurrencies.splice(idx, 1);
+  } else if (dashboardCurrencies.length < 2) {
+    dashboardCurrencies.push(code);
+  } else {
+    // Replace oldest
+    dashboardCurrencies.shift();
+    dashboardCurrencies.push(code);
+  }
+  localStorage.setItem('dashboardCurrencies', JSON.stringify(dashboardCurrencies));
+  if (currentUser) saveProfileToFirestore();
+
+  // Re-render stars on currencies page
+  document.querySelectorAll('#currencyList .currency-star').forEach(btn => {
+    const row = btn.closest('.currency-row');
+    const cc = row.dataset.cc;
+    const isPinned = dashboardCurrencies.includes(cc);
+    btn.className = 'currency-star' + (isPinned ? ' active' : '');
+    btn.textContent = isPinned ? '★' : '☆';
+  });
+  // Re-render pinned
+  const pinnedEl = document.getElementById('currenciesPinned');
+  if (pinnedEl && cachedRatesArray) {
+    pinnedEl.innerHTML = dashboardCurrencies.map(cc => {
+      const rate = cachedRates[cc];
+      const info = cachedRatesArray.find(r => r.cc === cc);
+      if (!rate) return '';
+      return `<div class="currency-pinned-card">
+        <div class="currency-pinned-code">${cc}</div>
+        <div class="currency-pinned-rate">${rate.toFixed(4)} ₴</div>
+        <div class="currency-pinned-name">${info ? info.txt : ''}</div>
+      </div>`;
+    }).join('');
+  }
+  // Update settings page if open
+  renderDashboardCurrencySettings();
+}
+
+const popularCurrencies = ['USD','EUR','GBP','PLN','CHF','CZK','CAD','JPY','SEK','CNY','TRY'];
+
+function renderDashboardCurrencySettings() {
+  const container = document.getElementById('dashboardCurrencyOptions');
+  if (!container) return;
+  container.innerHTML = popularCurrencies.map(cc =>
+    `<button class="currency-select-btn${dashboardCurrencies.includes(cc) ? ' active' : ''}" onclick="toggleDashboardCurrency('${cc}')">${cc} ${getCurrencySymbol(cc)}</button>`
+  ).join('');
 }
 
 async function savePortfolioToFirestore() {
@@ -1769,6 +1957,7 @@ async function saveProfileToFirestore() {
         contactEmail: userProfile.contactEmail || '',
         language: userProfile.language || 'uk',
         pin: userProfile.pin || null,
+        dashboardCurrencies: dashboardCurrencies,
         updatedAt: new Date().toISOString()
       }
     }, { merge: true });
@@ -1794,6 +1983,10 @@ async function loadProfileFromFirestore() {
         if (userProfile.language) {
           localStorage.setItem('appLang', userProfile.language);
           setAppLanguage(userProfile.language);
+        }
+        if (userProfile.dashboardCurrencies && userProfile.dashboardCurrencies.length) {
+          dashboardCurrencies = userProfile.dashboardCurrencies;
+          localStorage.setItem('dashboardCurrencies', JSON.stringify(dashboardCurrencies));
         }
         updateProfileUI();
         checkPinOnLogin();

@@ -58,14 +58,15 @@
 
   <!-- TAB NAVIGATION -->
   <div class="main-tabs">
-    <button class="main-tab active" onclick="switchMainTab('calc', this)" data-i18n="tab.calc">Калькулятор</button>
+    <button class="main-tab active" onclick="switchMainTab('portfolio', this)" data-i18n="tab.portfolio">Портфель</button>
+    <button class="main-tab" onclick="switchMainTab('calc', this)" data-i18n="tab.calc">Калькулятор</button>
     <button class="main-tab" onclick="switchMainTab('analytics', this)" data-i18n="tab.analytics">Аналітика</button>
-    <button class="main-tab" onclick="switchMainTab('portfolio', this)" data-i18n="tab.portfolio">Портфель</button>
+    <button class="main-tab" onclick="switchMainTab('currencies', this)" data-i18n="tab.currencies">Валюти</button>
     <button class="main-tab" onclick="switchMainTab('profile', this)" data-i18n="tab.profile">Профіль</button>
   </div>
 
   <!-- ====== TAB 1: CALCULATOR (original) ====== -->
-  <div class="tab-panel active" id="panel-calc">
+  <div class="tab-panel" id="panel-calc">
     <p class="hint" data-i18n="calc.hint">Заповніть будь-які відомі поля — решта розрахується автоматично</p>
     <div class="main-layout">
     <div class="panel-left">
@@ -126,7 +127,7 @@
     <div class="panel-right">
     <div class="results" id="results">
       <div class="results-placeholder" id="resultsPlaceholder">
-        <p style="text-align:center;color:#475569;font-size:14px;padding:20px 0;" data-i18n="calc.placeholder">Заповніть поля зліва та натисніть «Розрахувати»</p>
+        <p style="text-align:center;color:#475569;font-size:14px;padding:20px 0;" data-i18n="calc.placeholder">Заповніть поля та натисніть «Розрахувати»</p>
       </div>
       <div class="result-section" id="bondsSectionLabel" style="display:none" data-i18n="res.bonds">Облігації</div>
       <div class="result-row" id="bondNameRow" style="display:none">
@@ -318,8 +319,26 @@
     </div>
   </div>
 
+  <!-- ====== TAB: CURRENCIES ====== -->
+  <div class="tab-panel" id="panel-currencies">
+    <div class="a-card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3 data-i18n="currencies.title">Курси валют НБУ</h3>
+        <button class="btn-clear" onclick="loadCurrenciesPage(true)" style="width:auto;padding:6px 14px;font-size:12px;margin:0" data-i18n="currencies.refresh">Оновити</button>
+      </div>
+      <p style="font-size:11px;color:#475569;margin-top:4px" id="currenciesDate"></p>
+    </div>
+
+    <div class="dash-grid" id="currenciesPinned" style="margin-bottom:12px"></div>
+
+    <div class="a-card">
+      <input type="text" id="currencySearch" placeholder="Пошук валюти..." oninput="filterCurrencyList()" style="margin-bottom:12px">
+      <div class="currency-list" id="currencyList"></div>
+    </div>
+  </div>
+
   <!-- ====== TAB 3: PORTFOLIO ====== -->
-  <div class="tab-panel" id="panel-portfolio">
+  <div class="tab-panel active" id="panel-portfolio">
     <!-- Not logged in -->
     <div id="portfolioAuth">
       <div class="a-empty" style="padding:20px 20px 0">
@@ -390,7 +409,9 @@
 
     <!-- Logged in -->
     <div id="portfolioContent" style="display:none">
-      <div class="a-card">
+      <button class="btn-save" id="btnTogglePortfolioForm" onclick="togglePortfolioForm()" style="width:100%;margin-bottom:16px" data-i18n="portfolio.addNew">+ Додати інвестицію</button>
+
+      <div class="a-card" id="portfolioFormCard" style="display:none">
         <h3 data-i18n="portfolio.title">Мої інвестиції</h3>
         <div class="form-grid" style="margin-bottom:16px">
           <div class="field field-full">
@@ -440,13 +461,43 @@
         </div>
         <button class="btn-save" id="btnAddPortfolio" onclick="addPortfolioItem()" data-i18n="portfolio.add">Додати до портфеля</button>
         <p class="error" id="pError"></p>
-        <p class="success-msg" id="pSuccess"></p>
       </div>
+      <p class="success-msg" id="pSuccess"></p>
 
       <div id="portfolioSummary" style="display:none">
+        <!-- Dashboard hero -->
+        <div class="dash-hero">
+          <div class="dash-hero-label">Вартість портфеля</div>
+          <div class="dash-hero-value" id="dashTotalValue">0 грн</div>
+          <div class="dash-hero-daily" id="dashDailyTotal">
+            <span class="dash-daily-badge">+0 грн сьогодні</span>
+          </div>
+        </div>
+
+        <!-- Metric cards -->
+        <div class="dash-grid">
+          <div class="dash-card">
+            <div class="dash-card-label">Вкладено</div>
+            <div class="dash-card-value" id="dashInvested">0 грн</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-label">Зароблено всього</div>
+            <div class="dash-card-value dash-green" id="dashEarned">+0 грн</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-label">Чистий дохід / день</div>
+            <div class="dash-card-value dash-green" id="dashDailyNet">+0 грн</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-label">Активних інвестицій</div>
+            <div class="dash-card-value" id="dashActiveCount">0</div>
+          </div>
+        </div>
+
+        <!-- Daily earnings breakdown -->
         <div class="a-card">
-          <h3 data-i18n="portfolio.summary">Зведення портфеля</h3>
-          <div class="a-combo-summary" id="pSummaryRow"></div>
+          <h3>Дохід за сьогодні по інвестиціях</h3>
+          <div id="dashDailyBreakdown"></div>
         </div>
 
         <!-- Currency conversion -->
@@ -508,6 +559,13 @@
             <span class="profile-lang-flag">🇬🇧</span> English
           </button>
         </div>
+      </div>
+
+      <!-- Dashboard currencies setting -->
+      <div class="a-card">
+        <h3 data-i18n="currencies.settingsTitle">Валюти на дашборді</h3>
+        <p style="font-size:12px;color:#64748b;margin-bottom:12px" data-i18n="currencies.settingsDesc">Оберіть 1-2 валюти для відображення на дашборді портфеля</p>
+        <div class="currency-select-grid" id="dashboardCurrencyOptions"></div>
       </div>
 
       <!-- Contact info -->

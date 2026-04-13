@@ -30,7 +30,7 @@ const I18N = {
     'calc.save': 'Зберегти запис',
     'calc.clear': 'Очистити',
     'calc.import': 'Імпорт з Excel',
-    'calc.placeholder': 'Заповніть поля зліва та натисніть «Розрахувати»',
+    'calc.placeholder': 'Заповніть поля та натисніть «Розрахувати»',
 
     // Results
     'res.bonds': 'Облігації',
@@ -103,11 +103,23 @@ const I18N = {
     'portfolio.card': 'Номер картки / рахунку',
     'portfolio.notes': 'Нотатки',
     'portfolio.add': 'Додати до портфеля',
+    'portfolio.addNew': 'Додати інвестицію',
+    'portfolio.cancel': 'Скасувати',
     'portfolio.update': 'Зберегти зміни',
     'portfolio.summary': 'Зведення портфеля',
     'portfolio.currency': 'Вартість портфеля у валюті',
     'portfolio.chart': 'Графік приросту портфеля',
     'portfolio.empty': 'Ще немає інвестицій у портфелі.<br>Додайте першу вище.',
+
+    // Currencies
+    'tab.currencies': 'Валюти',
+    'currencies.title': 'Курси валют НБУ',
+    'currencies.search': 'Пошук валюти...',
+    'currencies.settingsTitle': 'Валюти на дашборді',
+    'currencies.settingsDesc': 'Оберіть 1-2 валюти для відображення на дашборді портфеля',
+    'currencies.maxTwo': 'Максимум 2 валюти',
+    'currencies.noRates': 'Не вдалося завантажити курси',
+    'currencies.refresh': 'Оновити',
 
     // Profile
     'profile.authTitle': 'Для перегляду профілю потрібна авторизація',
@@ -170,7 +182,7 @@ const I18N = {
     'calc.save': 'Save record',
     'calc.clear': 'Clear',
     'calc.import': 'Import from Excel',
-    'calc.placeholder': 'Fill in the fields on the left and click "Calculate"',
+    'calc.placeholder': 'Fill in the fields and click "Calculate"',
 
     // Results
     'res.bonds': 'Bonds',
@@ -243,11 +255,23 @@ const I18N = {
     'portfolio.card': 'Card / account number',
     'portfolio.notes': 'Notes',
     'portfolio.add': 'Add to portfolio',
+    'portfolio.addNew': 'Add investment',
+    'portfolio.cancel': 'Cancel',
     'portfolio.update': 'Save changes',
     'portfolio.summary': 'Portfolio summary',
     'portfolio.currency': 'Portfolio value in currency',
     'portfolio.chart': 'Portfolio growth chart',
     'portfolio.empty': 'No investments in portfolio yet.<br>Add your first one above.',
+
+    // Currencies
+    'tab.currencies': 'Currencies',
+    'currencies.title': 'NBU Exchange Rates',
+    'currencies.search': 'Search currency...',
+    'currencies.settingsTitle': 'Dashboard currencies',
+    'currencies.settingsDesc': 'Select 1-2 currencies to display on portfolio dashboard',
+    'currencies.maxTwo': 'Max 2 currencies',
+    'currencies.noRates': 'Failed to load exchange rates',
+    'currencies.refresh': 'Refresh',
 
     // Profile
     'profile.authTitle': 'Authorization required to view profile',
