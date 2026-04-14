@@ -71,20 +71,20 @@
     <div class="main-layout">
     <div class="panel-left">
     <div class="form-grid">
-      <div class="field field-full">
+      <div class="field field-full" id="fieldBondName">
         <label data-i18n="calc.bondName">Назва облігації</label>
         <input type="text" id="bondName" placeholder="Військові ОВДП серія 123/456">
       </div>
-      <div class="field">
+      <div class="field" id="fieldBondPrice">
         <label data-i18n="calc.bondPrice">Вартість 1 облігації (грн)</label>
         <input type="text" id="bondPrice" placeholder="1 000" inputmode="decimal">
       </div>
-      <div class="field">
+      <div class="field" id="fieldBondCount">
         <label data-i18n="calc.bondCount">Кількість облігацій</label>
         <input type="text" id="bondCount" placeholder="500" inputmode="numeric">
       </div>
       <div class="field">
-        <label data-i18n="calc.invested">Сума вкладення (грн)</label>
+        <label id="labelInvested" data-i18n="calc.invested">Сума вкладення (грн)</label>
         <input type="text" id="invested" placeholder="561 870" inputmode="decimal">
       </div>
       <div class="field">
@@ -92,24 +92,51 @@
         <input type="text" id="annualRateInput" placeholder="15" inputmode="decimal">
       </div>
       <div class="field">
-        <label data-i18n="calc.dateStart">Дата вкладення</label>
+        <label id="labelDateStart" data-i18n="calc.dateStart">Дата вкладення</label>
         <input type="date" id="dateStart">
       </div>
       <div class="field">
-        <label data-i18n="calc.dateEnd">Дата отримання</label>
+        <label id="labelDateEnd" data-i18n="calc.dateEnd">Дата отримання</label>
         <input type="date" id="dateEnd">
       </div>
-      <div class="field">
+      <div class="field" id="fieldReceived">
         <label data-i18n="calc.received">Сума отримання (грн)</label>
         <input type="text" id="received" placeholder="607 231" inputmode="decimal">
       </div>
-      <div class="field">
+      <div class="field" id="fieldDiff">
         <label data-i18n="calc.diff">Різниця (грн)</label>
         <input type="text" id="diffAmount" placeholder="45 361" inputmode="decimal">
       </div>
       <div class="field">
         <label data-i18n="calc.tax">Податок від доходу (%)</label>
         <input type="text" id="bonusPercent" placeholder="19.5" inputmode="decimal">
+      </div>
+      <div class="field field-full compound-toggle">
+        <label class="checkbox-label">
+          <input type="checkbox" id="compoundCheck" onchange="toggleCompoundOptions()">
+          <span data-i18n="calc.compound">Складний відсоток (реінвестування)</span>
+        </label>
+      </div>
+      <div class="field" id="compoundRateField" style="display:none">
+        <label data-i18n="calc.compoundRate">Ставка реінвестування (%)</label>
+        <input type="text" id="compoundRate" placeholder="15" inputmode="decimal">
+      </div>
+      <div class="field" id="compoundIndexField" style="display:none">
+        <label data-i18n="calc.compoundIndex">Індексація вкладу (%/рік)</label>
+        <input type="text" id="compoundIndex" placeholder="0" inputmode="decimal">
+      </div>
+      <div class="field" id="compoundTermField" style="display:none">
+        <label data-i18n="calc.compoundYears">Горизонт (років)</label>
+        <select id="compoundYears" style="width:100%;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none">
+          <option value="1">1 рік</option>
+          <option value="2" selected>2 роки</option>
+          <option value="3">3 роки</option>
+          <option value="5">5 років</option>
+          <option value="7">7 років</option>
+          <option value="10">10 років</option>
+          <option value="15">15 років</option>
+          <option value="20">20 років</option>
+        </select>
       </div>
     </div>
 
@@ -185,6 +212,33 @@
         <span class="result-label" data-i18n="res.netAfterTax">Чистий прибуток після податку</span>
         <span class="result-value profit" id="resTotalWithBonus"></span>
       </div>
+      <!-- Compound interest section -->
+      <div id="compoundSection" style="display:none">
+        <div class="result-section" data-i18n="res.compoundSection">Складний відсоток</div>
+        <div class="result-row">
+          <span class="result-label" data-i18n="res.compoundPeriods">Кількість періодів</span>
+          <span class="result-value" id="resCompoundPeriods"></span>
+        </div>
+        <div class="result-row">
+          <span class="result-label" data-i18n="res.compoundTotal">Підсумкова сума</span>
+          <span class="result-value profit" id="resCompoundTotal"></span>
+        </div>
+        <div class="result-row">
+          <span class="result-label" data-i18n="res.compoundProfit">Загальний прибуток</span>
+          <span class="result-value profit" id="resCompoundProfit"></span>
+        </div>
+        <div class="result-row" id="compoundNetRow" style="display:none">
+          <span class="result-label" data-i18n="res.compoundNet">Прибуток після податку</span>
+          <span class="result-value profit" id="resCompoundNet"></span>
+        </div>
+
+        <!-- Comparison: simple vs compound -->
+        <div class="compound-compare" id="compoundCompare"></div>
+
+        <div style="position:relative;height:250px;margin-top:16px">
+          <canvas id="compoundChart"></canvas>
+        </div>
+      </div>
     </div> <!-- /results -->
     </div> <!-- /panel-right -->
     </div> <!-- /main-layout -->
@@ -192,7 +246,7 @@
     <!-- Saved records -->
     <div class="saved-section" id="savedSection">
       <div class="saved-title">
-        <span data-i18n="saved.title">Збережені облігації</span>
+        <span data-i18n="saved.title">Історія розрахунків</span>
         <span class="saved-count" id="savedCount"></span>
       </div>
       <div class="table-wrap">
@@ -535,18 +589,6 @@
 
     <!-- Logged in -->
     <div id="profileContent" style="display:none">
-
-      <!-- User info -->
-      <div class="a-card">
-        <h3 data-i18n="profile.account">Обліковий запис</h3>
-        <div class="profile-user">
-          <img id="profileAvatar" src="" alt="" referrerpolicy="no-referrer" class="profile-avatar">
-          <div>
-            <div class="profile-name" id="profileName"></div>
-            <div class="profile-email" id="profileEmail"></div>
-          </div>
-        </div>
-      </div>
 
       <!-- Language -->
       <div class="a-card">

@@ -114,6 +114,55 @@ button:hover { opacity: 0.9; }
 .form-grid .field-full {
   grid-column: 1 / -1;
 }
+/* Checkbox */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #e2e8f0;
+  padding: 8px 0;
+}
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #3b82f6;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.compound-toggle {
+  border-top: 1px solid #334155;
+  padding-top: 12px;
+  margin-top: 4px;
+}
+.compound-compare {
+  margin-top: 14px;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.compound-compare-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  background: #0f172a;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+  border-bottom: 1px solid #334155;
+}
+.compound-compare-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: 8px 10px;
+  font-size: 13px;
+  border-bottom: 1px solid #1e293b;
+}
+.compound-compare-row:last-child { border-bottom: none; }
+.compound-compare-row .cc-label { color: #94a3b8; }
+.compound-compare-row .cc-value { color: #f1f5f9; font-weight: 600; text-align: right; }
+.compound-compare-row .cc-diff { color: #4ade80; font-weight: 700; text-align: right; }
 .error { color: #f87171; font-size: 13px; text-align: center; margin-top: 12px; display: none; }
 .success-msg {
   color: #4ade80;
@@ -167,7 +216,8 @@ button:hover { opacity: 0.9; }
   color: #e2e8f0;
   white-space: nowrap;
 }
-.saved-table tr:hover td { background: #0f172a; }
+.saved-table tbody tr { cursor: pointer; transition: background 0.15s; }
+.saved-table tbody tr:hover td { background: #1e3a5f; }
 .saved-table .num { text-align: right; }
 .saved-table .profit-cell { color: #4ade80; }
 .saved-table .rate-cell { color: #facc15; font-weight: 600; }
@@ -983,6 +1033,8 @@ button:hover { opacity: 0.9; }
   /* Calculator results mobile */
   .result-row { gap: 8px; }
   .result-label { flex-shrink: 0; max-width: 55%; }
+  .compound-compare-header { font-size: 10px; padding: 6px 8px; }
+  .compound-compare-row { font-size: 12px; padding: 6px 8px; }
 
   /* Saved table mobile */
   .saved-table { font-size: 11px; }

@@ -156,7 +156,41 @@ function update(changedField) {
   calculate();
 }
 
+function toggleCompoundOptions() {
+  const isCompound = document.getElementById('compoundCheck').checked;
+  document.getElementById('compoundTermField').style.display = isCompound ? '' : 'none';
+  document.getElementById('compoundRateField').style.display = isCompound ? '' : 'none';
+  document.getElementById('compoundIndexField').style.display = isCompound ? '' : 'none';
+
+  // Copy main rate into compound rate field if empty
+  if (isCompound) {
+    const compoundRateEl = document.getElementById('compoundRate');
+    if (!compoundRateEl.value) {
+      compoundRateEl.value = document.getElementById('annualRateInput').value;
+    }
+  }
+
+  // Hide bond-specific fields in compound mode
+  const bondFields = ['fieldBondName', 'fieldBondPrice', 'fieldBondCount', 'fieldReceived', 'fieldDiff'];
+  bondFields.forEach(id => {
+    document.getElementById(id).style.display = isCompound ? 'none' : '';
+  });
+
+  // Update labels
+  document.getElementById('labelInvested').textContent = isCompound
+    ? (t('calc.depositAmount') || 'Сума вкладу (грн)')
+    : (t('calc.invested') || 'Сума вкладення (грн)');
+  document.getElementById('labelDateStart').textContent = isCompound
+    ? (t('calc.periodStart') || 'Початок періоду')
+    : (t('calc.dateStart') || 'Дата вкладення');
+  document.getElementById('labelDateEnd').textContent = isCompound
+    ? (t('calc.periodEnd') || 'Кінець періоду')
+    : (t('calc.dateEnd') || 'Дата отримання');
+}
+
 // ============ CALCULATE & DISPLAY ============
+let compoundChartInstance = null;
+
 function calculate() {
   const errorEl = document.getElementById('error');
   const resultsEl = document.getElementById('results');
@@ -263,6 +297,185 @@ function calculate() {
     showRow('totalWithBonusRow', false);
   }
 
+  // Compound interest
+  const compoundSection = document.getElementById('compoundSection');
+  const isCompound = document.getElementById('compoundCheck').checked;
+  if (isCompound && !isNaN(invested) && invested > 0 && !isNaN(diffDays) && diffDays > 0) {
+    const years = parseInt(document.getElementById('compoundYears').value) || 2;
+    const periodDays = diffDays;
+    const periodsPerYear = 365.25 / periodDays;
+
+    // Compound rate: use dedicated field, fallback to main rate
+    const compoundRateVal = parseNum(document.getElementById('compoundRate').value);
+    const cRate = !isNaN(compoundRateVal) && compoundRateVal > 0 ? compoundRateVal : (hasRate ? annualRateInput : periodRate * periodsPerYear);
+    const ratePerPeriod = (cRate / 100) * (periodDays / 365.25);
+    const annualSimpleRate = cRate / 100;
+
+    // Indexation: yearly increase of the rate
+    const indexVal = parseNum(document.getElementById('compoundIndex').value);
+    const indexPct = !isNaN(indexVal) ? indexVal : 0;
+
+    const taxRate = hasTax ? taxPct / 100 : 0;
+    const totalPeriods = Math.round(years * periodsPerYear);
+
+    // Build data points per year
+    const labels = [];
+    const investedLine = [];
+    const grossLine = [];
+    const netLine = [];
+    const simpleLine = [];
+
+    let balance = invested;
+    let balanceNet = invested;
+    let currentPeriod = 0;
+    let currentRatePerPeriod = ratePerPeriod;
+    let currentAnnualSimple = annualSimpleRate;
+
+    for (let y = 0; y <= years; y++) {
+      const label = y === 0 ? 'Старт' : y + (y === 1 ? ' рік' : y < 5 ? ' роки' : ' років');
+      labels.push(label);
+      investedLine.push(Math.round(invested));
+      grossLine.push(Math.round(balance));
+      netLine.push(Math.round(balanceNet));
+      simpleLine.push(Math.round(invested * (1 + annualSimpleRate * y)));
+
+      // Compound through periods of this year
+      if (y < years) {
+        // Apply indexation from year 2 onwards
+        if (y > 0 && indexPct !== 0) {
+          currentRatePerPeriod = ratePerPeriod * Math.pow(1 + indexPct / 100, y);
+        }
+        const periodsThisYear = Math.round(periodsPerYear);
+        for (let p = 0; p < periodsThisYear && currentPeriod < totalPeriods; p++) {
+          balance += balance * currentRatePerPeriod;
+          balanceNet += balanceNet * currentRatePerPeriod * (1 - taxRate);
+          currentPeriod++;
+        }
+      }
+    }
+
+    const totalGrossProfit = balance - invested;
+    const totalNetProfit = balanceNet - invested;
+    const periodLabel = periodDays < 35 ? Math.round(periodDays) + ' дн.' :
+      periodDays < 320 ? Math.round(periodDays / 30.44) + ' міс.' : '1 рік';
+
+    document.getElementById('resCompoundPeriods').textContent =
+      years + ' р. (' + totalPeriods + ' реінвестицій по ' + periodLabel + ')';
+    document.getElementById('resCompoundTotal').textContent = formatNum(balance) + ' грн';
+    document.getElementById('resCompoundProfit').textContent = '+' + formatNum(totalGrossProfit) + ' грн';
+
+    if (hasTax) {
+      document.getElementById('resCompoundNet').textContent = '+' + formatNum(totalNetProfit) + ' грн';
+      showRow('compoundNetRow', true);
+    } else {
+      showRow('compoundNetRow', false);
+    }
+
+    compoundSection.style.display = 'block';
+
+    // Comparison table: simple vs compound per year
+    const compareEl = document.getElementById('compoundCompare');
+    let cmpHtml = `<div class="compound-compare-header">
+      <span></span><span style="text-align:right">Без реінвест.</span><span style="text-align:right">З реінвест.</span>
+    </div>`;
+    let cmpBalance = invested;
+    let cmpHtmlRows = '';
+    for (let y = 1; y <= years; y++) {
+      const simpleVal = invested * (1 + annualSimpleRate * y);
+      const yearRate = indexPct !== 0 ? ratePerPeriod * Math.pow(1 + indexPct / 100, y - 1) : ratePerPeriod;
+      const pThisYear = Math.round(periodsPerYear);
+      for (let p = 0; p < pThisYear; p++) {
+        cmpBalance += cmpBalance * yearRate;
+      }
+      const diff = cmpBalance - simpleVal;
+      const yLabel = y + (y === 1 ? ' рік' : y < 5 ? ' роки' : ' років');
+      cmpHtmlRows += `<div class="compound-compare-row">
+        <span class="cc-label">${yLabel}</span>
+        <span class="cc-value">${formatShort(Math.round(simpleVal))} ₴</span>
+        <span class="cc-diff">${formatShort(Math.round(cmpBalance))} ₴ <span style="font-size:11px;color:#4ade80">(+${formatShort(Math.round(diff))})</span></span>
+      </div>`;
+    }
+    compareEl.innerHTML = cmpHtml + cmpHtmlRows;
+
+    // Chart
+    const canvas = document.getElementById('compoundChart');
+    if (canvas && typeof Chart !== 'undefined') {
+      if (compoundChartInstance) compoundChartInstance.destroy();
+      compoundChartInstance = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Вкладено',
+              data: investedLine,
+              borderColor: '#475569',
+              borderDash: [4, 4],
+              pointRadius: 0,
+              borderWidth: 1.5,
+              fill: false
+            },
+            {
+              label: 'Простий відсоток',
+              data: simpleLine,
+              borderColor: '#f59e0b',
+              borderDash: [6, 3],
+              pointRadius: 2,
+              pointBackgroundColor: '#f59e0b',
+              borderWidth: 1.5,
+              fill: false
+            },
+            {
+              label: 'Складний відсоток',
+              data: grossLine,
+              borderColor: '#3b82f6',
+              backgroundColor: 'rgba(59,130,246,0.08)',
+              pointRadius: 3,
+              pointBackgroundColor: '#3b82f6',
+              borderWidth: 2,
+              fill: true
+            },
+            ...(hasTax ? [{
+              label: 'Після податку',
+              data: netLine,
+              borderColor: '#4ade80',
+              pointRadius: 3,
+              pointBackgroundColor: '#4ade80',
+              borderWidth: 2,
+              fill: false
+            }] : [])
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                label: ctx => ctx.dataset.label + ': ' + formatShort(ctx.raw) + ' грн'
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } },
+            y: {
+              ticks: {
+                color: '#64748b',
+                font: { size: 10 },
+                callback: v => formatShort(v)
+              },
+              grid: { color: '#1e293b' }
+            }
+          }
+        }
+      });
+    }
+  } else {
+    compoundSection.style.display = 'none';
+    if (compoundChartInstance) { compoundChartInstance.destroy(); compoundChartInstance = null; }
+  }
+
   var ph = document.getElementById('resultsPlaceholder');
   if (ph) ph.style.display = 'none';
   resultsEl.classList.add('show');
@@ -360,6 +573,11 @@ function renderSaved() {
     }
 
     const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    tr.onclick = function(e) {
+      if (e.target.closest('.btn-delete')) return;
+      loadRecordToForm(r);
+    };
     tr.innerHTML = `
       <td>${r.name}</td>
       <td class="num">${r.bondPrice ? formatShort(r.bondPrice) : '—'}</td>
@@ -391,6 +609,29 @@ function renderSaved() {
       <td></td>
     </tr>
   `;
+}
+
+function loadRecordToForm(r) {
+  // Fill form fields from saved record
+  document.getElementById('bondName').value = r.name === '—' ? '' : r.name || '';
+  document.getElementById('bondPrice').value = r.bondPrice ? formatShort(r.bondPrice) : '';
+  document.getElementById('bondCount').value = r.bondCount || '';
+  document.getElementById('invested').value = formatShort(Math.round(r.invested));
+  document.getElementById('received').value = formatShort(Math.round(r.received));
+  document.getElementById('annualRateInput').value = r.rateInput || '';
+  document.getElementById('dateStart').value = r.dateStart || '';
+  document.getElementById('dateEnd').value = r.dateEnd || '';
+  document.getElementById('diffAmount').value = formatShort(Math.round(r.profit));
+  document.getElementById('bonusPercent').value = r.taxPercent || '';
+
+  // Mark manual fields so calculate() doesn't override them
+  numFields.forEach(id => document.getElementById(id).classList.remove('auto-filled'));
+
+  // Run calculation to show results + charts
+  calculate();
+
+  // Scroll to top of calculator
+  document.getElementById('panel-calc').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function deleteRecord(id) {
@@ -669,6 +910,22 @@ function clearAll() {
   var ph = document.getElementById('resultsPlaceholder');
   if (ph) ph.style.display = '';
   document.getElementById('error').style.display = 'none';
+
+  // Clear all result values
+  ['resProfit','resTerm','resPeriodRate','resAnnualRate','resNetProfit',
+   'resBondName','resBondsCount','resInvestedCalc','resReceivedCalc',
+   'resProfitPerBond','resNetPerBond','resBonusAmount','resTotalWithBonus'
+  ].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = ''; });
+  ['bondsSectionLabel','bondNameRow','bondsCountRow','investedCalcRow',
+   'receivedCalcRow','profitPerBondRow','netPerBondRow','bonusSectionLabel',
+   'bonusAmountRow','totalWithBonusRow'
+  ].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  document.getElementById('compoundCheck').checked = false;
+  document.getElementById('compoundRate').value = '';
+  document.getElementById('compoundIndex').value = '';
+  toggleCompoundOptions();
+  document.getElementById('compoundSection').style.display = 'none';
+  if (compoundChartInstance) { compoundChartInstance.destroy(); compoundChartInstance = null; }
   const t = new Date();
   document.getElementById('dateStart').value = t.toISOString().split('T')[0];
   const f = new Date(t);
@@ -1903,9 +2160,6 @@ function updateProfileUI() {
   if (currentUser) {
     auth.style.display = 'none';
     content.style.display = 'block';
-    document.getElementById('profileAvatar').src = currentUser.photoURL || '';
-    document.getElementById('profileName').textContent = userProfile.displayName || currentUser.displayName || '';
-    document.getElementById('profileEmail').textContent = userProfile.contactEmail || currentUser.email || '';
     document.getElementById('profileDisplayName').value = userProfile.displayName || currentUser.displayName || '';
     document.getElementById('profileContactEmail').value = userProfile.contactEmail || '';
     document.getElementById('profilePhone').value = userProfile.phone || '';
@@ -1933,10 +2187,8 @@ async function saveProfile() {
   userProfile.phone = document.getElementById('profilePhone').value.trim();
   await saveProfileToFirestore();
 
-  // Update header and profile card with new data
+  // Update header with new data
   document.getElementById('userName').textContent = userProfile.displayName || currentUser.displayName || currentUser.email;
-  document.getElementById('profileName').textContent = userProfile.displayName || currentUser.displayName || '';
-  document.getElementById('profileEmail').textContent = userProfile.contactEmail || currentUser.email || '';
 
   const msg = document.getElementById('profileSuccess');
   msg.textContent = '✓ Збережено!';
