@@ -1,7 +1,7 @@
 const I18N = {
   uk: {
     // Header
-    'app.subtitle': 'Портфель інвестицій — ОВДП, депозити та інші вкладення',
+    'app.subtitle': 'ОВДП, депозити та інші вкладення',
     'help': 'Довідка',
     'login': 'Увійти через Google',
     'logout': 'Вийти',
@@ -99,9 +99,9 @@ const I18N = {
 
     // Portfolio
     'portfolio.authTitle': 'Для перегляду портфеля потрібна авторизація',
-    'portfolio.authDesc': 'Увійдіть через Google, щоб зберігати та переглядати свої інвестиції з будь-якого пристрою',
-    'portfolio.title': 'Мої інвестиції',
-    'portfolio.name': 'Назва інвестиції',
+    'portfolio.authDesc': 'Увійдіть через Google, щоб зберігати та переглядати свої вкладення з будь-якого пристрою',
+    'portfolio.title': 'Мої вкладення',
+    'portfolio.name': 'Назва вкладення',
     'portfolio.type': 'Тип',
     'portfolio.typeOvdp': 'ОВДП',
     'portfolio.typeDeposit': 'Депозит',
@@ -115,13 +115,13 @@ const I18N = {
     'portfolio.card': 'Номер картки / рахунку',
     'portfolio.notes': 'Нотатки',
     'portfolio.add': 'Додати до портфеля',
-    'portfolio.addNew': 'Додати інвестицію',
+    'portfolio.addNew': 'Новий запис',
     'portfolio.cancel': 'Скасувати',
     'portfolio.update': 'Зберегти зміни',
     'portfolio.summary': 'Зведення портфеля',
     'portfolio.currency': 'Вартість портфеля у валюті',
     'portfolio.chart': 'Графік приросту портфеля',
-    'portfolio.empty': 'Ще немає інвестицій у портфелі.<br>Додайте першу вище.',
+    'portfolio.empty': 'Ще немає вкладень у портфелі.<br>Додайте перше вище.',
 
     // Currencies
     'tab.currencies': 'Валюти',
@@ -138,6 +138,20 @@ const I18N = {
     'profile.authDesc': 'Увійдіть через Google, щоб налаштувати свій акаунт',
     'profile.account': 'Обліковий запис',
     'profile.language': 'Мова / Language',
+    'notify.title': 'Сповіщення',
+    'notify.desc': 'Нагадування про завершення терміну вкладень',
+    'notify.daysBefore': 'За скільки днів нагадувати',
+    'notify.email': 'Email-сповіщення',
+    'notify.emailDesc': 'Надсилати на пошту вашого Google акаунту',
+    'notify.telegram': 'Telegram-сповіщення',
+    'notify.telegramDesc': 'Миттєві повідомлення у ваш Telegram',
+    'notify.telegramConnect': 'Відкрити Telegram бота',
+    'notify.step1': 'Відкрийте бота та натисніть Start',
+    'notify.step2': 'Вставте Chat ID який показав бот',
+    'notify.step3': 'Перевірте що все працює',
+    'notify.saveChatId': 'Зберегти',
+    'notify.testTelegram': 'Надіслати тестове повідомлення',
+
     'profile.contact': 'Контактна інформація',
     'profile.displayName': "Ім'я",
     'profile.phone': 'Номер телефону',
@@ -165,7 +179,7 @@ const I18N = {
 
   en: {
     // Header
-    'app.subtitle': 'Investment portfolio — government bonds, deposits & more',
+    'app.subtitle': 'Government bonds, deposits & more',
     'help': 'Help',
     'login': 'Sign in with Google',
     'logout': 'Sign out',
@@ -263,9 +277,9 @@ const I18N = {
 
     // Portfolio
     'portfolio.authTitle': 'Authorization required to view portfolio',
-    'portfolio.authDesc': 'Sign in with Google to save and view your investments from any device',
-    'portfolio.title': 'My investments',
-    'portfolio.name': 'Investment name',
+    'portfolio.authDesc': 'Sign in with Google to save and view your portfolio from any device',
+    'portfolio.title': 'My portfolio',
+    'portfolio.name': 'Name',
     'portfolio.type': 'Type',
     'portfolio.typeOvdp': 'Gov. bonds',
     'portfolio.typeDeposit': 'Deposit',
@@ -279,13 +293,13 @@ const I18N = {
     'portfolio.card': 'Card / account number',
     'portfolio.notes': 'Notes',
     'portfolio.add': 'Add to portfolio',
-    'portfolio.addNew': 'Add investment',
+    'portfolio.addNew': 'New entry',
     'portfolio.cancel': 'Cancel',
     'portfolio.update': 'Save changes',
     'portfolio.summary': 'Portfolio summary',
     'portfolio.currency': 'Portfolio value in currency',
     'portfolio.chart': 'Portfolio growth chart',
-    'portfolio.empty': 'No investments in portfolio yet.<br>Add your first one above.',
+    'portfolio.empty': 'No entries in portfolio yet.<br>Add your first one above.',
 
     // Currencies
     'tab.currencies': 'Currencies',
@@ -302,6 +316,20 @@ const I18N = {
     'profile.authDesc': 'Sign in with Google to configure your account',
     'profile.account': 'Account',
     'profile.language': 'Language / Мова',
+    'notify.title': 'Notifications',
+    'notify.desc': 'Reminders about expiring entries',
+    'notify.daysBefore': 'Days before expiry to notify',
+    'notify.email': 'Email notifications',
+    'notify.emailDesc': 'Send to your Google account email',
+    'notify.telegram': 'Telegram notifications',
+    'notify.telegramDesc': 'Instant messages to your Telegram',
+    'notify.telegramConnect': 'Open Telegram bot',
+    'notify.step1': 'Open the bot and press Start',
+    'notify.step2': 'Paste the Chat ID the bot showed you',
+    'notify.step3': 'Verify it works',
+    'notify.saveChatId': 'Save',
+    'notify.testTelegram': 'Send test message',
+
     'profile.contact': 'Contact information',
     'profile.displayName': 'Name',
     'profile.phone': 'Phone number',

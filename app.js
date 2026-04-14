@@ -1,3 +1,129 @@
+// ============ GLOBAL SEARCH ============
+function onGlobalSearch() {
+  const q = document.getElementById('globalSearchInput').value.toLowerCase().trim();
+  const resultsEl = document.getElementById('globalSearchResults');
+  const clearBtn = document.getElementById('globalSearchClear');
+
+  clearBtn.style.display = q ? 'block' : 'none';
+
+  if (!q || q.length < 2) {
+    resultsEl.style.display = 'none';
+    return;
+  }
+
+  const results = [];
+
+  // Search portfolio items
+  if (typeof portfolioItems !== 'undefined') {
+    portfolioItems.forEach(p => {
+      const match = (p.name || '').toLowerCase().includes(q) ||
+                    (p.bank || '').toLowerCase().includes(q) ||
+                    (p.notes || '').toLowerCase().includes(q);
+      if (match) {
+        results.push({
+          icon: '💼',
+          title: p.name,
+          sub: formatShort(p.invested) + ' грн · ' + (p.dateEnd || ''),
+          badge: 'Портфель',
+          badgeClass: 'search-badge-portfolio',
+          action: () => { goToTab('portfolio'); openInvestmentDetail(String(p.id)); clearGlobalSearch(); }
+        });
+      }
+    });
+  }
+
+  // Search saved records (calculation history)
+  if (typeof savedRecords !== 'undefined') {
+    savedRecords.forEach(r => {
+      const match = (r.name || '').toLowerCase().includes(q);
+      if (match) {
+        results.push({
+          icon: '📊',
+          title: r.name,
+          sub: formatShort(r.invested) + ' → ' + formatShort(r.received) + ' грн · ' + r.annualRate.toFixed(1) + '%',
+          badge: 'Історія',
+          badgeClass: 'search-badge-history',
+          action: () => { goToTab('calc'); loadRecordToForm(r); clearGlobalSearch(); }
+        });
+      }
+    });
+  }
+
+  // Search currencies
+  if (cachedRatesArray) {
+    cachedRatesArray.forEach(r => {
+      const match = r.cc.toLowerCase().includes(q) || r.txt.toLowerCase().includes(q);
+      if (match && results.filter(x => x.badgeClass === 'search-badge-currency').length < 5) {
+        results.push({
+          icon: '💱',
+          title: r.cc + ' — ' + r.txt,
+          sub: r.rate.toFixed(4) + ' ₴',
+          badge: 'Валюта',
+          badgeClass: 'search-badge-currency',
+          action: () => { goToTab('currencies'); clearGlobalSearch(); }
+        });
+      }
+    });
+  }
+
+  // Navigation shortcuts
+  const navItems = [
+    { keywords: ['портфель', 'portfolio', 'вклад', 'інвест'], title: 'Портфель', icon: '💼', tab: 'portfolio' },
+    { keywords: ['калькулятор', 'calculator', 'розрах'], title: 'Калькулятор', icon: '🧮', tab: 'calc' },
+    { keywords: ['аналітик', 'analytics', 'рейтинг', 'комбін'], title: 'Аналітика', icon: '📈', tab: 'analytics' },
+    { keywords: ['валют', 'курс', 'dollar', 'євро', 'usd', 'eur', 'currency'], title: 'Валюти', icon: '💱', tab: 'currencies' },
+    { keywords: ['профіль', 'profile', 'налашт', 'settings', 'telegram', 'мова'], title: 'Профіль', icon: '⚙️', tab: 'profile' },
+  ];
+  navItems.forEach(nav => {
+    if (nav.keywords.some(k => k.includes(q) || q.includes(k))) {
+      results.push({
+        icon: nav.icon,
+        title: nav.title,
+        sub: 'Перейти до розділу',
+        badge: 'Розділ',
+        badgeClass: 'search-badge-nav',
+        action: () => { goToTab(nav.tab); clearGlobalSearch(); }
+      });
+    }
+  });
+
+  if (results.length === 0) {
+    resultsEl.innerHTML = '<div class="search-no-results">Нічого не знайдено</div>';
+  } else {
+    resultsEl.innerHTML = results.map((r, i) =>
+      `<div class="search-result-item" onclick="globalSearchResults[${i}]()">
+        <span class="search-result-icon">${r.icon}</span>
+        <div class="search-result-text">
+          <div class="search-result-title">${r.title}</div>
+          <div class="search-result-sub">${r.sub}</div>
+        </div>
+        <span class="search-result-badge ${r.badgeClass}">${r.badge}</span>
+      </div>`
+    ).join('');
+    // Store action callbacks
+    window.globalSearchResults = results.map(r => r.action);
+  }
+  resultsEl.style.display = 'block';
+}
+
+function clearGlobalSearch() {
+  document.getElementById('globalSearchInput').value = '';
+  document.getElementById('globalSearchResults').style.display = 'none';
+  document.getElementById('globalSearchClear').style.display = 'none';
+}
+
+function goToTab(tab) {
+  const btn = document.querySelector(`.main-tab[onclick*="'${tab}'"]`);
+  if (btn) switchMainTab(tab, btn);
+}
+
+// Close search results on click outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('#globalSearch')) {
+    document.getElementById('globalSearchResults').style.display = 'none';
+  }
+});
+
 // ============ TAB SWITCHING ============
 function switchMainTab(tab, btn) {
   document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
@@ -1538,7 +1664,7 @@ function togglePortfolioForm(forceOpen) {
     toggleBtn.classList.add('btn-export');
   } else {
     card.style.display = 'none';
-    toggleBtn.textContent = '+ ' + (t('portfolio.addNew') || 'Додати інвестицію');
+    toggleBtn.textContent = '+ ' + (t('portfolio.addNew') || 'Новий запис');
     toggleBtn.classList.remove('btn-export');
     toggleBtn.classList.add('btn-save');
     // Reset form state when closing
@@ -1546,6 +1672,16 @@ function togglePortfolioForm(forceOpen) {
     addBtn.textContent = t('portfolio.add') || 'Додати до портфеля';
     addBtn.classList.remove('btn-export');
     addBtn.classList.add('btn-save');
+  }
+}
+
+function togglePortfolioCompound() {
+  const show = document.getElementById('pCompound').checked;
+  document.getElementById('pCompoundRateField').style.display = show ? '' : 'none';
+  document.getElementById('pCompoundIndexField').style.display = show ? '' : 'none';
+  document.getElementById('pCompoundYearsField').style.display = show ? '' : 'none';
+  if (show && !document.getElementById('pCompoundRate').value) {
+    document.getElementById('pCompoundRate').value = document.getElementById('pRate').value;
   }
 }
 
@@ -1574,6 +1710,12 @@ function addPortfolioItem() {
   const card = document.getElementById('pCard').value.trim();
   const notes = document.getElementById('pNotes').value.trim();
 
+  // Compound interest fields
+  const isCompound = document.getElementById('pCompound').checked;
+  const compoundRate = parseNum(document.getElementById('pCompoundRate').value);
+  const compoundIndex = parseNum(document.getElementById('pCompoundIndex').value);
+  const compoundYears = parseInt(document.getElementById('pCompoundYears').value) || 0;
+
   if (!name || isNaN(invested) || invested <= 0) {
     const err = document.getElementById('pError');
     err.textContent = 'Вкажіть назву та суму вкладення';
@@ -1587,6 +1729,10 @@ function addPortfolioItem() {
     name, type, invested, rate: isNaN(rate) ? null : rate,
     tax: isNaN(tax) ? null : tax,
     dateStart, dateEnd, bank, card, notes,
+    compound: isCompound,
+    compoundRate: isCompound && !isNaN(compoundRate) ? compoundRate : null,
+    compoundIndex: isCompound && !isNaN(compoundIndex) ? compoundIndex : null,
+    compoundYears: isCompound ? compoundYears : null,
     createdAt: new Date().toISOString()
   });
 
@@ -1601,6 +1747,10 @@ function addPortfolioItem() {
   document.getElementById('pBank').value = '';
   document.getElementById('pCard').value = '';
   document.getElementById('pNotes').value = '';
+  document.getElementById('pCompound').checked = false;
+  document.getElementById('pCompoundRate').value = '';
+  document.getElementById('pCompoundIndex').value = '';
+  togglePortfolioCompound();
   const now = new Date();
   document.getElementById('pDateStart').value = now.toISOString().split('T')[0];
   const f = new Date(now); f.setMonth(f.getMonth() + 3);
@@ -1616,6 +1766,140 @@ function addPortfolioItem() {
   msg.offsetHeight;
   msg.style.animation = 'fadeOut 3s forwards';
   setTimeout(() => { msg.style.display = 'none'; }, 3000);
+}
+
+function openInvestmentDetail(id) {
+  const item = portfolioItems.find(p => String(p.id) === String(id));
+  if (!item) return;
+
+  const now = new Date();
+  const typeLabels = { ovdp: 'ОВДП', deposit: 'Депозит', other: 'Інше' };
+  const typeColors = { ovdp: 'p-type-ovdp', deposit: 'p-type-deposit', other: 'p-type-other' };
+  const isActive = item.dateEnd ? new Date(item.dateEnd) > now : true;
+
+  let days = 0, elapsed = 0, progress = 0, expectedProfit = 0, earnedSoFar = 0, dailyGross = 0, dailyNet = 0, daysLeft = 0;
+  if (item.dateStart && item.dateEnd) {
+    const start = new Date(item.dateStart);
+    const end = new Date(item.dateEnd);
+    days = Math.round((end - start) / 86400000);
+    elapsed = Math.max(0, Math.round((now - start) / 86400000));
+    daysLeft = Math.max(0, Math.round((end - now) / 86400000));
+    progress = days > 0 ? Math.min(100, (elapsed / days) * 100) : 0;
+
+    if (item.rate && days > 0) {
+      expectedProfit = item.invested * (item.rate / 100) * (days / 365.25);
+      earnedSoFar = item.invested * (item.rate / 100) * (Math.min(elapsed, days) / 365.25);
+      earnedSoFar = Math.min(earnedSoFar, expectedProfit);
+      dailyGross = item.invested * (item.rate / 100) / 365.25;
+      const taxRate = item.tax ? item.tax / 100 : 0;
+      dailyNet = dailyGross * (1 - taxRate);
+    }
+  }
+
+  const taxAmount = item.tax && expectedProfit > 0 ? expectedProfit * item.tax / 100 : 0;
+  const netProfit = expectedProfit - taxAmount;
+
+  // Hide portfolio list, show detail
+  document.getElementById('portfolioContent').style.display = 'none';
+  document.getElementById('expiryAlerts').style.display = 'none';
+  document.getElementById('portfolioSummary').style.display = 'none';
+  const detail = document.getElementById('investmentDetail');
+  detail.style.display = 'block';
+
+  detail.querySelector('#investmentDetailContent').innerHTML = `
+    <div class="detail-header">
+      <div class="detail-name">${item.name}</div>
+      <span class="detail-type-badge ${typeColors[item.type] || ''}">${typeLabels[item.type] || item.type}</span>
+      <div class="detail-invested">${formatShort(item.invested)} грн</div>
+      <div class="detail-status" style="color:${isActive ? '#4ade80' : '#64748b'}">${isActive ? '● Активна' : '○ Завершена'}</div>
+      ${days > 0 ? `<div class="detail-progress"><div class="detail-progress-bar" style="width:${progress.toFixed(1)}%"></div></div>
+      <div style="font-size:11px;color:#475569;margin-top:4px">${elapsed} з ${days} днів (${progress.toFixed(0)}%)</div>` : ''}
+    </div>
+
+    <div class="detail-grid">
+      <div class="detail-metric">
+        <div class="detail-metric-label">Зароблено</div>
+        <div class="detail-metric-value green">+${formatShort(Math.round(earnedSoFar))} грн</div>
+      </div>
+      <div class="detail-metric">
+        <div class="detail-metric-label">Очікуваний дохід</div>
+        <div class="detail-metric-value green">+${formatShort(Math.round(expectedProfit))} грн</div>
+      </div>
+      <div class="detail-metric">
+        <div class="detail-metric-label">Дохід / день</div>
+        <div class="detail-metric-value">${dailyGross.toFixed(2)} грн</div>
+      </div>
+      <div class="detail-metric">
+        <div class="detail-metric-label">Чистий / день</div>
+        <div class="detail-metric-value green">${dailyNet.toFixed(2)} грн</div>
+      </div>
+      <div class="detail-metric">
+        <div class="detail-metric-label">Залишилось днів</div>
+        <div class="detail-metric-value ${daysLeft <= 7 ? 'red' : daysLeft <= 30 ? 'yellow' : ''}">${daysLeft}</div>
+      </div>
+      <div class="detail-metric">
+        <div class="detail-metric-label">Ставка</div>
+        <div class="detail-metric-value yellow">${item.rate || '—'}%</div>
+      </div>
+    </div>
+
+    ${item.compound ? (() => {
+      const cRate = item.compoundRate || item.rate || 0;
+      const cIndex = item.compoundIndex || 0;
+      const cYears = item.compoundYears || 2;
+      const periodDays = days || 90;
+      const periodsPerYear = 365.25 / periodDays;
+      const ratePerPeriod = (cRate / 100) * (periodDays / 365.25);
+      const totalPeriods = Math.round(cYears * periodsPerYear);
+      let bal = item.invested;
+      for (let y = 0; y < cYears; y++) {
+        const yr = cIndex ? ratePerPeriod * Math.pow(1 + cIndex / 100, y) : ratePerPeriod;
+        const pp = Math.round(periodsPerYear);
+        for (let p = 0; p < pp; p++) bal += bal * yr;
+      }
+      const compProfit = bal - item.invested;
+      return `<div class="a-card">
+        <h3>Складний відсоток</h3>
+        <div class="detail-info-row"><span class="detail-info-label">Ставка реінвестування</span><span class="detail-info-value">${cRate}%</span></div>
+        ${cIndex ? `<div class="detail-info-row"><span class="detail-info-label">Індексація</span><span class="detail-info-value">${cIndex}%/рік</span></div>` : ''}
+        <div class="detail-info-row"><span class="detail-info-label">Горизонт</span><span class="detail-info-value">${cYears} р. (${totalPeriods} реінвестицій)</span></div>
+        <div class="detail-info-row"><span class="detail-info-label">Підсумкова сума</span><span class="detail-info-value" style="color:#4ade80">${formatShort(Math.round(bal))} грн</span></div>
+        <div class="detail-info-row"><span class="detail-info-label">Прибуток (складний)</span><span class="detail-info-value" style="color:#4ade80">+${formatShort(Math.round(compProfit))} грн</span></div>
+      </div>`;
+    })() : ''}
+
+    ${item.tax || taxAmount > 0 ? `<div class="a-card">
+      <h3>Оподаткування</h3>
+      <div class="detail-info-row"><span class="detail-info-label">Ставка податку</span><span class="detail-info-value">${item.tax}%</span></div>
+      <div class="detail-info-row"><span class="detail-info-label">Сума податку</span><span class="detail-info-value" style="color:#f87171">−${formatShort(Math.round(taxAmount))} грн</span></div>
+      <div class="detail-info-row"><span class="detail-info-label">Чистий прибуток</span><span class="detail-info-value" style="color:#4ade80">+${formatShort(Math.round(netProfit))} грн</span></div>
+    </div>` : ''}
+
+    <div class="a-card">
+      <h3>Деталі</h3>
+      <div class="detail-info-row"><span class="detail-info-label">Дата початку</span><span class="detail-info-value">${item.dateStart ? formatDate(item.dateStart) : '—'}</span></div>
+      <div class="detail-info-row"><span class="detail-info-label">Дата завершення</span><span class="detail-info-value">${item.dateEnd ? formatDate(item.dateEnd) : '—'}</span></div>
+      <div class="detail-info-row"><span class="detail-info-label">Термін</span><span class="detail-info-value">${days > 0 ? formatTerm(days) : '—'}</span></div>
+      ${item.bank ? `<div class="detail-info-row"><span class="detail-info-label">Банк</span><span class="detail-info-value">${item.bank}</span></div>` : ''}
+      ${item.card ? `<div class="detail-info-row"><span class="detail-info-label">Картка / рахунок</span><span class="detail-info-value">${item.card}</span></div>` : ''}
+      ${item.notes ? `<div class="detail-info-row"><span class="detail-info-label">Нотатки</span><span class="detail-info-value">${item.notes}</span></div>` : ''}
+      ${item.createdAt ? `<div class="detail-info-row"><span class="detail-info-label">Створено</span><span class="detail-info-value">${new Date(item.createdAt).toLocaleDateString('uk-UA')}</span></div>` : ''}
+    </div>
+
+    <div class="detail-actions">
+      <button class="btn-export" onclick="closeInvestmentDetail(); editPortfolioItem('${item.id}')">✎ Редагувати</button>
+      <button class="btn-clear" onclick="if(confirm('Видалити це вкладення?')){deletePortfolioItem('${item.id}'); closeInvestmentDetail();}">✕ Видалити</button>
+    </div>
+  `;
+
+  detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeInvestmentDetail() {
+  document.getElementById('investmentDetail').style.display = 'none';
+  document.getElementById('portfolioContent').style.display = 'block';
+  document.getElementById('expiryAlerts').style.display = '';
+  renderPortfolio();
 }
 
 function deletePortfolioItem(id) {
@@ -1639,6 +1923,13 @@ function editPortfolioItem(id) {
   document.getElementById('pCard').value = item.card || '';
   document.getElementById('pNotes').value = item.notes || '';
 
+  // Compound fields
+  document.getElementById('pCompound').checked = !!item.compound;
+  document.getElementById('pCompoundRate').value = item.compoundRate || '';
+  document.getElementById('pCompoundIndex').value = item.compoundIndex || '';
+  if (item.compoundYears) document.getElementById('pCompoundYears').value = item.compoundYears;
+  togglePortfolioCompound();
+
   // Remove old item
   portfolioItems = portfolioItems.filter(p => String(p.id) !== String(id));
   renderPortfolio();
@@ -1661,7 +1952,7 @@ function renderPortfolio() {
   const summary = document.getElementById('portfolioSummary');
 
   if (portfolioItems.length === 0) {
-    list.innerHTML = '<div class="a-empty">Ще немає інвестицій у портфелі.<br>Додайте першу вище.</div>';
+    list.innerHTML = '<div class="a-empty">Ще немає вкладень у портфелі.<br>Додайте перше вище.</div>';
     summary.style.display = 'none';
     return;
   }
@@ -1717,7 +2008,7 @@ function renderPortfolio() {
     }
 
     return `
-      <div class="p-item">
+      <div class="p-item" onclick="if(!event.target.closest('.btn-delete'))openInvestmentDetail('${p.id}')" style="cursor:pointer">
         <div class="p-item-info">
           <div class="p-item-name">
             ${p.name}
@@ -1757,7 +2048,7 @@ function renderPortfolio() {
   // Daily breakdown
   const breakdownEl = document.getElementById('dashDailyBreakdown');
   if (dailyBreakdown.length === 0) {
-    breakdownEl.innerHTML = '<p style="color:#475569;font-size:13px;text-align:center;padding:12px 0">Немає активних інвестицій з нарахуванням</p>';
+    breakdownEl.innerHTML = '<p style="color:#475569;font-size:13px;text-align:center;padding:12px 0">Немає активних вкладень з нарахуванням</p>';
   } else {
     breakdownEl.innerHTML = dailyBreakdown.map(d => `
       <div class="dash-breakdown-item">
@@ -1775,6 +2066,160 @@ function renderPortfolio() {
 
   renderPortfolioChart(portfolioItems);
   loadCurrencyRates(totalInvested, totalExpectedProfit, totalProfitToEOY);
+  renderExpiryAlerts(portfolioItems);
+}
+
+// ---- Expiry Alerts ----
+function renderExpiryAlerts(items) {
+  const container = document.getElementById('expiryAlerts');
+  if (!container) return;
+  const notifyDays = parseInt(localStorage.getItem('notifyDays') || '3');
+  const now = new Date();
+  const alerts = [];
+
+  items.forEach(p => {
+    if (!p.dateEnd) return;
+    const end = new Date(p.dateEnd);
+    const daysLeft = Math.ceil((end - now) / 86400000);
+    if (daysLeft < 0 || daysLeft > notifyDays) return;
+    alerts.push({ name: p.name, daysLeft, type: p.type });
+  });
+
+  if (alerts.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = alerts.map(a => {
+    const isUrgent = a.daysLeft <= 1;
+    const cls = isUrgent ? 'expiry-alert-urgent' : 'expiry-alert-warn';
+    const icon = isUrgent ? '🔴' : '⚠️';
+    const daysText = a.daysLeft === 0 ? 'сьогодні'
+      : a.daysLeft === 1 ? 'завтра'
+      : 'через ' + a.daysLeft + ' дн.';
+    return `<div class="expiry-alert ${cls}">
+      <span class="expiry-alert-icon">${icon}</span>
+      <div class="expiry-alert-text">
+        <span class="expiry-alert-name">${a.name}</span> — завершується <span class="expiry-alert-days">${daysText}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ---- Notification Settings ----
+function saveNotifySettings() {
+  const days = document.getElementById('notifyDays').value;
+  const tgOn = document.getElementById('notifyTelegram').checked;
+
+  localStorage.setItem('notifyDays', days);
+  localStorage.setItem('notifyTelegram', tgOn);
+
+  // Show/hide telegram link section
+  document.getElementById('telegramLinkSection').style.display = tgOn ? 'block' : 'none';
+
+  // Save to Firestore
+  if (currentUser) {
+    userProfile.notifyDays = parseInt(days);
+    userProfile.notifyTelegram = tgOn;
+    saveProfileToFirestore();
+  }
+}
+
+function loadNotifySettings() {
+  const days = userProfile.notifyDays || localStorage.getItem('notifyDays') || '3';
+  const tgOn = userProfile.notifyTelegram || localStorage.getItem('notifyTelegram') === 'true';
+  const tgChatId = userProfile.telegramChatId || '';
+
+  document.getElementById('notifyDays').value = days;
+  document.getElementById('notifyTelegram').checked = tgOn;
+  document.getElementById('telegramLinkSection').style.display = tgOn ? 'block' : 'none';
+
+  // Telegram chat ID field
+  document.getElementById('telegramChatId').value = tgChatId;
+
+  // Telegram bot link
+  const botName = typeof TELEGRAM_BOT_NAME !== 'undefined' ? TELEGRAM_BOT_NAME : 'InvestUABot';
+  const link = document.getElementById('telegramBotLink');
+  if (link && currentUser) {
+    link.href = 'https://t.me/' + botName + '?start=' + currentUser.uid;
+  }
+
+  // Show test button if chat_id exists
+  document.getElementById('btnTestTelegram').style.display = tgChatId ? 'block' : 'none';
+
+  // Telegram status
+  const statusEl = document.getElementById('telegramStatus');
+  if (statusEl) {
+    if (tgChatId) {
+      statusEl.innerHTML = '<span style="color:#4ade80;font-size:12px">✓ Telegram підключено (Chat ID: ' + tgChatId + ')</span>';
+    } else {
+      statusEl.innerHTML = '';
+    }
+  }
+}
+
+function saveTelegramChatId() {
+  const chatId = document.getElementById('telegramChatId').value.trim();
+  if (!chatId) return;
+  userProfile.telegramChatId = chatId;
+  localStorage.setItem('telegramChatId', chatId);
+  if (currentUser) saveProfileToFirestore();
+
+  // Update UI
+  document.getElementById('btnTestTelegram').style.display = 'block';
+  const statusEl = document.getElementById('telegramStatus');
+  statusEl.innerHTML = '<span style="color:#4ade80;font-size:12px">✓ Telegram підключено (Chat ID: ' + chatId + ')</span>';
+}
+
+async function sendTestTelegram() {
+  const chatId = userProfile.telegramChatId || document.getElementById('telegramChatId').value.trim();
+  const token = typeof TELEGRAM_BOT_TOKEN !== 'undefined' ? TELEGRAM_BOT_TOKEN : '';
+  const resultEl = document.getElementById('telegramTestResult');
+
+  if (!chatId) {
+    resultEl.textContent = 'Спочатку введіть Chat ID';
+    resultEl.style.color = '#f87171';
+    resultEl.style.display = 'block';
+    return;
+  }
+  if (!token) {
+    resultEl.textContent = 'Токен бота не налаштовано в config.js';
+    resultEl.style.color = '#f87171';
+    resultEl.style.display = 'block';
+    return;
+  }
+
+  const userName = userProfile.displayName || (currentUser ? currentUser.displayName : '') || 'Інвестор';
+  const text = `✅ Тестове повідомлення\n\nВітаю, ${userName}! Telegram-сповіщення працюють.\n\n🔔 Ви отримуватимете нагадування про завершення ваших вкладень.`;
+
+  try {
+    resultEl.textContent = 'Надсилаю...';
+    resultEl.style.color = '#94a3b8';
+    resultEl.style.display = 'block';
+
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'HTML' })
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      resultEl.textContent = '✓ Повідомлення надіслано!';
+      resultEl.style.color = '#4ade80';
+    } else {
+      resultEl.textContent = 'Помилка: ' + (data.description || 'невідома');
+      resultEl.style.color = '#f87171';
+    }
+  } catch(e) {
+    resultEl.textContent = 'Помилка мережі: ' + e.message;
+    resultEl.style.color = '#f87171';
+  }
+
+  resultEl.style.animation = 'none';
+  resultEl.offsetHeight;
+  resultEl.style.animation = 'fadeOut 5s forwards';
+  setTimeout(() => { resultEl.style.display = 'none'; }, 5000);
 }
 
 // ---- Portfolio Chart ----
@@ -1792,7 +2237,7 @@ function renderPortfolioChart(items) {
   const activeItems = items.filter(p => p.dateStart && p.dateEnd && p.rate);
 
   if (activeItems.length === 0) {
-    canvas.parentElement.innerHTML = '<p style="text-align:center;color:#475569;padding:40px;font-size:13px">Додайте інвестиції зі ставкою та датами для графіку</p>';
+    canvas.parentElement.innerHTML = '<p style="text-align:center;color:#475569;padding:40px;font-size:13px">Додайте вкладення зі ставкою та датами для графіку</p>';
     return;
   }
 
@@ -2039,6 +2484,37 @@ async function loadCurrenciesPage(forceRefresh) {
       </div>`;
     }).join('');
 
+    // Black market (PrivatBank cash rates) — same order as pinned
+    const bmEl = document.getElementById('blackMarketRates');
+    try {
+      const bmRes = await fetch('https://darkblue-toad-531724.hostingersite.com/api/api/rates/cash');
+      const bmData = await bmRes.json();
+      const bmMap = {};
+      bmData.forEach(r => { bmMap[r.ccy] = r; });
+
+      // Show in same order as pinned currencies, then any remaining
+      const bmOrder = [...dashboardCurrencies.filter(cc => bmMap[cc]), ...bmData.map(r => r.ccy).filter(cc => !dashboardCurrencies.includes(cc))];
+
+      bmEl.innerHTML = '<div class="dash-grid">' + bmOrder.map(cc => {
+        const r = bmMap[cc];
+        if (!r) return '';
+        const nbuRate = cachedRates[r.ccy];
+        const buy = parseFloat(r.buy);
+        const sale = parseFloat(r.sale);
+        const diffNbu = nbuRate ? ((sale - nbuRate) / nbuRate * 100).toFixed(1) : null;
+        return `<div class="currency-pinned-card">
+          <div class="currency-pinned-code" style="color:#f59e0b">${r.ccy}</div>
+          <div style="display:flex;justify-content:center;gap:16px;margin:6px 0">
+            <div><div style="font-size:10px;color:#64748b">Купівля</div><div class="currency-pinned-rate">${buy.toFixed(2)} ₴</div></div>
+            <div><div style="font-size:10px;color:#64748b">Продаж</div><div class="currency-pinned-rate">${sale.toFixed(2)} ₴</div></div>
+          </div>
+          <div class="currency-pinned-name">${diffNbu !== null ? 'НБУ ' + (diffNbu > 0 ? '+' : '') + diffNbu + '%' : ''}</div>
+        </div>`;
+      }).join('') + '</div>';
+    } catch(e) {
+      bmEl.innerHTML = '<p style="color:#475569;font-size:12px">Готівковий курс недоступний</p>';
+    }
+
     // Full list
     if (!cachedRatesArray) return;
     listEl.innerHTML = cachedRatesArray.map(r => {
@@ -2164,6 +2640,7 @@ function updateProfileUI() {
     document.getElementById('profileContactEmail').value = userProfile.contactEmail || '';
     document.getElementById('profilePhone').value = userProfile.phone || '';
     updatePinStatus();
+    loadNotifySettings();
   } else {
     auth.style.display = 'block';
     content.style.display = 'none';
@@ -2210,6 +2687,9 @@ async function saveProfileToFirestore() {
         language: userProfile.language || 'uk',
         pin: userProfile.pin || null,
         dashboardCurrencies: dashboardCurrencies,
+        notifyDays: userProfile.notifyDays || 3,
+        notifyTelegram: userProfile.notifyTelegram || false,
+        telegramChatId: userProfile.telegramChatId || null,
         updatedAt: new Date().toISOString()
       }
     }, { merge: true });

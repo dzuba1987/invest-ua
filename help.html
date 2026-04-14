@@ -26,19 +26,27 @@
     <div>
       <div class="section">
         <h2><span class="icon icon-blue">1</span> Що це за додаток?</h2>
-        <p>Invest UA — це PWA-додаток для управління портфелем інвестицій, розрахунку дохідності ОВДП, депозитів та інших вкладень. Працює офлайн, синхронізується через Google.</p>
+        <p>Invest UA — PWA-додаток для управління портфелем вкладень: ОВДП, депозити, облігації та інші фінансові інструменти. Працює офлайн, синхронізується через Google.</p>
         <div class="feature-grid">
           <div class="feature">
+            <div class="feature-title">Портфель</div>
+            <div class="feature-desc">Дашборд з вартістю портфеля, денним доходом та детальною інформацією по кожному вкладенню</div>
+          </div>
+          <div class="feature">
             <div class="feature-title">Калькулятор</div>
-            <div class="feature-desc">Розрахунок прибутку, дохідності за період та річної дохідності</div>
+            <div class="feature-desc">Розрахунок прибутку, дохідності та складного відсотка з графіками</div>
           </div>
           <div class="feature">
             <div class="feature-title">Аналітика</div>
             <div class="feature-desc">Рейтинг, комбінації та стратегії реінвестування</div>
           </div>
           <div class="feature">
-            <div class="feature-title">Excel імпорт/експорт</div>
-            <div class="feature-desc">Завантаження та вивантаження даних у .xlsx форматі</div>
+            <div class="feature-title">Валюти</div>
+            <div class="feature-desc">Курси НБУ та готівковий курс (чорний ринок) в реальному часі</div>
+          </div>
+          <div class="feature">
+            <div class="feature-title">Telegram-бот</div>
+            <div class="feature-desc">Баланс, список вкладень, курси валют та сповіщення прямо в Telegram</div>
           </div>
           <div class="feature">
             <div class="feature-title">Хмарна синхронізація</div>
@@ -48,69 +56,90 @@
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-blue">2</span> Вкладка «Калькулятор»</h2>
-        <p>Основний інструмент для розрахунку однієї облігації. Заповніть будь-які відомі поля — решта розрахується автоматично.</p>
-        <div class="step"><div class="step-num">1</div><div class="step-text"><strong>Введіть назву</strong> облігації (необов'язково, але зручно для збереження).</div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-text"><strong>Вартість 1 облігації</strong> та <strong>кількість</strong> — сума вкладення розрахується автоматично.</div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-text"><strong>Річна ставка (%)</strong> — вкажіть номінальну ставку. Сума отримання розрахується автоматично.</div></div>
-        <div class="step"><div class="step-num">4</div><div class="step-text"><strong>Дати вкладення / отримання</strong> — визначають термін інвестиції та розрахунок дохідності.</div></div>
-        <div class="step"><div class="step-num">5</div><div class="step-text"><strong>«Розрахувати»</strong> або <span class="kbd">Enter</span> — побачите прибуток та дохідність.</div></div>
-        <div class="step"><div class="step-num">6</div><div class="step-text"><strong>«Зберегти запис»</strong> — додає облігацію до таблиці та зберігає в базу.</div></div>
-        <div class="tip">Поля з блакитним текстом — авторозрахунки. Якщо ви вручну вводите значення, воно стає «фіксованим» і решта полів підлаштовуються.</div>
+        <h2><span class="icon icon-blue">2</span> Портфель</h2>
+        <p>Головна сторінка додатку. Показує загальну картину ваших вкладень.</p>
+        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Дашборд</h3>
+        <p>Вартість портфеля, зароблено всього, дохід за день, кількість активних вкладень. Нижче — розбивка денного доходу по кожному вкладенню.</p>
+        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Сторінка вкладення</h3>
+        <p>Натисніть на будь-яке вкладення — відкриється детальна сторінка з прогресом, зарахованим доходом, ставкою, оподаткуванням та іншою інформацією.</p>
+        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Сповіщення</h3>
+        <p>Банери на дашборді попереджають коли термін вкладення закінчується. Налаштовується в Профілі (за скільки днів нагадувати).</p>
+      </div>
+
+      <div class="section">
+        <h2><span class="icon icon-blue">3</span> Калькулятор</h2>
+        <p>Розрахунок дохідності окремого вкладення. Заповніть будь-які відомі поля — решта розрахується автоматично.</p>
+        <div class="step"><div class="step-num">1</div><div class="step-text">Введіть <strong>суму вкладення</strong> та <strong>річну ставку</strong>.</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">Вкажіть <strong>дати</strong> початку та завершення.</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">Натисніть <strong>«Розрахувати»</strong> або <span class="kbd">Enter</span>.</div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-text"><strong>«Зберегти запис»</strong> — додає до історії розрахунків.</div></div>
+        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Складний відсоток</h3>
+        <p>Увімкніть чекбокс — з'являться поля для ставки реінвестування, індексації та горизонту (1-20 років). Графік наочно показує різницю між простим та складним відсотком.</p>
+        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Історія розрахунків</h3>
+        <p>Збережені записи відображаються в таблиці. Клікніть на рядок — дані завантажаться у форму для повторного розрахунку.</p>
+        <div class="tip">Поля з блакитним текстом — авторозрахунки. Вручну введене значення стає «фіксованим», решта полів підлаштовуються.</div>
       </div>
 
       <div class="section">
         <h2><span class="icon icon-yellow">4</span> Формули розрахунку</h2>
         <p><strong>Дохідність за період:</strong></p>
-        <div class="formula">Дохідність = (Прибуток / Вкладено) × 100%</div>
+        <div class="formula">Дохідність = (Прибуток / Вкладено) x 100%</div>
         <p><strong>Проста річна дохідність:</strong></p>
-        <div class="formula">Річна = Дохідність за період / Днів × 365.25</div>
-        <p><strong>Ефективна річна дохідність</strong> (складні відсотки):</p>
-        <div class="formula">Ефективна = ((1 + Прибуток/Вкладено) ^ (365/Днів) − 1) × 100%</div>
-        <p><strong>Зважена річна дохідність портфеля:</strong></p>
-        <div class="formula">Зважена = Σ(Ефект.річна_i × Вкладено_i) / Σ(Вкладено_i)</div>
-        <div class="tip">У «Калькуляторі» — проста річна дохідність. У «Аналітиці» — ефективна річна, яка точніше показує реальний прибуток при реінвестуванні.</div>
+        <div class="formula">Річна = Дохідність за період / Днів x 365.25</div>
+        <p><strong>Складний відсоток:</strong></p>
+        <div class="formula">Сума = Вклад x (1 + Ставка за період) ^ Кількість періодів</div>
+        <div class="tip">У «Калькуляторі» — проста річна дохідність. У «Аналітиці» — ефективна річна. Складний відсоток враховує реінвестування прибутку.</div>
       </div>
     </div>
 
     <div>
       <div class="section">
-        <h2><span class="icon icon-green">3</span> Вкладка «Аналітика»</h2>
-        <p>Доступна після збереження мінімум 2 облігацій. Аналізує ваш портфель та пропонує оптимальні варіанти.</p>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Параметри аналізу</h3>
+        <h2><span class="icon icon-green">5</span> Аналітика</h2>
+        <p>Доступна після збереження мінімум 2 записів у калькуляторі. Аналізує портфель та пропонує оптимальні варіанти.</p>
         <div class="step"><div class="step-num">$</div><div class="step-text"><strong>Бюджет</strong> — загальна сума для вкладення.</div></div>
-        <div class="step"><div class="step-num">#</div><div class="step-text"><strong>Облігацій у портфелі</strong> — скільки різних облігацій купити.</div></div>
-        <div class="step"><div class="step-num">T</div><div class="step-text"><strong>Горизонт</strong> — фільтр по строку інвестиції.</div></div>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Рейтинг облігацій</h3>
-        <p>Таблиця облігацій за ефективною річною дохідністю. Клікніть заголовок для сортування.</p>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Найкращі комбінації</h3>
-        <p>Алгоритм перебирає комбінації та розподіли бюджету, знаходить топ-5 варіантів.</p>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Стратегія реінвестування</h3>
-        <p>Вкласти в коротку облігацію, після погашення реінвестувати в довшу. Ефективна дохідність зростає до 20-25%.</p>
+        <div class="step"><div class="step-num">#</div><div class="step-text"><strong>Облігацій у портфелі</strong> — скільки різних позицій.</div></div>
+        <div class="step"><div class="step-num">T</div><div class="step-text"><strong>Горизонт</strong> — фільтр по строку.</div></div>
+        <p style="margin-top:12px"><strong>Рейтинг</strong> — таблиця за ефективною річною дохідністю. <strong>Комбінації</strong> — топ-5 варіантів розподілу бюджету. <strong>Реінвестування</strong> — стратегія коротка → довга.</p>
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-purple">5</span> Імпорт та експорт</h2>
-        <p><strong>Імпорт з Excel:</strong> натисніть «Імпорт з Excel» і виберіть .xlsx файл.</p>
-        <p><strong>Експорт у Excel:</strong> натисніть «Експорт у Excel» під таблицею збережених записів.</p>
-        <div class="tip">Стовпці: Назва, Ціна, Кількість, Вкладено, Отримано, Різниця, Дата від, Дата до.</div>
+        <h2><span class="icon icon-blue">6</span> Валюти</h2>
+        <p>Курси валют з двох джерел:</p>
+        <div class="step"><div class="step-num">1</div><div class="step-text"><strong>НБУ (офіційний курс)</strong> — Національний банк України. Усі валюти з пошуком.</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text"><strong>Готівковий курс (чорний ринок)</strong> — купівля/продаж, спред та відхилення від НБУ.</div></div>
+        <p style="margin-top:12px">Оберіть 1-2 валюти для відображення на дашборді портфеля (Профіль → Валюти на дашборді).</p>
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-blue">6</span> Хмарна синхронізація</h2>
-        <p>При вході через Google дані синхронізуються між пристроями через Firebase.</p>
-        <div class="step"><div class="step-num">1</div><div class="step-text"><strong>«Увійти через Google»</strong> у верхній частині.</div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-text">Оберіть Google-акаунт.</div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-text">Дані автоматично синхронізуються між пристроями.</div></div>
-        <div class="tip">Без входу дані зберігаються локально. Google потрібен тільки для синхронізації.</div>
+        <h2><span class="icon icon-green">7</span> Telegram-бот</h2>
+        <p>Бот <strong>@my_invest_ua_bot</strong> дозволяє переглядати портфель та курси прямо в Telegram.</p>
+        <p style="margin-top:10px"><code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#60a5fa">/balance</code> — баланс портфеля: вкладено, зароблено, дохід/день</p>
+        <p><code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#60a5fa">/portfolio</code> — список усіх вкладень з деталями</p>
+        <p><code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#60a5fa">/expiring</code> — вкладення що завершуються скоро</p>
+        <p><code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#60a5fa">/rates</code> — курси валют НБУ + чорний ринок</p>
+        <p><code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#60a5fa">/help</code> — список команд</p>
+        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Підключення</h3>
+        <p>Профіль → Сповіщення → увімкнути Telegram → відкрити бота → вставити Chat ID → зберегти.</p>
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-green">7</span> Встановлення на пристрій</h2>
-        <p>Додаток можна встановити як програму. Працюватиме офлайн.</p>
-        <p><strong>Android/Chrome:</strong> меню (⋮) → «Встановити додаток».</p>
-        <p><strong>iPhone/Safari:</strong> «Поділитися» (□↑) → «На початковий екран».</p>
+        <h2><span class="icon icon-purple">8</span> Імпорт та експорт</h2>
+        <p><strong>Імпорт з Excel:</strong> натисніть «Імпорт з Excel» у калькуляторі.</p>
+        <p><strong>Експорт у Excel:</strong> натисніть «Експорт у Excel» під таблицею історії.</p>
+      </div>
+
+      <div class="section">
+        <h2><span class="icon icon-blue">9</span> Глобальний пошук</h2>
+        <p>Поле пошуку зверху сторінки шукає по всьому додатку: вкладення портфеля, історія розрахунків, валюти та навігація по розділах.</p>
+      </div>
+
+      <div class="section">
+        <h2><span class="icon icon-green">10</span> Встановлення та синхронізація</h2>
+        <p><strong>Хмарна синхронізація:</strong> увійдіть через Google — дані доступні з будь-якого пристрою.</p>
+        <p><strong>Android/Chrome:</strong> меню → «Встановити додаток».</p>
+        <p><strong>iPhone/Safari:</strong> «Поділитися» → «На початковий екран».</p>
         <p><strong>Desktop:</strong> іконка встановлення в адресному рядку Chrome.</p>
+        <div class="tip">Без входу дані зберігаються локально. Google потрібен тільки для синхронізації між пристроями.</div>
       </div>
     </div>
   </div>
@@ -120,19 +149,27 @@
     <div>
       <div class="section">
         <h2><span class="icon icon-blue">1</span> What is this app?</h2>
-        <p>Invest UA is a PWA app for managing your investment portfolio, calculating returns on government bonds (OVDP), deposits and other investments. Works offline, syncs via Google.</p>
+        <p>Invest UA is a PWA for managing your portfolio: government bonds (OVDP), deposits, and other financial instruments. Works offline, syncs via Google.</p>
         <div class="feature-grid">
           <div class="feature">
+            <div class="feature-title">Portfolio</div>
+            <div class="feature-desc">Dashboard with portfolio value, daily income, and detailed view per entry</div>
+          </div>
+          <div class="feature">
             <div class="feature-title">Calculator</div>
-            <div class="feature-desc">Calculate profit, period return and annual return</div>
+            <div class="feature-desc">Profit calculation, returns, and compound interest with charts</div>
           </div>
           <div class="feature">
             <div class="feature-title">Analytics</div>
-            <div class="feature-desc">Rankings, combinations and reinvestment strategies</div>
+            <div class="feature-desc">Rankings, combinations, and reinvestment strategies</div>
           </div>
           <div class="feature">
-            <div class="feature-title">Excel import/export</div>
-            <div class="feature-desc">Import and export data in .xlsx format</div>
+            <div class="feature-title">Currencies</div>
+            <div class="feature-desc">NBU official rates and cash rates (black market) in real time</div>
+          </div>
+          <div class="feature">
+            <div class="feature-title">Telegram bot</div>
+            <div class="feature-desc">Balance, portfolio list, exchange rates and notifications in Telegram</div>
           </div>
           <div class="feature">
             <div class="feature-title">Cloud sync</div>
@@ -142,75 +179,71 @@
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-blue">2</span> Calculator tab</h2>
-        <p>Main tool for calculating a single bond. Fill in any known fields — the rest will be calculated automatically.</p>
-        <div class="step"><div class="step-num">1</div><div class="step-text"><strong>Enter the name</strong> of the bond (optional but useful for saving).</div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-text"><strong>Price per bond</strong> and <strong>quantity</strong> — the investment amount is calculated automatically.</div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-text"><strong>Annual rate (%)</strong> — enter the nominal rate. Received amount is calculated automatically.</div></div>
-        <div class="step"><div class="step-num">4</div><div class="step-text"><strong>Investment / maturity dates</strong> — determine the investment term and return calculation.</div></div>
-        <div class="step"><div class="step-num">5</div><div class="step-text"><strong>"Calculate"</strong> or <span class="kbd">Enter</span> — see profit and returns.</div></div>
-        <div class="step"><div class="step-num">6</div><div class="step-text"><strong>"Save record"</strong> — adds the bond to the table and saves to database.</div></div>
-        <div class="tip">Blue-colored fields are auto-calculated. If you manually enter a value, it becomes "fixed" and other fields adjust accordingly.</div>
+        <h2><span class="icon icon-blue">2</span> Portfolio</h2>
+        <p>Main page of the app. Shows an overview of all your entries.</p>
+        <p><strong>Dashboard:</strong> total value, earned so far, daily income, active entries count. Tap any entry for a detailed view with progress, earnings, and tax info.</p>
+        <p><strong>Alerts:</strong> banners warn when an entry is about to expire. Configure in Profile (days before reminder).</p>
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-yellow">4</span> Calculation formulas</h2>
+        <h2><span class="icon icon-blue">3</span> Calculator</h2>
+        <p>Calculate returns for a single entry. Fill in any known fields — the rest is auto-calculated.</p>
+        <div class="step"><div class="step-num">1</div><div class="step-text">Enter <strong>amount</strong> and <strong>annual rate</strong>.</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">Set <strong>start and end dates</strong>.</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">Click <strong>"Calculate"</strong> or press <span class="kbd">Enter</span>.</div></div>
+        <p style="margin-top:12px"><strong>Compound interest:</strong> enable the checkbox for reinvestment rate, indexation, and 1-20 year horizon with comparison chart.</p>
+        <p><strong>History:</strong> saved records in a table. Click a row to reload data into the form.</p>
+      </div>
+
+      <div class="section">
+        <h2><span class="icon icon-yellow">4</span> Formulas</h2>
         <p><strong>Period return:</strong></p>
-        <div class="formula">Return = (Profit / Invested) × 100%</div>
+        <div class="formula">Return = (Profit / Invested) x 100%</div>
         <p><strong>Simple annual return:</strong></p>
-        <div class="formula">Annual = Period return / Days × 365.25</div>
-        <p><strong>Effective annual return</strong> (compound interest):</p>
-        <div class="formula">Effective = ((1 + Profit/Invested) ^ (365/Days) − 1) × 100%</div>
-        <p><strong>Weighted annual portfolio return:</strong></p>
-        <div class="formula">Weighted = Σ(EffAnnual_i × Invested_i) / Σ(Invested_i)</div>
-        <div class="tip">"Calculator" uses simple annual return. "Analytics" uses effective annual return, which better reflects actual profit with reinvestment.</div>
+        <div class="formula">Annual = Period return / Days x 365.25</div>
+        <p><strong>Compound interest:</strong></p>
+        <div class="formula">Amount = Principal x (1 + Rate per period) ^ Number of periods</div>
       </div>
     </div>
 
     <div>
       <div class="section">
-        <h2><span class="icon icon-green">3</span> Analytics tab</h2>
-        <p>Available after saving at least 2 bonds. Analyzes your portfolio and suggests optimal options.</p>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Analysis parameters</h3>
-        <div class="step"><div class="step-num">$</div><div class="step-text"><strong>Budget</strong> — total amount to invest.</div></div>
-        <div class="step"><div class="step-num">#</div><div class="step-text"><strong>Bonds in portfolio</strong> — how many different bonds to buy.</div></div>
-        <div class="step"><div class="step-num">T</div><div class="step-text"><strong>Horizon</strong> — filter by investment term.</div></div>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Bond ranking</h3>
-        <p>Table of bonds sorted by effective annual return. Click column headers to sort.</p>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Best combinations</h3>
-        <p>Algorithm tries all combinations and budget splits, finds top 5 options.</p>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Reinvestment strategy</h3>
-        <p>Invest in a short bond first, then reinvest everything into a longer one. Effective return grows to 20-25%.</p>
+        <h2><span class="icon icon-green">5</span> Analytics</h2>
+        <p>Available after saving at least 2 records. Analyzes your data and suggests optimal options: rankings, combinations, and reinvestment strategies.</p>
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-purple">5</span> Import & export</h2>
-        <p><strong>Import from Excel:</strong> click "Import from Excel" and select an .xlsx file.</p>
-        <p><strong>Export to Excel:</strong> click "Export to Excel" below the saved records table.</p>
-        <div class="tip">Columns: Name, Price, Quantity, Invested, Received, Difference, Date from, Date to.</div>
+        <h2><span class="icon icon-blue">6</span> Currencies</h2>
+        <p><strong>NBU rates:</strong> official National Bank of Ukraine rates with search. <strong>Cash rates (black market):</strong> buy/sell, spread, and NBU deviation.</p>
+        <p>Select 1-2 currencies for the portfolio dashboard in Profile settings.</p>
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-blue">6</span> Cloud sync</h2>
-        <p>Sign in with Google to sync data across devices via Firebase.</p>
-        <div class="step"><div class="step-num">1</div><div class="step-text"><strong>"Sign in with Google"</strong> at the top of the app.</div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-text">Choose your Google account.</div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-text">Data syncs automatically across devices.</div></div>
-        <div class="tip">Without sign-in, data is stored locally. Google is only needed for cross-device sync.</div>
+        <h2><span class="icon icon-green">7</span> Telegram bot</h2>
+        <p>Bot <strong>@my_invest_ua_bot</strong> lets you check your portfolio from Telegram.</p>
+        <p>Commands: /balance, /portfolio, /expiring, /rates, /help</p>
+        <p><strong>Setup:</strong> Profile → Notifications → enable Telegram → open bot → paste Chat ID → save.</p>
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-green">7</span> Install on device</h2>
-        <p>The app can be installed like a native app. Works offline.</p>
-        <p><strong>Android/Chrome:</strong> menu (⋮) → "Install app".</p>
-        <p><strong>iPhone/Safari:</strong> "Share" (□↑) → "Add to Home Screen".</p>
-        <p><strong>Desktop:</strong> install icon in Chrome address bar.</p>
+        <h2><span class="icon icon-purple">8</span> Import & Export</h2>
+        <p><strong>Import:</strong> click "Import from Excel" in Calculator. <strong>Export:</strong> click "Export to Excel" below the history table.</p>
+      </div>
+
+      <div class="section">
+        <h2><span class="icon icon-blue">9</span> Global search</h2>
+        <p>Search bar at the top searches across the entire app: portfolio entries, calculation history, currencies, and navigation.</p>
+      </div>
+
+      <div class="section">
+        <h2><span class="icon icon-green">10</span> Installation & sync</h2>
+        <p>Sign in with Google to sync across devices. Install as a native app from browser menu. Works offline.</p>
       </div>
     </div>
   </div>
 
   <p style="text-align:center;color:#475569;font-size:12px;margin-top:20px">
-    Invest UA v2.0
+    Invest UA v3.0
   </p>
 </div>
 
