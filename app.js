@@ -2487,7 +2487,7 @@ async function loadCurrenciesPage(forceRefresh) {
     // Black market (PrivatBank cash rates) — same order as pinned
     const bmEl = document.getElementById('blackMarketRates');
     try {
-      const bmRes = await fetch('https://darkblue-toad-531724.hostingersite.com/api/api/rates/cash');
+      const bmRes = await fetch('https://darkblue-toad-531724.hostingersite.com/api/api/rates/black');
       const bmData = await bmRes.json();
       const bmMap = {};
       bmData.forEach(r => { bmMap[r.ccy] = r; });
@@ -2581,7 +2581,7 @@ function toggleDashboardCurrency(code) {
   renderDashboardCurrencySettings();
 }
 
-const popularCurrencies = ['USD','EUR','GBP','PLN','CHF','CZK','CAD','JPY','SEK','CNY','TRY'];
+const popularCurrencies = ['USD','EUR','PLN','GBP','CHF','CAD'];
 
 function renderDashboardCurrencySettings() {
   const container = document.getElementById('dashboardCurrencyOptions');
