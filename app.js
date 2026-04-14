@@ -94,8 +94,8 @@ function onGlobalSearch() {
       `<div class="search-result-item" onclick="globalSearchResults[${i}]()">
         <span class="search-result-icon">${r.icon}</span>
         <div class="search-result-text">
-          <div class="search-result-title">${r.title}</div>
-          <div class="search-result-sub">${r.sub}</div>
+          <div class="search-result-title">${esc(r.title)}</div>
+          <div class="search-result-sub">${esc(r.sub)}</div>
         </div>
         <span class="search-result-badge ${r.badgeClass}">${r.badge}</span>
       </div>`
@@ -123,6 +123,20 @@ document.addEventListener('click', e => {
     document.getElementById('globalSearchResults').style.display = 'none';
   }
 });
+
+// ============ SECURITY HELPERS ============
+function esc(str) {
+  if (!str) return '';
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+async function hashPin(pin) {
+  const data = new TextEncoder().encode(pin + '_invest_ua_salt');
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 // ============ TAB SWITCHING ============
 function switchMainTab(tab, btn) {
@@ -705,7 +719,7 @@ function renderSaved() {
       loadRecordToForm(r);
     };
     tr.innerHTML = `
-      <td>${r.name}</td>
+      <td>${esc(r.name)}</td>
       <td class="num">${r.bondPrice ? formatShort(r.bondPrice) : '—'}</td>
       <td class="num">${r.bondCount || '—'}</td>
       <td class="num">${formatShort(r.invested)}</td>
@@ -1139,7 +1153,7 @@ let db = null;
 
 function initFirebase() {
   if (!FIREBASE_CONFIG.apiKey) {
-    document.getElementById('firebaseNotice').classList.add('show');
+    console.warn('Firebase not configured');
     return;
   }
   try {
@@ -1159,7 +1173,6 @@ function initFirebase() {
     });
   } catch(e) {
     console.warn('Firebase init failed:', e);
-    document.getElementById('firebaseNotice').classList.add('show');
   }
 }
 
@@ -1263,6 +1276,7 @@ function updateAuthUI() {
   }
   updatePortfolioUI();
   updateProfileUI();
+  checkAnalyticsReady();
 }
 
 function googleLogin() {
@@ -1808,7 +1822,7 @@ function openInvestmentDetail(id) {
 
   detail.querySelector('#investmentDetailContent').innerHTML = `
     <div class="detail-header">
-      <div class="detail-name">${item.name}</div>
+      <div class="detail-name">${esc(item.name)}</div>
       <span class="detail-type-badge ${typeColors[item.type] || ''}">${typeLabels[item.type] || item.type}</span>
       <div class="detail-invested">${formatShort(item.invested)} грн</div>
       <div class="detail-status" style="color:${isActive ? '#4ade80' : '#64748b'}">${isActive ? '● Активна' : '○ Завершена'}</div>
@@ -1880,9 +1894,9 @@ function openInvestmentDetail(id) {
       <div class="detail-info-row"><span class="detail-info-label">Дата початку</span><span class="detail-info-value">${item.dateStart ? formatDate(item.dateStart) : '—'}</span></div>
       <div class="detail-info-row"><span class="detail-info-label">Дата завершення</span><span class="detail-info-value">${item.dateEnd ? formatDate(item.dateEnd) : '—'}</span></div>
       <div class="detail-info-row"><span class="detail-info-label">Термін</span><span class="detail-info-value">${days > 0 ? formatTerm(days) : '—'}</span></div>
-      ${item.bank ? `<div class="detail-info-row"><span class="detail-info-label">Банк</span><span class="detail-info-value">${item.bank}</span></div>` : ''}
-      ${item.card ? `<div class="detail-info-row"><span class="detail-info-label">Картка / рахунок</span><span class="detail-info-value">${item.card}</span></div>` : ''}
-      ${item.notes ? `<div class="detail-info-row"><span class="detail-info-label">Нотатки</span><span class="detail-info-value">${item.notes}</span></div>` : ''}
+      ${item.bank ? `<div class="detail-info-row"><span class="detail-info-label">Банк</span><span class="detail-info-value">${esc(item.bank)}</span></div>` : ''}
+      ${item.card ? `<div class="detail-info-row"><span class="detail-info-label">Картка / рахунок</span><span class="detail-info-value">${esc(item.card)}</span></div>` : ''}
+      ${item.notes ? `<div class="detail-info-row"><span class="detail-info-label">Нотатки</span><span class="detail-info-value">${esc(item.notes)}</span></div>` : ''}
       ${item.createdAt ? `<div class="detail-info-row"><span class="detail-info-label">Створено</span><span class="detail-info-value">${new Date(item.createdAt).toLocaleDateString('uk-UA')}</span></div>` : ''}
     </div>
 
@@ -2011,8 +2025,8 @@ function renderPortfolio() {
       <div class="p-item" onclick="if(!event.target.closest('.btn-delete'))openInvestmentDetail('${p.id}')" style="cursor:pointer">
         <div class="p-item-info">
           <div class="p-item-name">
-            ${p.name}
-            <span class="p-item-type p-type-${p.type}">${typeLabels[p.type] || p.type}</span>
+            ${esc(p.name)}
+            <span class="p-item-type p-type-${esc(p.type)}">${esc(typeLabels[p.type] || p.type)}</span>
             <span class="${isActive ? 'p-status-active' : 'p-status-ended'}" style="font-size:11px">${isActive ? '● Активна' : '○ Завершена'}</span>
           </div>
           <div class="p-item-details">
@@ -2022,8 +2036,8 @@ function renderPortfolio() {
             ${days > 0 ? '<span>Строк: <strong>' + days + ' дн.</strong></span>' : ''}
             ${p.dateStart ? '<span>' + formatDate(p.dateStart) + ' → ' + (p.dateEnd ? formatDate(p.dateEnd) : '...') + '</span>' : ''}
           </div>
-          ${p.bank || p.card ? '<div class="p-item-details" style="margin-top:4px"><span>Виведення: <strong>' + (p.bank || '') + (p.bank && p.card ? ' · ' : '') + (p.card || '') + '</strong></span></div>' : ''}
-          ${p.notes ? '<div class="p-item-notes">' + p.notes + '</div>' : ''}
+          ${p.bank || p.card ? '<div class="p-item-details" style="margin-top:4px"><span>Виведення: <strong>' + esc(p.bank || '') + (p.bank && p.card ? ' · ' : '') + esc(p.card || '') + '</strong></span></div>' : ''}
+          ${p.notes ? '<div class="p-item-notes">' + esc(p.notes) + '</div>' : ''}
         </div>
         <div class="p-item-actions">
           ${expectedProfit > 0 ? '<div class="p-item-profit"><div class="amount">+' + formatShort(expectedProfit) + ' грн</div><div class="label">очікуваний дохід</div>' + (p.tax && expectedProfit > 0 ? '<div style="color:#f87171;font-size:12px;margin-top:2px">−' + formatShort(expectedProfit * p.tax / 100) + ' податок</div><div style="color:#4ade80;font-size:13px;font-weight:700">=' + formatShort(expectedProfit - expectedProfit * p.tax / 100) + ' чистими</div>' : '') + '</div>' : ''}
@@ -2054,7 +2068,7 @@ function renderPortfolio() {
       <div class="dash-breakdown-item">
         <div class="dash-breakdown-name">
           <span class="p-item-type p-type-${d.type}">${typeLabels[d.type] || d.type}</span>
-          ${d.name}
+          ${esc(d.name)}
         </div>
         <div class="dash-breakdown-values">
           <div class="dash-breakdown-gross">+${d.dailyGross.toFixed(2)} грн</div>
@@ -2100,7 +2114,7 @@ function renderExpiryAlerts(items) {
     return `<div class="expiry-alert ${cls}">
       <span class="expiry-alert-icon">${icon}</span>
       <div class="expiry-alert-text">
-        <span class="expiry-alert-name">${a.name}</span> — завершується <span class="expiry-alert-days">${daysText}</span>
+        <span class="expiry-alert-name">${esc(a.name)}</span> — завершується <span class="expiry-alert-days">${daysText}</span>
       </div>
     </div>`;
   }).join('');
@@ -2173,7 +2187,6 @@ function saveTelegramChatId() {
 
 async function sendTestTelegram() {
   const chatId = userProfile.telegramChatId || document.getElementById('telegramChatId').value.trim();
-  const token = typeof TELEGRAM_BOT_TOKEN !== 'undefined' ? TELEGRAM_BOT_TOKEN : '';
   const resultEl = document.getElementById('telegramTestResult');
 
   if (!chatId) {
@@ -2182,25 +2195,19 @@ async function sendTestTelegram() {
     resultEl.style.display = 'block';
     return;
   }
-  if (!token) {
-    resultEl.textContent = 'Токен бота не налаштовано в config.js';
-    resultEl.style.color = '#f87171';
-    resultEl.style.display = 'block';
-    return;
-  }
 
   const userName = userProfile.displayName || (currentUser ? currentUser.displayName : '') || 'Інвестор';
-  const text = `✅ Тестове повідомлення\n\nВітаю, ${userName}! Telegram-сповіщення працюють.\n\n🔔 Ви отримуватимете нагадування про завершення ваших вкладень.`;
+  const apiBase = typeof NOTIFY_API_BASE !== 'undefined' ? NOTIFY_API_BASE : '';
 
   try {
     resultEl.textContent = 'Надсилаю...';
     resultEl.style.color = '#94a3b8';
     resultEl.style.display = 'block';
 
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const res = await fetch(apiBase + '/telegram/test', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'HTML' })
+      body: JSON.stringify({ chat_id: chatId, name: userName })
     });
     const data = await res.json();
 
@@ -2501,13 +2508,19 @@ async function loadCurrenciesPage(forceRefresh) {
         const nbuRate = cachedRates[r.ccy];
         const buy = parseFloat(r.buy);
         const sale = parseFloat(r.sale);
+        const change = r.change !== undefined ? parseFloat(r.change) : 0;
         const diffNbu = nbuRate ? ((sale - nbuRate) / nbuRate * 100).toFixed(1) : null;
+        const changeColor = change > 0 ? '#f87171' : change < 0 ? '#4ade80' : '#475569';
+        const changeIcon = change > 0 ? '↑' : change < 0 ? '↓' : '→';
+        const changeText = change !== 0 ? `<span style="color:${changeColor};font-size:12px;font-weight:600">${changeIcon} ${change > 0 ? '+' : ''}${change}%</span>` : '';
+        const openInfo = r.open_sale ? `<div style="font-size:10px;color:#475569;margin-top:2px">Відкриття: ${r.open_sale} ₴</div>` : '';
         return `<div class="currency-pinned-card">
-          <div class="currency-pinned-code" style="color:#f59e0b">${r.ccy}</div>
+          <div class="currency-pinned-code" style="color:#f59e0b">${r.ccy} ${changeText}</div>
           <div style="display:flex;justify-content:center;gap:16px;margin:6px 0">
             <div><div style="font-size:10px;color:#64748b">Купівля</div><div class="currency-pinned-rate">${buy.toFixed(2)} ₴</div></div>
             <div><div style="font-size:10px;color:#64748b">Продаж</div><div class="currency-pinned-rate">${sale.toFixed(2)} ₴</div></div>
           </div>
+          ${openInfo}
           <div class="currency-pinned-name">${diffNbu !== null ? 'НБУ ' + (diffNbu > 0 ? '+' : '') + diffNbu + '%' : ''}</div>
         </div>`;
       }).join('') + '</div>';
@@ -2754,7 +2767,7 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden) checkPinTimeout();
 });
 
-function savePin() {
+async function savePin() {
   const pin = document.getElementById('pinCode').value.trim();
   const confirm = document.getElementById('pinCodeConfirm').value.trim();
   const err = document.getElementById('pinError');
@@ -2771,7 +2784,7 @@ function savePin() {
   }
   err.style.display = 'none';
 
-  userProfile.pin = pin;
+  userProfile.pin = await hashPin(pin);
   saveProfileToFirestore();
 
   document.getElementById('pinCode').value = '';
@@ -2846,9 +2859,16 @@ function showPinPrompt() {
   });
 }
 
-function verifyPin() {
+async function verifyPin() {
   const input = document.getElementById('pinInput').value.trim();
-  if (input === userProfile.pin) {
+  const inputHash = await hashPin(input);
+  // Support both hashed and legacy plain-text PINs
+  if (inputHash === userProfile.pin || input === userProfile.pin) {
+    // Migrate plain-text PIN to hash on successful verify
+    if (input === userProfile.pin && userProfile.pin.length <= 6) {
+      userProfile.pin = inputHash;
+      saveProfileToFirestore();
+    }
     pinVerified = true;
     lastActivityTime = Date.now();
     sessionStorage.setItem('pinVerifiedAt', String(Date.now()));

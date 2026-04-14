@@ -9,6 +9,7 @@ const FIREBASE_CONFIG = {
   appId: "1:22620127631:web:98c1cf15e0c7a6b8710bfa"
 };
 
-// Telegram bot (TODO: move token to Laravel backend, remove from client)
-const TELEGRAM_BOT_TOKEN = '8723908771:AAFa3uUE3TcrlcCfD7uJhhpMpVJGxSkP1wA';
+// Telegram bot
+const TELEGRAM_BOT_TOKEN = '';
 const TELEGRAM_BOT_NAME = 'my_invest_ua_bot';
+const NOTIFY_API_BASE = 'https://darkblue-toad-531724.hostingersite.com/api/api';

@@ -131,6 +131,21 @@ button:hover { opacity: 0.9; }
   cursor: pointer;
   flex-shrink: 0;
 }
+/* Calculator disclaimer */
+.calc-disclaimer {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: rgba(148,163,184,0.06);
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  font-size: 11px;
+  color: #475569;
+  line-height: 1.5;
+}
+.calc-disclaimer p { margin: 0 0 4px; }
+.calc-disclaimer p:last-child { margin-bottom: 0; font-style: italic; }
+.calc-disclaimer strong { color: #64748b; }
+
 .compound-toggle {
   border-top: 1px solid #334155;
   padding-top: 12px;
@@ -525,6 +540,51 @@ button:hover { opacity: 0.9; }
 .a-stat .a-stat-value { font-weight: 700; font-size: 15px; }
 .a-stat .green { color: #4ade80; }
 .a-stat .yellow { color: #facc15; }
+/* Onboarding */
+/* Profile section titles */
+.profile-section-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #475569;
+  padding: 16px 0 8px;
+  margin-top: 4px;
+}
+
+/* Onboarding */
+.onboarding {
+  text-align: center;
+  padding: 30px 20px;
+}
+.onboarding-steps {
+  text-align: left;
+  max-width: 340px;
+  margin: 0 auto;
+}
+.onboarding-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #1e293b;
+}
+.onboarding-step:last-child { border-bottom: none; }
+.onboarding-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.onboarding-title { font-size: 14px; font-weight: 600; color: #f1f5f9; }
+.onboarding-desc { font-size: 12px; color: #64748b; margin-top: 2px; }
+
 .a-empty {
   text-align: center;
   color: #475569;
@@ -642,24 +702,7 @@ button:hover { opacity: 0.9; }
   transition: color 0.2s;
 }
 .help-link:hover { color: #3b82f6; }
-.firebase-notice {
-  background: rgba(59,130,246,0.06);
-  border: 1px solid rgba(59,130,246,0.15);
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 12px;
-  color: #64748b;
-  margin-bottom: 16px;
-  display: none;
-  line-height: 1.5;
-}
-.firebase-notice.show { display: block; }
-.firebase-notice code {
-  background: #0f172a;
-  padding: 1px 5px;
-  border-radius: 3px;
-  font-size: 11px;
-  color: #60a5fa;
+/* (firebase-notice removed) */
 }
 
 /* Dashboard */
