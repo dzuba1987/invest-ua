@@ -758,6 +758,18 @@
         </div>
 
         <div class="notify-channels">
+          <!-- Email -->
+          <div class="notify-channel">
+            <div class="notify-channel-header">
+              <label class="checkbox-label">
+                <input type="checkbox" id="notifyEmail" onchange="saveNotifySettings()">
+                <span data-i18n="notify.email">Email-сповіщення</span>
+              </label>
+            </div>
+            <p class="notify-channel-desc" data-i18n="notify.emailDesc">Листи на вашу пошту Google акаунту</p>
+          </div>
+
+          <!-- Telegram notifications -->
           <div class="notify-channel">
             <div class="notify-channel-header">
               <label class="checkbox-label">
@@ -765,17 +777,15 @@
                 <span data-i18n="notify.telegram">Telegram-сповіщення</span>
               </label>
             </div>
-            <p class="notify-channel-desc" data-i18n="notify.telegramDesc">Миттєві повідомлення у ваш Telegram</p>
+            <p class="notify-channel-desc" data-i18n="notify.telegramDesc">Нагадування про вкладення у Telegram</p>
             <div id="telegramLinkSection" style="display:none">
               <div id="telegramStatus"></div>
-
               <div class="tg-steps">
                 <div class="tg-step">
                   <span class="tg-step-num">1</span>
                   <span data-i18n="notify.step1">Відкрийте бота та натисніть Start</span>
                 </div>
                 <a id="telegramBotLink" class="btn-save" style="display:inline-block;text-align:center;text-decoration:none;max-width:260px" href="#" target="_blank" data-i18n="notify.telegramConnect">Відкрити Telegram бота</a>
-
                 <div class="tg-step" style="margin-top:14px">
                   <span class="tg-step-num">2</span>
                   <span data-i18n="notify.step2">Вставте Chat ID який показав бот</span>
@@ -784,7 +794,6 @@
                   <input type="text" id="telegramChatId" placeholder="123456789" inputmode="numeric" style="flex:1;max-width:180px">
                   <button class="btn-save" onclick="saveTelegramChatId()" style="width:auto;padding:10px 16px;margin:0" data-i18n="notify.saveChatId">Зберегти</button>
                 </div>
-
                 <div class="tg-step" style="margin-top:14px">
                   <span class="tg-step-num">3</span>
                   <span data-i18n="notify.step3">Перевірте що все працює</span>
@@ -793,6 +802,17 @@
                 <p class="success-msg" id="telegramTestResult" style="text-align:left"></p>
               </div>
             </div>
+          </div>
+
+          <!-- Telegram bot -->
+          <div class="notify-channel">
+            <div class="notify-channel-header">
+              <label class="checkbox-label">
+                <input type="checkbox" id="useTelegramBot" onchange="saveNotifySettings()">
+                <span data-i18n="notify.bot">Telegram-бот (команди)</span>
+              </label>
+            </div>
+            <p class="notify-channel-desc" data-i18n="notify.botDesc">Перегляд балансу, портфеля та курсів через бота @my_invest_ua_bot</p>
           </div>
         </div>
       </div>

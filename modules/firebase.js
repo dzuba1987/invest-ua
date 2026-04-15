@@ -273,7 +273,9 @@ async function saveProfileToFirestore() {
         pin: userProfile.pin || null,
         dashboardCurrencies: dashboardCurrencies,
         notifyDays: userProfile.notifyDays || 3,
+        notifyEmail: userProfile.notifyEmail || false,
         notifyTelegram: userProfile.notifyTelegram || false,
+        useTelegramBot: userProfile.useTelegramBot || false,
         telegramChatId: userProfile.telegramChatId || null,
         updatedAt: new Date().toISOString()
       }

@@ -43,27 +43,37 @@ async function notifyTelegram(event, user) {
 
 function saveNotifySettings() {
   const days = document.getElementById('notifyDays').value;
+  const emailOn = document.getElementById('notifyEmail').checked;
   const tgOn = document.getElementById('notifyTelegram').checked;
+  const botOn = document.getElementById('useTelegramBot').checked;
 
   localStorage.setItem('notifyDays', days);
+  localStorage.setItem('notifyEmail', emailOn);
   localStorage.setItem('notifyTelegram', tgOn);
+  localStorage.setItem('useTelegramBot', botOn);
 
   document.getElementById('telegramLinkSection').style.display = tgOn ? 'block' : 'none';
 
   if (currentUser) {
     userProfile.notifyDays = parseInt(days);
+    userProfile.notifyEmail = emailOn;
     userProfile.notifyTelegram = tgOn;
+    userProfile.useTelegramBot = botOn;
     saveProfileToFirestore();
   }
 }
 
 function loadNotifySettings() {
   const days = userProfile.notifyDays || localStorage.getItem('notifyDays') || '3';
+  const emailOn = userProfile.notifyEmail || localStorage.getItem('notifyEmail') === 'true';
   const tgOn = userProfile.notifyTelegram || localStorage.getItem('notifyTelegram') === 'true';
+  const botOn = userProfile.useTelegramBot || localStorage.getItem('useTelegramBot') === 'true';
   const tgChatId = userProfile.telegramChatId || '';
 
   document.getElementById('notifyDays').value = days;
+  document.getElementById('notifyEmail').checked = emailOn;
   document.getElementById('notifyTelegram').checked = tgOn;
+  document.getElementById('useTelegramBot').checked = botOn;
   document.getElementById('telegramLinkSection').style.display = tgOn ? 'block' : 'none';
 
   document.getElementById('telegramChatId').value = tgChatId;

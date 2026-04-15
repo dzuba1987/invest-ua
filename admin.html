@@ -279,23 +279,28 @@
     const day = 24 * 60 * 60 * 1000;
     const activeToday = allUsers.filter(u => u.lastLogin && (now - new Date(u.lastLogin)) < day).length;
     const activeWeek = allUsers.filter(u => u.lastLogin && (now - new Date(u.lastLogin)) < 7 * day).length;
+    const tgConnected = allUsers.filter(u => u.profile?.notifyTelegram && u.profile?.telegramChatId).length;
 
     document.getElementById('adminStats').innerHTML = `
       <div class="admin-stat">
         <div class="admin-stat-value">${allUsers.length}</div>
-        <div class="admin-stat-label">Всього користувачів</div>
+        <div class="admin-stat-label">Всього</div>
       </div>
       <div class="admin-stat">
         <div class="admin-stat-value green">${activeToday}</div>
-        <div class="admin-stat-label">Активних сьогодні</div>
+        <div class="admin-stat-label">Сьогодні</div>
       </div>
       <div class="admin-stat">
         <div class="admin-stat-value blue">${activeWeek}</div>
-        <div class="admin-stat-label">Активних за тиждень</div>
+        <div class="admin-stat-label">За тиждень</div>
+      </div>
+      <div class="admin-stat">
+        <div class="admin-stat-value" style="color:#60a5fa">${tgConnected}</div>
+        <div class="admin-stat-label">Telegram</div>
       </div>
       <div class="admin-stat">
         <div class="admin-stat-value yellow">${allUsers.filter(u => u.isAdmin).length}</div>
-        <div class="admin-stat-label">Адміністраторів</div>
+        <div class="admin-stat-label">Адміни</div>
       </div>
     `;
   }
@@ -327,7 +332,19 @@
               <span>${u.provider || ''}</span>
               ${u.profile?.phone ? '<span>' + u.profile.phone + '</span>' : ''}
               ${u.profile?.language ? '<span>' + u.profile.language.toUpperCase() + '</span>' : ''}
+              ${u.profile?.notifyTelegram && u.profile?.telegramChatId ? '<span class="admin-badge" style="background:rgba(59,130,246,0.12);color:#60a5fa">TG ✓</span>' : ''}
+              ${u.profile?.notifyTelegram && !u.profile?.telegramChatId ? '<span class="admin-badge" style="background:rgba(250,204,21,0.12);color:#facc15">TG (без ID)</span>' : ''}
             </div>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8;cursor:pointer">
+              <input type="checkbox" ${u.profile?.notifyTelegram ? 'checked' : ''} onchange="toggleUserNotify('${u.id}','notifyTelegram',this.checked)" style="width:14px;height:14px;accent-color:#3b82f6">
+              Telegram
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8;cursor:pointer">
+              <input type="checkbox" ${u.profile?.notifyEmail ? 'checked' : ''} onchange="toggleUserNotify('${u.id}','notifyEmail',this.checked)" style="width:14px;height:14px;accent-color:#3b82f6">
+              Email
+            </label>
           </div>
           <div class="user-card-actions">
             ${!isMe ? (u.isAdmin
@@ -354,6 +371,22 @@
       (u.profile?.phone || '').includes(q)
     );
     renderUsers(filtered);
+  }
+
+  async function toggleUserNotify(uid, field, value) {
+    try {
+      const update = {};
+      update['profile.' + field] = value;
+      await db.collection('users').doc(uid).set(
+        { profile: { [field]: value } },
+        { merge: true }
+      );
+      const user = allUsers.find(u => u.id === uid);
+      if (user && user.profile) user.profile[field] = value;
+      renderStats();
+    } catch(e) {
+      alert('Помилка: ' + e.message);
+    }
   }
 
   async function toggleAdmin(uid, makeAdmin) {
