@@ -75,7 +75,16 @@
         <div class="step"><div class="step-num">3</div><div class="step-text">Натисніть <strong>«Розрахувати»</strong> або <span class="kbd">Enter</span>.</div></div>
         <div class="step"><div class="step-num">4</div><div class="step-text"><strong>«Зберегти запис»</strong> — додає до історії розрахунків.</div></div>
         <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Складний відсоток</h3>
-        <p>Увімкніть чекбокс — з'являться поля для ставки реінвестування, індексації та горизонту (1-20 років). Графік наочно показує різницю між простим та складним відсотком.</p>
+        <p>Увімкніть чекбокс — з'являться поля:</p>
+        <ul style="font-size:13px;color:#94a3b8;margin:8px 0 8px 20px">
+          <li><strong>Ставка реінвестування</strong> — річна ставка (дефолт 10%)</li>
+          <li><strong>Податок від доходу</strong> — % податку на прибуток</li>
+          <li><strong>Індексація</strong> — щорічна зміна ставки</li>
+          <li><strong>Горизонт</strong> — 1-20 років</li>
+        </ul>
+        <p>Реінвестування відбувається раз на рік. Графік та таблиця порівнюють простий і складний відсоток.</p>
+        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Кредитний калькулятор</h3>
+        <p>Доступний для залогінених. Розраховує ануїтетний платіж: щомісячний платіж, загальну переплату, графік погашення з розбивкою на тіло та відсотки.</p>
         <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Історія розрахунків</h3>
         <p>Збережені записи відображаються в таблиці. Клікніть на рядок — дані завантажаться у форму для повторного розрахунку.</p>
         <div class="tip">Поля з блакитним текстом — авторозрахунки. Вручну введене значення стає «фіксованим», решта полів підлаштовуються.</div>
@@ -87,9 +96,11 @@
         <div class="formula">Дохідність = (Прибуток / Вкладено) x 100%</div>
         <p><strong>Проста річна дохідність:</strong></p>
         <div class="formula">Річна = Дохідність за період / Днів x 365.25</div>
-        <p><strong>Складний відсоток:</strong></p>
-        <div class="formula">Сума = Вклад x (1 + Ставка за період) ^ Кількість періодів</div>
-        <div class="tip">У «Калькуляторі» — проста річна дохідність. У «Аналітиці» — ефективна річна. Складний відсоток враховує реінвестування прибутку.</div>
+        <p><strong>Складний відсоток (щорічне реінвестування):</strong></p>
+        <div class="formula">Сума = Вклад x (1 + Ставка) ^ Кількість років</div>
+        <p><strong>Ануїтетний платіж (кредит):</strong></p>
+        <div class="formula">M = P x r x (1+r)^n / ((1+r)^n − 1)</div>
+        <div class="tip">У «Калькуляторі» — проста річна дохідність. У «Аналітиці» — ефективна річна. Складний відсоток враховує щорічне реінвестування прибутку.</div>
       </div>
     </div>
 
@@ -107,8 +118,8 @@
         <h2><span class="icon icon-blue">6</span> Валюти</h2>
         <p>Курси валют з двох джерел:</p>
         <div class="step"><div class="step-num">1</div><div class="step-text"><strong>НБУ (офіційний курс)</strong> — Національний банк України. Усі валюти з пошуком.</div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-text"><strong>Готівковий курс (чорний ринок)</strong> — купівля/продаж, спред та відхилення від НБУ.</div></div>
-        <p style="margin-top:12px">Оберіть 1-2 валюти для відображення на дашборді портфеля (Профіль → Валюти на дашборді).</p>
+        <div class="step"><div class="step-num">2</div><div class="step-text"><strong>Чорний ринок (@X_Change_Vinnitsa)</strong> — купівля/продаж, зміна за день у %, відхилення від НБУ.</div></div>
+        <p style="margin-top:12px">Оберіть 1-2 валюти для дашборду (Профіль → Валюти на дашборді). Доступні: USD, EUR, PLN, GBP, CHF, CAD.</p>
       </div>
 
       <div class="section">
@@ -141,6 +152,24 @@
         <p><strong>iPhone/Safari:</strong> «Поділитися» → «На початковий екран».</p>
         <p><strong>Desktop:</strong> іконка встановлення в адресному рядку Chrome.</p>
         <div class="tip">Без входу дані зберігаються локально. Google потрібен тільки для синхронізації між пристроями.</div>
+      </div>
+
+      <div class="section">
+        <h2><span class="icon icon-purple">11</span> Безпека</h2>
+        <p><strong>Content Security Policy (CSP)</strong> — обмежує джерела скриптів, стилів та з'єднань тільки до довірених доменів.</p>
+        <p><strong>PIN-код</strong> — зберігається як хеш SHA-256, не у відкритому вигляді.</p>
+        <p><strong>XSS-захист</strong> — всі дані користувача екрануються перед вставкою в DOM.</p>
+        <p><strong>Firebase Security Rules</strong> — кожен користувач має доступ тільки до своїх даних.</p>
+        <p><strong>Telegram Bot Token</strong> — зберігається тільки на сервері, не в клієнтському коді.</p>
+      </div>
+
+      <div class="section">
+        <h2><span class="icon icon-blue">12</span> Дані та конфіденційність</h2>
+        <p><strong>Що зберігається:</strong> профіль (ім'я, email, телефон), портфель вкладень, історія розрахунків, налаштування.</p>
+        <p><strong>Де:</strong> локально (IndexedDB) та у хмарі (Firebase Firestore) при вході через Google.</p>
+        <p><strong>Що НЕ зберігається:</strong> паролі, платіжні дані, IP-адреси.</p>
+        <p><strong>Експорт даних:</strong> Профіль → Дані та конфіденційність → «Експорт моїх даних» (JSON).</p>
+        <p><strong>Видалення:</strong> Профіль → «Видалити всі дані» — повністю видаляє з пристрою та хмари.</p>
       </div>
     </div>
   </div>
@@ -192,7 +221,8 @@
         <div class="step"><div class="step-num">1</div><div class="step-text">Enter <strong>amount</strong> and <strong>annual rate</strong>.</div></div>
         <div class="step"><div class="step-num">2</div><div class="step-text">Set <strong>start and end dates</strong>.</div></div>
         <div class="step"><div class="step-num">3</div><div class="step-text">Click <strong>"Calculate"</strong> or press <span class="kbd">Enter</span>.</div></div>
-        <p style="margin-top:12px"><strong>Compound interest:</strong> enable the checkbox for reinvestment rate, indexation, and 1-20 year horizon with comparison chart.</p>
+        <p style="margin-top:12px"><strong>Compound interest:</strong> yearly reinvestment with custom rate, tax, indexation, and 1-20 year horizon. Chart compares simple vs compound growth.</p>
+        <p><strong>Credit calculator:</strong> available for logged-in users. Annuity payments, total overpayment, monthly chart with principal/interest breakdown.</p>
         <p><strong>History:</strong> saved records in a table. Click a row to reload data into the form.</p>
       </div>
 
@@ -202,49 +232,60 @@
         <div class="formula">Return = (Profit / Invested) x 100%</div>
         <p><strong>Simple annual return:</strong></p>
         <div class="formula">Annual = Period return / Days x 365.25</div>
-        <p><strong>Compound interest:</strong></p>
-        <div class="formula">Amount = Principal x (1 + Rate per period) ^ Number of periods</div>
+        <p><strong>Compound interest (yearly):</strong></p>
+        <div class="formula">Amount = Principal x (1 + Rate) ^ Years</div>
+        <p><strong>Annuity payment (credit):</strong></p>
+        <div class="formula">M = P x r x (1+r)^n / ((1+r)^n − 1)</div>
       </div>
     </div>
 
     <div>
       <div class="section">
         <h2><span class="icon icon-green">5</span> Analytics</h2>
-        <p>Available after saving at least 2 records. Analyzes your data and suggests optimal options: rankings, combinations, and reinvestment strategies.</p>
+        <p>Available after saving at least 2 records. Rankings, top-5 combinations, and reinvestment strategies.</p>
       </div>
 
       <div class="section">
         <h2><span class="icon icon-blue">6</span> Currencies</h2>
-        <p><strong>NBU rates:</strong> official National Bank of Ukraine rates with search. <strong>Cash rates (black market):</strong> buy/sell, spread, and NBU deviation.</p>
-        <p>Select 1-2 currencies for the portfolio dashboard in Profile settings.</p>
+        <p><strong>NBU rates:</strong> official rates with search. <strong>Black market (@X_Change_Vinnitsa):</strong> buy/sell, daily change %, NBU deviation.</p>
+        <p>Select 1-2 currencies for dashboard: USD, EUR, PLN, GBP, CHF, CAD.</p>
       </div>
 
       <div class="section">
         <h2><span class="icon icon-green">7</span> Telegram bot</h2>
-        <p>Bot <strong>@my_invest_ua_bot</strong> lets you check your portfolio from Telegram.</p>
-        <p>Commands: /balance, /portfolio, /expiring, /rates, /help</p>
+        <p>Bot <strong>@my_invest_ua_bot</strong> — /balance, /portfolio, /expiring, /rates, /help</p>
         <p><strong>Setup:</strong> Profile → Notifications → enable Telegram → open bot → paste Chat ID → save.</p>
       </div>
 
       <div class="section">
         <h2><span class="icon icon-purple">8</span> Import & Export</h2>
-        <p><strong>Import:</strong> click "Import from Excel" in Calculator. <strong>Export:</strong> click "Export to Excel" below the history table.</p>
+        <p><strong>Import:</strong> "Import from Excel" in Calculator. <strong>Export:</strong> "Export to Excel" below history. <strong>Data export:</strong> Profile → "Export my data" (JSON).</p>
       </div>
 
       <div class="section">
         <h2><span class="icon icon-blue">9</span> Global search</h2>
-        <p>Search bar at the top searches across the entire app: portfolio entries, calculation history, currencies, and navigation.</p>
+        <p>Search bar at the top — portfolio, history, currencies, navigation.</p>
       </div>
 
       <div class="section">
         <h2><span class="icon icon-green">10</span> Installation & sync</h2>
-        <p>Sign in with Google to sync across devices. Install as a native app from browser menu. Works offline.</p>
+        <p>Sign in with Google to sync. Install as native app from browser menu. Works offline.</p>
+      </div>
+
+      <div class="section">
+        <h2><span class="icon icon-purple">11</span> Security</h2>
+        <p>CSP headers, PIN stored as SHA-256 hash, XSS sanitization, Firebase Security Rules, bot token server-side only.</p>
+      </div>
+
+      <div class="section">
+        <h2><span class="icon icon-blue">12</span> Data & Privacy</h2>
+        <p>Profile → Data & Privacy: see what's stored, export all data (JSON), or delete everything permanently.</p>
       </div>
     </div>
   </div>
 
   <p style="text-align:center;color:#475569;font-size:12px;margin-top:20px">
-    Invest UA v3.0
+    Invest UA v4.0
   </p>
 </div>
 
