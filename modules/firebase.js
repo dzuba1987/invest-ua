@@ -317,6 +317,56 @@ async function loadProfileFromFirestore() {
   }
 }
 
+// ---- Online heartbeat (every 2 min) ----
+function startHeartbeat() {
+  function beat() {
+    if (firebaseReady && currentUser) {
+      db.collection('users').doc(currentUser.uid).update({
+        'meta.lastSeen': new Date().toISOString()
+      }).catch(() => {});
+    }
+  }
+  beat();
+  setInterval(beat, 120000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) beat(); });
+}
+
+// ---- Feedback ----
+async function sendFeedback() {
+  const text = document.getElementById('feedbackText').value.trim();
+  const resultEl = document.getElementById('feedbackResult');
+
+  if (!text) {
+    resultEl.textContent = 'Введіть повідомлення';
+    resultEl.style.color = '#f87171';
+    resultEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    await db.collection('feedback').add({
+      uid: currentUser ? currentUser.uid : null,
+      name: userProfile.displayName || (currentUser ? currentUser.displayName : 'Анонім'),
+      email: userProfile.contactEmail || (currentUser ? currentUser.email : ''),
+      text: text,
+      createdAt: new Date().toISOString()
+    });
+
+    document.getElementById('feedbackText').value = '';
+    resultEl.textContent = '✓ Дякуємо за відгук!';
+    resultEl.style.color = '#4ade80';
+    resultEl.style.display = 'block';
+    resultEl.style.animation = 'none';
+    resultEl.offsetHeight;
+    resultEl.style.animation = 'fadeOut 5s forwards';
+    setTimeout(() => { resultEl.style.display = 'none'; }, 5000);
+  } catch(e) {
+    resultEl.textContent = 'Помилка: ' + e.message;
+    resultEl.style.color = '#f87171';
+    resultEl.style.display = 'block';
+  }
+}
+
 // ---- Export all user data ----
 function exportAllUserData() {
   const resultEl = document.getElementById('dataActionResult');
@@ -412,3 +462,4 @@ const savedLang = localStorage.getItem('appLang');
 if (savedLang) setAppLanguage(savedLang);
 
 initFirebase();
+startHeartbeat();

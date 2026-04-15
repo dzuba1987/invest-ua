@@ -220,6 +220,15 @@
     <input type="text" class="search-input" id="searchInput" placeholder="Пошук за ім'ям або email..." oninput="filterUsers()">
 
     <div class="user-list" id="userList"></div>
+
+    <!-- Feedback section -->
+    <div style="margin-top:24px">
+      <h3 style="font-size:15px;color:#f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:20px">💬</span> Зворотний зв'язок
+        <span id="feedbackCount" style="font-size:12px;color:#64748b;font-weight:400"></span>
+      </h3>
+      <div id="feedbackList"></div>
+    </div>
   </div>
 </div>
 
@@ -254,6 +263,7 @@
     document.getElementById('adminContent').style.display = 'block';
     loadUsers();
     loadTelegramConfig();
+    loadFeedback();
   });
 
   async function loadUsers() {
@@ -263,7 +273,7 @@
       snapshot.forEach(doc => {
         const data = doc.data();
         if (data.meta) {
-          allUsers.push({ id: doc.id, ...data.meta, profile: data.profile || {} });
+          allUsers.push({ id: doc.id, ...data.meta, lastSeen: data.meta.lastSeen || null, profile: data.profile || {} });
         }
       });
       allUsers.sort((a, b) => (b.lastLogin || '').localeCompare(a.lastLogin || ''));
@@ -280,11 +290,16 @@
     const activeToday = allUsers.filter(u => u.lastLogin && (now - new Date(u.lastLogin)) < day).length;
     const activeWeek = allUsers.filter(u => u.lastLogin && (now - new Date(u.lastLogin)) < 7 * day).length;
     const tgConnected = allUsers.filter(u => u.profile?.notifyTelegram && u.profile?.telegramChatId).length;
+    const onlineNow = allUsers.filter(u => u.lastSeen && (now - new Date(u.lastSeen)) < 3 * 60 * 1000).length;
 
     document.getElementById('adminStats').innerHTML = `
       <div class="admin-stat">
         <div class="admin-stat-value">${allUsers.length}</div>
         <div class="admin-stat-label">Всього</div>
+      </div>
+      <div class="admin-stat">
+        <div class="admin-stat-value green">${onlineNow}</div>
+        <div class="admin-stat-label">Online</div>
       </div>
       <div class="admin-stat">
         <div class="admin-stat-value green">${activeToday}</div>
@@ -315,6 +330,7 @@
       const lastLogin = u.lastLogin ? new Date(u.lastLogin).toLocaleString('uk-UA') : '—';
       const isMe = u.uid === currentUser.uid;
       const disabled = u.disabled;
+      const isOnline = u.lastSeen && (Date.now() - new Date(u.lastSeen).getTime()) < 3 * 60 * 1000;
 
       return `
         <div class="user-card" id="user-${u.id}">
@@ -322,6 +338,7 @@
           <div class="user-card-info">
             <div class="user-card-name">
               ${u.profile?.displayName || u.displayName || 'Без імені'}
+              ${isOnline ? '<span class="admin-badge" style="background:rgba(74,222,128,0.15);color:#4ade80">Online</span>' : ''}
               ${u.isAdmin ? '<span class="admin-badge">Admin</span>' : ''}
               ${disabled ? '<span class="admin-badge disabled-badge">Заблоковано</span>' : ''}
               ${isMe ? '<span style="color:#64748b;font-size:11px;margin-left:4px">(ви)</span>' : ''}
@@ -578,6 +595,51 @@
     status.textContent = '✓ Надіслано: ' + sent + (errors > 0 ? ', помилок: ' + errors : '');
     status.style.color = errors > 0 ? '#facc15' : '#4ade80';
     setTimeout(() => { status.style.display = 'none'; }, 10000);
+  }
+
+  // ---- Feedback ----
+  async function loadFeedback() {
+    try {
+      const snapshot = await db.collection('feedback').orderBy('createdAt', 'desc').get();
+      const items = [];
+      snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+
+      document.getElementById('feedbackCount').textContent = items.length ? '(' + items.length + ')' : '';
+
+      if (items.length === 0) {
+        document.getElementById('feedbackList').innerHTML = '<p style="color:#475569;font-size:13px">Поки немає відгуків</p>';
+        return;
+      }
+
+      document.getElementById('feedbackList').innerHTML = items.map(f => {
+        const date = f.createdAt ? new Date(f.createdAt).toLocaleString('uk-UA') : '—';
+        return `<div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:14px;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div>
+              <strong style="color:#f1f5f9;font-size:13px">${f.name || 'Анонім'}</strong>
+              <span style="color:#64748b;font-size:11px;margin-left:8px">${f.email || ''}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="color:#475569;font-size:11px">${date}</span>
+              <button class="btn-sm danger" onclick="deleteFeedback('${f.id}')" style="padding:4px 8px;font-size:11px">✕</button>
+            </div>
+          </div>
+          <p style="color:#e2e8f0;font-size:13px;margin:0;line-height:1.5">${f.text.replace(/</g, '&lt;')}</p>
+        </div>`;
+      }).join('');
+    } catch(e) {
+      console.error('Load feedback failed:', e);
+    }
+  }
+
+  async function deleteFeedback(id) {
+    if (!confirm('Видалити цей відгук?')) return;
+    try {
+      await db.collection('feedback').doc(id).delete();
+      loadFeedback();
+    } catch(e) {
+      alert('Помилка: ' + e.message);
+    }
   }
 </script>
 

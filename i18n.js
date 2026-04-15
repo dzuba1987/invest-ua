@@ -157,6 +157,11 @@ const I18N = {
     'notify.bot': 'Telegram-бот (команди)',
     'notify.botDesc': 'Перегляд балансу, портфеля та курсів через @my_invest_ua_bot',
 
+    // Feedback
+    'feedback.title': 'Напишіть нам',
+    'feedback.desc': 'Пропозиції, баги, побажання — все що допоможе зробити додаток кращим',
+    'feedback.send': 'Надіслати',
+
     'profile.contact': 'Контактна інформація',
     'profile.displayName': "Ім'я",
     'profile.phone': 'Номер телефону',
@@ -339,6 +344,11 @@ const I18N = {
     'notify.testTelegram': 'Send test message',
     'notify.bot': 'Telegram bot (commands)',
     'notify.botDesc': 'Check balance, portfolio and rates via @my_invest_ua_bot',
+
+    // Feedback
+    'feedback.title': 'Write to us',
+    'feedback.desc': 'Suggestions, bugs, wishes — anything to make the app better',
+    'feedback.send': 'Send',
 
     'profile.contact': 'Contact information',
     'profile.displayName': 'Name',
