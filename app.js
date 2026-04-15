@@ -302,12 +302,15 @@ function toggleCompoundOptions() {
   document.getElementById('compoundRateField').style.display = isCompound ? '' : 'none';
   document.getElementById('compoundIndexField').style.display = isCompound ? '' : 'none';
 
-  // Copy main rate into compound rate field if empty
+  // Mark that compound rate has NOT been manually edited yet
   if (isCompound) {
     const compoundRateEl = document.getElementById('compoundRate');
-    if (!compoundRateEl.value) {
-      compoundRateEl.value = document.getElementById('annualRateInput').value;
-    }
+    compoundRateEl.value = document.getElementById('annualRateInput').value;
+    compoundRateEl.dataset.userEdited = '';
+    compoundRateEl.addEventListener('input', function onEdit() {
+      compoundRateEl.dataset.userEdited = '1';
+      compoundRateEl.removeEventListener('input', onEdit);
+    }, { once: true });
   }
 
   // Hide bond-specific fields in compound mode
@@ -336,12 +339,14 @@ function calculate() {
   const resultsEl = document.getElementById('results');
   errorEl.style.display = 'none';
 
+  const isCompoundMode = document.getElementById('compoundCheck').checked;
+
   const bondPrice = getVal('bondPrice');
   const bondCount = getVal('bondCount');
   let invested = getVal('invested');
-  let received = getVal('received');
+  let received = isCompoundMode ? NaN : getVal('received');
   const annualRateInput = getVal('annualRateInput');
-  const diffAmount = getVal('diffAmount');
+  const diffAmount = isCompoundMode ? NaN : getVal('diffAmount');
   const diffDays = getDays();
 
   const hasBondPrice = !isNaN(bondPrice) && bondPrice > 0;
@@ -445,9 +450,17 @@ function calculate() {
     const periodDays = diffDays;
     const periodsPerYear = 365.25 / periodDays;
 
-    // Compound rate: use dedicated field, fallback to main rate
-    const compoundRateVal = parseNum(document.getElementById('compoundRate').value);
-    const cRate = !isNaN(compoundRateVal) && compoundRateVal > 0 ? compoundRateVal : (hasRate ? annualRateInput : periodRate * periodsPerYear);
+    // Compound rate: always use main rate unless user manually edited compound rate field
+    const compoundRateEl = document.getElementById('compoundRate');
+    const userEditedCompound = compoundRateEl.dataset.userEdited === '1';
+    let cRate;
+    if (userEditedCompound) {
+      const compoundRateVal = parseNum(compoundRateEl.value);
+      cRate = (!isNaN(compoundRateVal) && compoundRateVal > 0) ? compoundRateVal : (hasRate ? annualRateInput : annualRate);
+    } else {
+      cRate = hasRate ? annualRateInput : annualRate;
+      compoundRateEl.value = cRate ? Math.round(cRate * 100) / 100 : '';
+    }
     const ratePerPeriod = (cRate / 100) * (periodDays / 365.25);
     const annualSimpleRate = cRate / 100;
 
