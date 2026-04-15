@@ -99,7 +99,7 @@ function updateAuthUI() {
 
 function googleLogin() {
   if (!firebaseReady) {
-    alert('Firebase не налаштований. Додай ключі у config.js. Деталі — у розділі «Довідка».');
+    alert('Сервіс авторизації тимчасово недоступний. Спробуйте пізніше.');
     return;
   }
   const provider = new firebase.auth.GoogleAuthProvider();
@@ -312,6 +312,96 @@ async function loadProfileFromFirestore() {
     }
   } catch(e) {
     console.warn('Profile load failed:', e);
+  }
+}
+
+// ---- Export all user data ----
+function exportAllUserData() {
+  const resultEl = document.getElementById('dataActionResult');
+  const data = {
+    exportDate: new Date().toISOString(),
+    profile: userProfile,
+    portfolio: portfolioItems,
+    savedRecords: savedRecords,
+    settings: {
+      language: localStorage.getItem('appLang'),
+      dashboardCurrencies: dashboardCurrencies,
+      notifyDays: localStorage.getItem('notifyDays'),
+      notifyTelegram: localStorage.getItem('notifyTelegram'),
+      telegramChatId: userProfile.telegramChatId || '',
+    }
+  };
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'invest-ua-data-' + new Date().toISOString().split('T')[0] + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+
+  resultEl.textContent = '✓ Дані експортовано!';
+  resultEl.style.color = '#4ade80';
+  resultEl.style.display = 'block';
+  setTimeout(() => { resultEl.style.display = 'none'; }, 3000);
+}
+
+// ---- Delete all user data ----
+async function deleteAllUserData() {
+  const resultEl = document.getElementById('dataActionResult');
+
+  if (!confirm('Ви впевнені? Це видалить ВСІ ваші дані з цього пристрою та хмари. Цю дію не можна скасувати.')) return;
+  if (!confirm('Останнє підтвердження. Видалити всі дані назавжди?')) return;
+
+  try {
+    // Delete from Firestore
+    if (firebaseReady && currentUser) {
+      const uid = currentUser.uid;
+
+      // Delete portfolio subcollection
+      const portfolio = await db.collection('users').doc(uid).collection('portfolio').get();
+      const pDel = [];
+      portfolio.forEach(doc => pDel.push(doc.ref.delete()));
+      await Promise.all(pDel);
+
+      // Delete records subcollection
+      const records = await db.collection('users').doc(uid).collection('records').get();
+      const rDel = [];
+      records.forEach(doc => rDel.push(doc.ref.delete()));
+      await Promise.all(rDel);
+
+      // Delete user document
+      await db.collection('users').doc(uid).delete();
+    }
+
+    // Clear local storage
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // Clear IndexedDB
+    if (typeof indexedDB !== 'undefined') {
+      const dbs = await indexedDB.databases();
+      dbs.forEach(d => indexedDB.deleteDatabase(d.name));
+    }
+
+    // Clear state
+    savedRecords = [];
+    portfolioItems = [];
+    userProfile = {};
+
+    // Sign out
+    if (firebaseReady) {
+      await firebase.auth().signOut();
+    }
+
+    resultEl.textContent = '✓ Усі дані видалено. Сторінка перезавантажиться...';
+    resultEl.style.color = '#4ade80';
+    resultEl.style.display = 'block';
+    setTimeout(() => { location.reload(); }, 2000);
+  } catch(e) {
+    resultEl.textContent = 'Помилка: ' + e.message;
+    resultEl.style.color = '#f87171';
+    resultEl.style.display = 'block';
   }
 }
 

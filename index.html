@@ -2,6 +2,7 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://bank.gov.ua https://darkblue-toad-531724.hostingersite.com https://api.telegram.org; img-src 'self' data: https://*.googleusercontent.com https://*.google.com; frame-src https://accounts.google.com https://*.firebaseapp.com; font-src 'self';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -830,6 +831,34 @@
         <p class="error" id="pinError"></p>
         <p class="success-msg" id="pinSuccess"></p>
         <p style="font-size:12px;color:#64748b;margin-top:8px" id="pinStatus"></p>
+      </div>
+
+      <!-- ── SECTION: Data & Privacy ── -->
+      <div class="profile-section-title">Дані та конфіденційність</div>
+
+      <div class="a-card">
+        <h3>Ваші дані</h3>
+        <div class="privacy-info">
+          <p><strong>Що зберігається:</strong></p>
+          <ul>
+            <li>Ім'я, email, телефон (з вашого профілю)</li>
+            <li>Портфель вкладень (назви, суми, дати, ставки)</li>
+            <li>Історія розрахунків калькулятора</li>
+            <li>Налаштування (мова, валюти, Telegram Chat ID)</li>
+          </ul>
+          <p><strong>Де зберігається:</strong></p>
+          <ul>
+            <li>Локально на пристрої (IndexedDB)</li>
+            <li>Firebase Firestore (при вході через Google)</li>
+          </ul>
+          <p><strong>Що не зберігається:</strong> паролі, платіжні дані, IP-адреси. PIN зберігається як хеш (SHA-256).</p>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
+          <button class="btn-export" onclick="exportAllUserData()" style="flex:1;min-width:150px">Експорт моїх даних</button>
+          <button class="btn-clear" onclick="deleteAllUserData()" style="flex:1;min-width:150px;color:#f87171;border-color:#f87171">Видалити всі дані</button>
+        </div>
+        <p class="success-msg" id="dataActionResult"></p>
       </div>
 
     </div>
