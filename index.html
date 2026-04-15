@@ -242,12 +242,6 @@
           <span class="result-value profit" id="resCompoundNet"></span>
         </div>
 
-        <!-- Comparison: simple vs compound -->
-        <div class="compound-compare" id="compoundCompare"></div>
-
-        <div style="position:relative;height:250px;margin-top:16px">
-          <canvas id="compoundChart"></canvas>
-        </div>
       </div>
       <!-- Disclaimer -->
       <div class="calc-disclaimer">
@@ -259,6 +253,17 @@
     </div> <!-- /results -->
     </div> <!-- /panel-right -->
     </div> <!-- /main-layout -->
+
+    <!-- Compound chart & comparison (full width, outside main-layout) -->
+    <div id="compoundFullWidth" style="display:none;margin-top:16px">
+      <div class="a-card">
+        <h3>Порівняння: простий vs складний відсоток</h3>
+        <div style="position:relative;height:300px;margin-bottom:16px">
+          <canvas id="compoundChart"></canvas>
+        </div>
+        <div class="compound-compare" id="compoundCompare"></div>
+      </div>
+    </div>
 
     <!-- Saved records -->
     <div class="saved-section" id="savedSection">

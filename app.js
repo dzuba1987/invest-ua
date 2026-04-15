@@ -513,6 +513,7 @@ function calculate() {
     }
 
     compoundSection.style.display = 'block';
+    document.getElementById('compoundFullWidth').style.display = 'block';
 
     // Comparison table: simple vs compound per year
     const compareEl = document.getElementById('compoundCompare');
@@ -611,6 +612,7 @@ function calculate() {
     }
   } else {
     compoundSection.style.display = 'none';
+    document.getElementById('compoundFullWidth').style.display = 'none';
     if (compoundChartInstance) { compoundChartInstance.destroy(); compoundChartInstance = null; }
   }
 
@@ -1064,6 +1066,7 @@ function clearAll() {
   document.getElementById('compoundIndex').value = '';
   toggleCompoundOptions();
   document.getElementById('compoundSection').style.display = 'none';
+  document.getElementById('compoundFullWidth').style.display = 'none';
   if (compoundChartInstance) { compoundChartInstance.destroy(); compoundChartInstance = null; }
   const t = new Date();
   document.getElementById('dateStart').value = t.toISOString().split('T')[0];
