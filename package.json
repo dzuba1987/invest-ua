@@ -1,0 +1,25 @@
+{
+  "name": "investment-calculator",
+  "version": "1.0.0",
+  "description": "PWA-додаток для управління портфелем вкладень — ОВДП, депозити, облігації та інші фінансові інструменти. Працює офлайн, синхронізується через Google, має Telegram-бот для швидкого доступу.",
+  "main": "app.js",
+  "scripts": {
+    "test": "npx playwright test --config=modules/playwright.config.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dzuba1987/invest-ua.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/dzuba1987/invest-ua/issues"
+  },
+  "homepage": "https://github.com/dzuba1987/invest-ua#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "serve": "^14.2.6"
+  }
+}
