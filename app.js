@@ -626,6 +626,7 @@ function calculate() {
 
 // ============ SAVE RECORD ============
 function saveRecord() {
+  const isCompound = document.getElementById('compoundCheck').checked;
   const bondPrice = getVal('bondPrice');
   const bondCount = getVal('bondCount');
   let invested = getVal('invested');
@@ -641,7 +642,12 @@ function saveRecord() {
   if ((isNaN(received) || received <= 0) && !isNaN(invested) && invested > 0 && hasRate && !isNaN(diffDays) && diffDays > 0)
     received = invested * (1 + (annualRateInput / 100) * (diffDays / 365.25));
 
-  if (isNaN(invested) || invested <= 0 || isNaN(received) || received <= 0) {
+  // In compound mode, invested is enough
+  if (isCompound && !isNaN(invested) && invested > 0) {
+    if (isNaN(received) || received <= 0) received = invested;
+  }
+
+  if (isNaN(invested) || invested <= 0) {
     const errorEl = document.getElementById('error');
     errorEl.textContent = 'Заповніть дані для збереження';
     errorEl.style.display = 'block';
@@ -649,16 +655,22 @@ function saveRecord() {
   }
 
   const profit = received - invested;
-  const periodRate = (profit / invested) * 100;
+  const periodRate = invested > 0 ? (profit / invested) * 100 : 0;
   const annualRate = !isNaN(diffDays) && diffDays > 0 ? periodRate / diffDays * 365.25 : 0;
 
   const taxPct = getVal('bonusPercent');
   const hasTax = !isNaN(taxPct) && taxPct > 0;
   const taxAmount = hasTax ? profit * taxPct / 100 : 0;
 
+  // Compound data
+  const compoundRate = isCompound ? (parseNum(document.getElementById('compoundRate').value) || 10) : null;
+  const compoundTax = isCompound ? (parseNum(document.getElementById('compoundTax').value) || null) : null;
+  const compoundIndex = isCompound ? (parseNum(document.getElementById('compoundIndex').value) || 0) : null;
+  const compoundYears = isCompound ? (parseInt(document.getElementById('compoundYears').value) || 2) : null;
+
   const record = {
     id: Date.now(),
-    name: document.getElementById('bondName').value.trim() || '—',
+    name: document.getElementById('bondName').value.trim() || (isCompound ? 'Вклад (складний %)' : '—'),
     bondPrice: hasBondPrice ? bondPrice : null,
     bondCount: hasBondCount ? Math.floor(bondCount) : null,
     invested: invested,
@@ -671,7 +683,12 @@ function saveRecord() {
     periodRate: periodRate,
     taxPercent: hasTax ? taxPct : null,
     taxAmount: taxAmount,
-    netAfterTax: profit - taxAmount
+    netAfterTax: profit - taxAmount,
+    compound: isCompound,
+    compoundRate: compoundRate,
+    compoundTax: compoundTax,
+    compoundIndex: compoundIndex,
+    compoundYears: compoundYears
   };
 
   savedRecords.push(record);
@@ -756,16 +773,24 @@ function renderSaved() {
 
 function loadRecordToForm(r) {
   // Fill form fields from saved record
-  document.getElementById('bondName').value = r.name === '—' ? '' : r.name || '';
+  document.getElementById('bondName').value = r.name === '—' || r.name === 'Вклад (складний %)' ? '' : r.name || '';
   document.getElementById('bondPrice').value = r.bondPrice ? formatShort(r.bondPrice) : '';
   document.getElementById('bondCount').value = r.bondCount || '';
   document.getElementById('invested').value = formatShort(Math.round(r.invested));
-  document.getElementById('received').value = formatShort(Math.round(r.received));
+  document.getElementById('received').value = r.received ? formatShort(Math.round(r.received)) : '';
   document.getElementById('annualRateInput').value = r.rateInput || '';
   document.getElementById('dateStart').value = r.dateStart || '';
   document.getElementById('dateEnd').value = r.dateEnd || '';
-  document.getElementById('diffAmount').value = formatShort(Math.round(r.profit));
+  document.getElementById('diffAmount').value = r.profit ? formatShort(Math.round(r.profit)) : '';
   document.getElementById('bonusPercent').value = r.taxPercent || '';
+
+  // Compound fields
+  document.getElementById('compoundCheck').checked = !!r.compound;
+  document.getElementById('compoundRate').value = r.compoundRate || '';
+  document.getElementById('compoundTax').value = r.compoundTax || '';
+  document.getElementById('compoundIndex').value = r.compoundIndex || '';
+  if (r.compoundYears) document.getElementById('compoundYears').value = r.compoundYears;
+  toggleCompoundOptions();
 
   // Mark manual fields so calculate() doesn't override them
   numFields.forEach(id => document.getElementById(id).classList.remove('auto-filled'));
