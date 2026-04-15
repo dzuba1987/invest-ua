@@ -165,10 +165,10 @@ let savedRecords = [];
 
 // ============ HELPERS ============
 function formatNum(n) {
-  return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
 }
 function formatShort(n) {
-  return n.toLocaleString('uk-UA', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
 }
 function parseNum(str) {
   if (!str) return NaN;
@@ -262,7 +262,7 @@ document.getElementById('bondName').addEventListener('input', () => calculate())
     const price = parseNum(document.getElementById('pBondPrice').value);
     const count = parseNum(document.getElementById('pBondCount').value);
     if (!isNaN(price) && !isNaN(count) && price > 0 && count > 0) {
-      document.getElementById('pInvested').value = formatShort(Math.round(price * count));
+      document.getElementById('pInvested').value = formatNum(price * count);
     }
   });
 });
@@ -552,8 +552,8 @@ function calculate() {
       const yLabel = y + (y === 1 ? ' рік' : y < 5 ? ' роки' : ' років');
       cmpHtmlRows += `<div class="compound-compare-row">
         <span class="cc-label">${yLabel}</span>
-        <span class="cc-value">${formatShort(Math.round(simpleVal))} ₴</span>
-        <span class="cc-diff">${formatShort(Math.round(cmpBalance))} ₴ <span style="font-size:11px;color:#4ade80">(+${formatShort(Math.round(diff))})</span></span>
+        <span class="cc-value">${formatNum(simpleVal)} ₴</span>
+        <span class="cc-diff">${formatNum(cmpBalance)} ₴ <span style="font-size:11px;color:#4ade80">(+${formatNum(diff)})</span></span>
       </div>`;
     }
     compareEl.innerHTML = cmpHtml + cmpHtmlRows;
@@ -796,12 +796,12 @@ function loadRecordToForm(r) {
   document.getElementById('bondName').value = r.name === '—' || r.name === 'Вклад (складний %)' ? '' : r.name || '';
   document.getElementById('bondPrice').value = r.bondPrice ? formatShort(r.bondPrice) : '';
   document.getElementById('bondCount').value = r.bondCount || '';
-  document.getElementById('invested').value = formatShort(Math.round(r.invested));
-  document.getElementById('received').value = r.received ? formatShort(Math.round(r.received)) : '';
+  document.getElementById('invested').value = formatNum(r.invested);
+  document.getElementById('received').value = r.received ? formatNum(r.received) : '';
   document.getElementById('annualRateInput').value = r.rateInput || '';
   document.getElementById('dateStart').value = r.dateStart || '';
   document.getElementById('dateEnd').value = r.dateEnd || '';
-  document.getElementById('diffAmount').value = r.profit ? formatShort(Math.round(r.profit)) : '';
+  document.getElementById('diffAmount').value = r.profit ? formatNum(r.profit) : '';
   document.getElementById('bonusPercent').value = r.taxPercent || '';
 
   // Compound fields
@@ -1668,7 +1668,8 @@ function openInvestmentDetail(id) {
     <div class="detail-header">
       <div class="detail-name">${esc(item.name)}</div>
       <span class="detail-type-badge ${typeColors[item.type] || ''}">${typeLabels[item.type] || item.type}</span>
-      <div class="detail-invested">${formatShort(item.invested)} грн</div>
+      <div class="detail-invested">${formatNum(item.invested)} грн</div>
+      ${item.bondPrice ? `<div style="font-size:12px;color:#64748b;margin-top:2px">${formatShort(item.bondPrice)} грн × ${item.bondCount} шт.</div>` : ''}
       <div class="detail-status" style="color:${isActive ? '#4ade80' : '#64748b'}">${isActive ? '● Активна' : '○ Завершена'}</div>
       ${days > 0 ? `<div class="detail-progress"><div class="detail-progress-bar" style="width:${progress.toFixed(1)}%"></div></div>
       <div style="font-size:11px;color:#475569;margin-top:4px">${elapsed} з ${days} днів (${progress.toFixed(0)}%)</div>` : ''}
@@ -1677,11 +1678,11 @@ function openInvestmentDetail(id) {
     <div class="detail-grid">
       <div class="detail-metric">
         <div class="detail-metric-label">Зароблено</div>
-        <div class="detail-metric-value green">+${formatShort(Math.round(earnedSoFar))} грн</div>
+        <div class="detail-metric-value green">+${formatNum(earnedSoFar)} грн</div>
       </div>
       <div class="detail-metric">
         <div class="detail-metric-label">Очікуваний дохід</div>
-        <div class="detail-metric-value green">+${formatShort(Math.round(expectedProfit))} грн</div>
+        <div class="detail-metric-value green">+${formatNum(expectedProfit)} грн</div>
       </div>
       <div class="detail-metric">
         <div class="detail-metric-label">Дохід / день</div>
@@ -1721,20 +1722,22 @@ function openInvestmentDetail(id) {
         <div class="detail-info-row"><span class="detail-info-label">Ставка реінвестування</span><span class="detail-info-value">${cRate}%</span></div>
         ${cIndex ? `<div class="detail-info-row"><span class="detail-info-label">Індексація</span><span class="detail-info-value">${cIndex}%/рік</span></div>` : ''}
         <div class="detail-info-row"><span class="detail-info-label">Горизонт</span><span class="detail-info-value">${cYears} р. (${totalPeriods} реінвестицій)</span></div>
-        <div class="detail-info-row"><span class="detail-info-label">Підсумкова сума</span><span class="detail-info-value" style="color:#4ade80">${formatShort(Math.round(bal))} грн</span></div>
-        <div class="detail-info-row"><span class="detail-info-label">Прибуток (складний)</span><span class="detail-info-value" style="color:#4ade80">+${formatShort(Math.round(compProfit))} грн</span></div>
+        <div class="detail-info-row"><span class="detail-info-label">Підсумкова сума</span><span class="detail-info-value" style="color:#4ade80">${formatNum(bal)} грн</span></div>
+        <div class="detail-info-row"><span class="detail-info-label">Прибуток (складний)</span><span class="detail-info-value" style="color:#4ade80">+${formatNum(compProfit)} грн</span></div>
       </div>`;
     })() : ''}
 
     ${item.tax || taxAmount > 0 ? `<div class="a-card">
       <h3>Оподаткування</h3>
       <div class="detail-info-row"><span class="detail-info-label">Ставка податку</span><span class="detail-info-value">${item.tax}%</span></div>
-      <div class="detail-info-row"><span class="detail-info-label">Сума податку</span><span class="detail-info-value" style="color:#f87171">−${formatShort(Math.round(taxAmount))} грн</span></div>
-      <div class="detail-info-row"><span class="detail-info-label">Чистий прибуток</span><span class="detail-info-value" style="color:#4ade80">+${formatShort(Math.round(netProfit))} грн</span></div>
+      <div class="detail-info-row"><span class="detail-info-label">Сума податку</span><span class="detail-info-value" style="color:#f87171">−${formatNum(taxAmount)} грн</span></div>
+      <div class="detail-info-row"><span class="detail-info-label">Чистий прибуток</span><span class="detail-info-value" style="color:#4ade80">+${formatNum(netProfit)} грн</span></div>
     </div>` : ''}
 
     <div class="a-card">
       <h3>Деталі</h3>
+      ${item.bondPrice ? `<div class="detail-info-row"><span class="detail-info-label">Вартість 1 облігації</span><span class="detail-info-value">${formatNum(item.bondPrice)} грн</span></div>` : ''}
+      ${item.bondCount ? `<div class="detail-info-row"><span class="detail-info-label">Кількість облігацій</span><span class="detail-info-value">${item.bondCount} шт.</span></div>` : ''}
       <div class="detail-info-row"><span class="detail-info-label">Дата початку</span><span class="detail-info-value">${item.dateStart ? formatDate(item.dateStart) : '—'}</span></div>
       <div class="detail-info-row"><span class="detail-info-label">Дата завершення</span><span class="detail-info-value">${item.dateEnd ? formatDate(item.dateEnd) : '—'}</span></div>
       <div class="detail-info-row"><span class="detail-info-label">Термін</span><span class="detail-info-value">${days > 0 ? formatTerm(days) : '—'}</span></div>
@@ -1877,7 +1880,8 @@ function renderPortfolio() {
             <span class="${isActive ? 'p-status-active' : 'p-status-ended'}" style="font-size:11px">${isActive ? '● Активна' : '○ Завершена'}</span>
           </div>
           <div class="p-item-details">
-            <span>Вкладено: <strong>${formatShort(p.invested)} грн</strong></span>
+            <span>Вкладено: <strong>${formatNum(p.invested)} грн</strong></span>
+            ${p.bondPrice ? '<span>' + formatShort(p.bondPrice) + ' грн × ' + p.bondCount + ' шт.</span>' : ''}
             ${p.rate ? '<span>Ставка: <strong>' + p.rate + '%</strong></span>' : ''}
             ${p.tax ? '<span>Податок: <strong>' + p.tax + '%</strong></span>' : ''}
             ${days > 0 ? '<span>Строк: <strong>' + days + ' дн.</strong></span>' : ''}
@@ -1900,10 +1904,10 @@ function renderPortfolio() {
   const totalValue = totalInvested + totalEarnedSoFar;
   document.getElementById('dashTotalValue').textContent = formatShort(totalValue) + ' грн';
   document.getElementById('dashDailyTotal').innerHTML =
-    '<span class="dash-daily-badge">+' + formatShort(Math.round(totalDailyNet)) + ' грн сьогодні (чисті)</span>';
+    '<span class="dash-daily-badge">+' + formatNum(totalDailyNet) + ' грн сьогодні (чисті)</span>';
   document.getElementById('dashInvested').textContent = formatShort(totalInvested) + ' грн';
-  document.getElementById('dashEarned').textContent = '+' + formatShort(Math.round(totalEarnedSoFar)) + ' грн';
-  document.getElementById('dashDailyNet').textContent = '+' + formatShort(Math.round(totalDailyNet)) + ' грн';
+  document.getElementById('dashEarned').textContent = '+' + formatNum(totalEarnedSoFar) + ' грн';
+  document.getElementById('dashDailyNet').textContent = '+' + formatNum(totalDailyNet) + ' грн';
   document.getElementById('dashActiveCount').textContent = activeCount;
 
   // Daily breakdown
@@ -2175,15 +2179,15 @@ async function loadCurrencyRates(totalInvested, totalExpectedProfit, totalProfit
       html += `
         <div class="a-stat">
           <div class="a-stat-label">Вкладено в ${cc} (курс ${sym}${rate.toFixed(2)})</div>
-          <div class="a-stat-value">${sym}${formatShort(Math.round(totalInvested / rate))}</div>
+          <div class="a-stat-value">${sym}${formatNum(totalInvested / rate)}</div>
         </div>
         <div class="a-stat">
           <div class="a-stat-label">Очікуваний дохід за весь строк (${cc})</div>
-          <div class="a-stat-value green">+${sym}${formatShort(Math.round(totalExpectedProfit / rate))}</div>
+          <div class="a-stat-value green">+${sym}${formatNum(totalExpectedProfit / rate)}</div>
         </div>
         <div class="a-stat">
           <div class="a-stat-label">Очікуваний дохід до кінця ${eoyYear} (${cc})</div>
-          <div class="a-stat-value green">+${sym}${formatShort(Math.round((totalProfitToEOY || 0) / rate))}</div>
+          <div class="a-stat-value green">+${sym}${formatNum((totalProfitToEOY || 0) / rate)}</div>
         </div>`;
     });
     if (!html) {
@@ -2512,9 +2516,9 @@ function calculateCredit() {
   const overpay = totalPay - principal;
   const effRate = (overpay / principal) * 100;
 
-  document.getElementById('creditMonthly').textContent = formatShort(Math.round(monthly)) + ' грн';
-  document.getElementById('creditTotalPay').textContent = formatShort(Math.round(totalPay)) + ' грн';
-  document.getElementById('creditOverpay').textContent = '+' + formatShort(Math.round(overpay)) + ' грн';
+  document.getElementById('creditMonthly').textContent = formatNum(monthly) + ' грн';
+  document.getElementById('creditTotalPay').textContent = formatNum(totalPay) + ' грн';
+  document.getElementById('creditOverpay').textContent = '+' + formatNum(overpay) + ' грн';
   document.getElementById('creditEffRate').textContent = effRate.toFixed(1) + '%';
   document.getElementById('creditResults').style.display = 'block';
 
@@ -2609,16 +2613,16 @@ function calculateCredit() {
     </tr></thead>
     <tbody>${schedule.map(s => `<tr>
       <td>${s.month}</td>
-      <td>${formatShort(Math.round(s.payment))}</td>
-      <td class="cr-principal">${formatShort(Math.round(s.principal))}</td>
-      <td class="cr-interest">${formatShort(Math.round(s.interest))}</td>
-      <td class="cr-balance">${formatShort(Math.round(s.balance))}</td>
+      <td>${formatNum(s.payment)}</td>
+      <td class="cr-principal">${formatNum(s.principal)}</td>
+      <td class="cr-interest">${formatNum(s.interest)}</td>
+      <td class="cr-balance">${formatNum(s.balance)}</td>
     </tr>`).join('')}
     <tr style="font-weight:700;border-top:2px solid #334155">
       <td>Всього</td>
-      <td>${formatShort(Math.round(totalPay))}</td>
-      <td class="cr-principal">${formatShort(Math.round(totalPrincipal))}</td>
-      <td class="cr-interest">${formatShort(Math.round(totalInterest))}</td>
+      <td>${formatNum(totalPay)}</td>
+      <td class="cr-principal">${formatNum(totalPrincipal)}</td>
+      <td class="cr-interest">${formatNum(totalInterest)}</td>
       <td>—</td>
     </tr></tbody></table>`;
 }
