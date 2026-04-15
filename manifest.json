@@ -1,7 +1,7 @@
 {
-  "name": "Invest UA — портфель інвестицій",
+  "name": "Invest UA — портфель вкладень",
   "short_name": "Invest UA",
-  "description": "Портфель інвестицій, калькулятор дохідності ОВДП, депозитів. Аналітика, хмарна синхронізація, Excel експорт.",
+  "description": "Портфель вкладень — ОВДП, депозити, кредити. Калькулятор, аналітика, курси валют, Telegram-бот.",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f172a",

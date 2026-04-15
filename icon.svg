@@ -2,7 +2,7 @@
   <rect width="512" height="512" rx="80" fill="#1e293b"/>
   <rect x="40" y="40" width="432" height="432" rx="60" fill="#0f172a" stroke="#334155" stroke-width="4"/>
   <text x="256" y="200" text-anchor="middle" font-size="120" fill="#f1f5f9" font-family="Arial">💰</text>
-  <text x="256" y="310" text-anchor="middle" font-size="48" font-weight="bold" fill="#4ade80" font-family="Arial">ОВДП</text>
-  <text x="256" y="370" text-anchor="middle" font-size="28" fill="#facc15" font-family="Arial">Калькулятор</text>
+  <text x="256" y="300" text-anchor="middle" font-size="52" font-weight="bold" fill="#f1f5f9" font-family="Arial">Invest</text>
+  <text x="256" y="365" text-anchor="middle" font-size="52" font-weight="bold" fill="#4ade80" font-family="Arial">UA</text>
   <rect x="120" y="400" width="272" height="4" rx="2" fill="#3b82f6" opacity="0.6"/>
 </svg>
