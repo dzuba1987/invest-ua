@@ -345,6 +345,8 @@ function toggleCompoundOptions() {
   document.getElementById('labelDateEnd').textContent = isCompound
     ? (t('calc.periodEnd') || 'Кінець періоду')
     : (t('calc.dateEnd') || 'Дата отримання');
+
+  calculate();
 }
 
 // ============ CALCULATE & DISPLAY ============
@@ -613,6 +615,7 @@ function calculate() {
   } else {
     compoundSection.style.display = 'none';
     document.getElementById('compoundFullWidth').style.display = 'none';
+    document.getElementById('compoundCompare').innerHTML = '';
     if (compoundChartInstance) { compoundChartInstance.destroy(); compoundChartInstance = null; }
   }
 
