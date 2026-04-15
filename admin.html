@@ -168,6 +168,17 @@
         <button class="btn-sm" onclick="testTelegram()" style="padding:10px 20px;height:fit-content">Тест</button>
       </div>
       <p id="tgStatus" style="font-size:12px;margin-top:8px;display:none"></p>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid #334155">
+        <p style="font-size:12px;color:#64748b;margin-bottom:10px">Сповіщення адміністратору:</p>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#e2e8f0;cursor:pointer;margin-bottom:6px">
+          <input type="checkbox" id="tgNotifyLogin" onchange="saveTelegramConfig()" style="width:16px;height:16px;accent-color:#3b82f6">
+          Повідомляти при кожному логіні
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#e2e8f0;cursor:pointer">
+          <input type="checkbox" id="tgNotifyNewUser" onchange="saveTelegramConfig()" checked style="width:16px;height:16px;accent-color:#3b82f6">
+          Повідомляти при реєстрації нового користувача
+        </label>
+      </div>
     </div>
 
     <input type="text" class="search-input" id="searchInput" placeholder="Пошук за ім'ям або email..." oninput="filterUsers()">
@@ -341,8 +352,11 @@
     try {
       const doc = await db.collection('settings').doc('telegram').get();
       if (doc.exists) {
-        document.getElementById('tgBotToken').value = doc.data().botToken || '';
-        document.getElementById('tgChatId').value = doc.data().chatId || '';
+        const d = doc.data();
+        document.getElementById('tgBotToken').value = d.botToken || '';
+        document.getElementById('tgChatId').value = d.chatId || '';
+        document.getElementById('tgNotifyLogin').checked = d.notifyLogin !== false;
+        document.getElementById('tgNotifyNewUser').checked = d.notifyNewUser !== false;
       }
     } catch(e) { /* ignore */ }
   }
@@ -350,10 +364,12 @@
   async function saveTelegramConfig() {
     const botToken = document.getElementById('tgBotToken').value.trim();
     const chatId = document.getElementById('tgChatId').value.trim();
+    const notifyLogin = document.getElementById('tgNotifyLogin').checked;
+    const notifyNewUser = document.getElementById('tgNotifyNewUser').checked;
     const status = document.getElementById('tgStatus');
 
     try {
-      await db.collection('settings').doc('telegram').set({ botToken, chatId });
+      await db.collection('settings').doc('telegram').set({ botToken, chatId, notifyLogin, notifyNewUser });
       status.textContent = '✓ Збережено';
       status.style.color = '#4ade80';
       status.style.display = 'block';
@@ -366,26 +382,22 @@
   }
 
   async function testTelegram() {
-    const botToken = document.getElementById('tgBotToken').value.trim();
     const chatId = document.getElementById('tgChatId').value.trim();
     const status = document.getElementById('tgStatus');
 
-    if (!botToken || !chatId) {
-      status.textContent = 'Заповніть Bot Token та Chat ID';
+    if (!chatId) {
+      status.textContent = 'Заповніть Chat ID';
       status.style.color = '#f87171';
       status.style.display = 'block';
       return;
     }
 
     try {
-      const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      const apiBase = typeof NOTIFY_API_BASE !== 'undefined' ? NOTIFY_API_BASE : '';
+      const res = await fetch(apiBase + '/telegram/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: '✅ *Invest UA — тестове повідомлення*\n\nБот підключений успішно!',
-          parse_mode: 'Markdown'
-        })
+        body: JSON.stringify({ chat_id: chatId, name: 'Admin' })
       });
       const data = await res.json();
       if (data.ok) {

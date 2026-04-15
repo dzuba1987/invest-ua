@@ -1205,6 +1205,7 @@ async function saveUserMeta(user) {
         'meta.lastLogin': new Date().toISOString(),
         'meta.provider': user.providerData[0]?.providerId || 'unknown'
       });
+      notifyTelegram('login', user);
     }
   } catch(e) {
     console.warn('User meta save failed:', e);
@@ -1223,31 +1224,28 @@ async function getTelegramConfig() {
 
 async function notifyTelegram(event, user) {
   const config = await getTelegramConfig();
-  if (!config || !config.botToken || !config.chatId) return;
+  if (!config || !config.chatId) return;
 
-  let text = '';
-  if (event === 'newUser') {
-    text = `🆕 *Новий користувач Invest UA*\n\n` +
-      `👤 ${user.displayName || 'Без імені'}\n` +
-      `📧 ${user.email || '—'}\n` +
-      `🕐 ${new Date().toLocaleString('uk-UA')}\n` +
-      `🔑 Provider: ${user.providerData[0]?.providerId || 'unknown'}`;
-  }
+  // Check if this event type is enabled in admin settings
+  if (event === 'newUser' && config.notifyNewUser === false) return;
+  if (event === 'login' && !config.notifyLogin) return;
 
-  if (!text) return;
+  const apiBase = typeof NOTIFY_API_BASE !== 'undefined' ? NOTIFY_API_BASE : '';
+  if (!apiBase) return;
 
   try {
-    await fetch(`https://api.telegram.org/bot${config.botToken}/sendMessage`, {
+    await fetch(apiBase + '/telegram/admin-notify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        chat_id: config.chatId,
-        text: text,
-        parse_mode: 'Markdown'
+        event: event,
+        name: user.displayName || 'Без імені',
+        email: user.email || '—',
+        admin_chat_id: config.chatId
       })
     });
   } catch(e) {
-    console.warn('Telegram notify failed:', e);
+    console.warn('Admin notify failed:', e);
   }
 }
 
