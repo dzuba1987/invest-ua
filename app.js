@@ -247,6 +247,12 @@ document.getElementById('bondName').addEventListener('input', () => calculate())
   document.getElementById(id).addEventListener('change', () => update(id));
 });
 
+// ============ COMPOUND FIELDS REACTIVE ============
+['compoundRate', 'compoundIndex', 'compoundTax'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => calculate());
+});
+document.getElementById('compoundYears').addEventListener('change', () => calculate());
+
 // ============ SYNC BUDGET WITH INVESTED ============
 document.getElementById('invested').addEventListener('change', () => {
   const v = getVal('invested');
@@ -300,17 +306,27 @@ function toggleCompoundOptions() {
   const isCompound = document.getElementById('compoundCheck').checked;
   document.getElementById('compoundTermField').style.display = isCompound ? '' : 'none';
   document.getElementById('compoundRateField').style.display = isCompound ? '' : 'none';
+  document.getElementById('compoundTaxField').style.display = isCompound ? '' : 'none';
   document.getElementById('compoundIndexField').style.display = isCompound ? '' : 'none';
 
-  // Mark that compound rate has NOT been manually edited yet
   if (isCompound) {
-    const compoundRateEl = document.getElementById('compoundRate');
-    compoundRateEl.value = document.getElementById('annualRateInput').value;
-    compoundRateEl.dataset.userEdited = '';
-    compoundRateEl.addEventListener('input', function onEdit() {
-      compoundRateEl.dataset.userEdited = '1';
-      compoundRateEl.removeEventListener('input', onEdit);
-    }, { once: true });
+    const cr = document.getElementById('compoundRate');
+    if (!cr.value) cr.value = '10';
+    const ct = document.getElementById('compoundTax');
+    if (!ct.value) ct.value = document.getElementById('bonusPercent').value || '';
+    // Set default dates: today + 2 years
+    const now = new Date();
+    document.getElementById('dateStart').value = now.toISOString().split('T')[0];
+    const end = new Date(now);
+    end.setFullYear(end.getFullYear() + 2);
+    document.getElementById('dateEnd').value = end.toISOString().split('T')[0];
+  } else {
+    // Reset to 3 months
+    const now = new Date();
+    document.getElementById('dateStart').value = now.toISOString().split('T')[0];
+    const end = new Date(now);
+    end.setMonth(end.getMonth() + 3);
+    document.getElementById('dateEnd').value = end.toISOString().split('T')[0];
   }
 
   // Hide bond-specific fields in compound mode
@@ -339,14 +355,12 @@ function calculate() {
   const resultsEl = document.getElementById('results');
   errorEl.style.display = 'none';
 
-  const isCompoundMode = document.getElementById('compoundCheck').checked;
-
   const bondPrice = getVal('bondPrice');
   const bondCount = getVal('bondCount');
   let invested = getVal('invested');
-  let received = isCompoundMode ? NaN : getVal('received');
+  let received = getVal('received');
   const annualRateInput = getVal('annualRateInput');
-  const diffAmount = isCompoundMode ? NaN : getVal('diffAmount');
+  const diffAmount = getVal('diffAmount');
   const diffDays = getDays();
 
   const hasBondPrice = !isNaN(bondPrice) && bondPrice > 0;
@@ -442,83 +456,57 @@ function calculate() {
     showRow('totalWithBonusRow', false);
   }
 
-  // Compound interest
+  // Compound interest — independent calculation from its own fields
   const compoundSection = document.getElementById('compoundSection');
   const isCompound = document.getElementById('compoundCheck').checked;
   if (isCompound && !isNaN(invested) && invested > 0 && !isNaN(diffDays) && diffDays > 0) {
     const years = parseInt(document.getElementById('compoundYears').value) || 2;
-    const periodDays = diffDays;
-    const periodsPerYear = 365.25 / periodDays;
 
-    // Compound rate: always use main rate unless user manually edited compound rate field
-    const compoundRateEl = document.getElementById('compoundRate');
-    const userEditedCompound = compoundRateEl.dataset.userEdited === '1';
-    let cRate;
-    if (userEditedCompound) {
-      const compoundRateVal = parseNum(compoundRateEl.value);
-      cRate = (!isNaN(compoundRateVal) && compoundRateVal > 0) ? compoundRateVal : (hasRate ? annualRateInput : annualRate);
-    } else {
-      cRate = hasRate ? annualRateInput : annualRate;
-      compoundRateEl.value = cRate ? Math.round(cRate * 100) / 100 : '';
-    }
-    const ratePerPeriod = (cRate / 100) * (periodDays / 365.25);
-    const annualSimpleRate = cRate / 100;
+    // Compound rate from its own field (default 10)
+    const cRate = parseNum(document.getElementById('compoundRate').value) || 10;
+    const annualRate_c = cRate / 100;
 
-    // Indexation: yearly increase of the rate
+    // Indexation
     const indexVal = parseNum(document.getElementById('compoundIndex').value);
     const indexPct = !isNaN(indexVal) ? indexVal : 0;
 
-    const taxRate = hasTax ? taxPct / 100 : 0;
-    const totalPeriods = Math.round(years * periodsPerYear);
+    // Compound tax from its own field
+    const compoundTaxVal = parseNum(document.getElementById('compoundTax').value);
+    const cHasTax = !isNaN(compoundTaxVal) && compoundTaxVal > 0;
+    const taxRate = cHasTax ? compoundTaxVal / 100 : 0;
 
-    // Build data points per year
-    const labels = [];
-    const investedLine = [];
-    const grossLine = [];
-    const netLine = [];
-    const simpleLine = [];
+    // Simple yearly compound: reinvest once per year
+    const labels = ['Старт'];
+    const investedLine = [Math.round(invested)];
+    const grossLine = [Math.round(invested)];
+    const netLine = [Math.round(invested)];
+    const simpleLine = [Math.round(invested)];
 
     let balance = invested;
     let balanceNet = invested;
-    let currentPeriod = 0;
-    let currentRatePerPeriod = ratePerPeriod;
-    let currentAnnualSimple = annualSimpleRate;
 
-    for (let y = 0; y <= years; y++) {
-      const label = y === 0 ? 'Старт' : y + (y === 1 ? ' рік' : y < 5 ? ' роки' : ' років');
-      labels.push(label);
+    for (let y = 1; y <= years; y++) {
+      const yearRate = indexPct !== 0 ? annualRate_c * Math.pow(1 + indexPct / 100, y - 1) : annualRate_c;
+      balance += balance * yearRate;
+      balanceNet += balanceNet * yearRate * (1 - taxRate);
+
+      labels.push(y + (y === 1 ? ' рік' : y < 5 ? ' роки' : ' років'));
       investedLine.push(Math.round(invested));
       grossLine.push(Math.round(balance));
       netLine.push(Math.round(balanceNet));
-      simpleLine.push(Math.round(invested * (1 + annualSimpleRate * y)));
-
-      // Compound through periods of this year
-      if (y < years) {
-        // Apply indexation from year 2 onwards
-        if (y > 0 && indexPct !== 0) {
-          currentRatePerPeriod = ratePerPeriod * Math.pow(1 + indexPct / 100, y);
-        }
-        const periodsThisYear = Math.round(periodsPerYear);
-        for (let p = 0; p < periodsThisYear && currentPeriod < totalPeriods; p++) {
-          balance += balance * currentRatePerPeriod;
-          balanceNet += balanceNet * currentRatePerPeriod * (1 - taxRate);
-          currentPeriod++;
-        }
-      }
+      simpleLine.push(Math.round(invested * (1 + annualRate_c * y)));
     }
 
     const totalGrossProfit = balance - invested;
     const totalNetProfit = balanceNet - invested;
-    const periodLabel = periodDays < 35 ? Math.round(periodDays) + ' дн.' :
-      periodDays < 320 ? Math.round(periodDays / 30.44) + ' міс.' : '1 рік';
 
-    document.getElementById('resCompoundPeriods').textContent =
-      years + ' р. (' + totalPeriods + ' реінвестицій по ' + periodLabel + ')';
-    document.getElementById('resCompoundTotal').textContent = formatNum(balance) + ' грн';
-    document.getElementById('resCompoundProfit').textContent = '+' + formatNum(totalGrossProfit) + ' грн';
+    document.getElementById('resCompoundPeriods').textContent = years + ' р. (щорічне реінвестування)';
+    document.getElementById('resCompoundTotal').textContent = formatNum(cHasTax ? balanceNet : balance) + ' грн';
+    document.getElementById('resCompoundProfit').textContent = '+' + formatNum(cHasTax ? totalNetProfit : totalGrossProfit) + ' грн'
+      + (cHasTax ? ' (чисті, −' + compoundTaxVal + '% податок)' : '');
 
-    if (hasTax) {
-      document.getElementById('resCompoundNet').textContent = '+' + formatNum(totalNetProfit) + ' грн';
+    if (cHasTax) {
+      document.getElementById('resCompoundNet').textContent = 'Без податку: +' + formatNum(totalGrossProfit) + ' грн → з податком: +' + formatNum(totalNetProfit) + ' грн';
       showRow('compoundNetRow', true);
     } else {
       showRow('compoundNetRow', false);
@@ -534,12 +522,9 @@ function calculate() {
     let cmpBalance = invested;
     let cmpHtmlRows = '';
     for (let y = 1; y <= years; y++) {
-      const simpleVal = invested * (1 + annualSimpleRate * y);
-      const yearRate = indexPct !== 0 ? ratePerPeriod * Math.pow(1 + indexPct / 100, y - 1) : ratePerPeriod;
-      const pThisYear = Math.round(periodsPerYear);
-      for (let p = 0; p < pThisYear; p++) {
-        cmpBalance += cmpBalance * yearRate;
-      }
+      const yr = indexPct !== 0 ? annualRate_c * Math.pow(1 + indexPct / 100, y - 1) : annualRate_c;
+      cmpBalance += cmpBalance * yr;
+      const simpleVal = invested * (1 + annualRate_c * y);
       const diff = cmpBalance - simpleVal;
       const yLabel = y + (y === 1 ? ' рік' : y < 5 ? ' роки' : ' років');
       cmpHtmlRows += `<div class="compound-compare-row">
@@ -588,7 +573,7 @@ function calculate() {
               borderWidth: 2,
               fill: true
             },
-            ...(hasTax ? [{
+            ...(cHasTax ? [{
               label: 'Після податку',
               data: netLine,
               borderColor: '#4ade80',
@@ -1075,6 +1060,7 @@ function clearAll() {
   ].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
   document.getElementById('compoundCheck').checked = false;
   document.getElementById('compoundRate').value = '';
+  document.getElementById('compoundTax').value = '';
   document.getElementById('compoundIndex').value = '';
   toggleCompoundOptions();
   document.getElementById('compoundSection').style.display = 'none';

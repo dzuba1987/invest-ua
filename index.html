@@ -127,9 +127,9 @@
         <label data-i18n="calc.compoundRate">Ставка реінвестування (%)</label>
         <input type="text" id="compoundRate" placeholder="15" inputmode="decimal">
       </div>
-      <div class="field" id="compoundIndexField" style="display:none">
-        <label data-i18n="calc.compoundIndex">Індексація вкладу (%/рік)</label>
-        <input type="text" id="compoundIndex" placeholder="0" inputmode="decimal">
+      <div class="field" id="compoundTaxField" style="display:none">
+        <label data-i18n="calc.compoundTax">Податок від доходу (%)</label>
+        <input type="text" id="compoundTax" placeholder="19.5" inputmode="decimal">
       </div>
       <div class="field" id="compoundTermField" style="display:none">
         <label data-i18n="calc.compoundYears">Горизонт (років)</label>
@@ -143,6 +143,10 @@
           <option value="15">15 років</option>
           <option value="20">20 років</option>
         </select>
+      </div>
+      <div class="field" id="compoundIndexField" style="display:none">
+        <label data-i18n="calc.compoundIndex">Індексація вкладу (%/рік)</label>
+        <input type="text" id="compoundIndex" placeholder="0" inputmode="decimal">
       </div>
     </div>
 
