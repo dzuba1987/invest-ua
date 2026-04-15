@@ -2,6 +2,16 @@
 // ==================== TELEGRAM INTEGRATION ======================
 // ================================================================
 
+function apiFetch(path, data) {
+  const apiBase = typeof NOTIFY_API_BASE !== 'undefined' ? NOTIFY_API_BASE : '';
+  const apiKey = typeof NOTIFY_API_KEY !== 'undefined' ? NOTIFY_API_KEY : '';
+  return fetch(apiBase + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+    body: JSON.stringify(data)
+  });
+}
+
 // ---- Admin notifications ----
 
 async function getTelegramConfig() {
@@ -20,19 +30,12 @@ async function notifyTelegram(event, user) {
   if (event === 'newUser' && config.notifyNewUser === false) return;
   if (event === 'login' && !config.notifyLogin) return;
 
-  const apiBase = typeof NOTIFY_API_BASE !== 'undefined' ? NOTIFY_API_BASE : '';
-  if (!apiBase) return;
-
   try {
-    await fetch(apiBase + '/telegram/admin-notify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        event: event,
-        name: user.displayName || 'Без імені',
-        email: user.email || '—',
-        admin_chat_id: config.chatId
-      })
+    await apiFetch('/telegram/admin-notify', {
+      event: event,
+      name: user.displayName || 'Без імені',
+      email: user.email || '—',
+      admin_chat_id: config.chatId
     });
   } catch(e) {
     console.warn('Admin notify failed:', e);
@@ -89,7 +92,7 @@ function loadNotifySettings() {
   const statusEl = document.getElementById('telegramStatus');
   if (statusEl) {
     if (tgChatId) {
-      statusEl.innerHTML = '<span style="color:#4ade80;font-size:12px">✓ Telegram підключено (Chat ID: ' + tgChatId + ')</span>';
+      statusEl.innerHTML = '<span style="color:#4ade80;font-size:12px">✓ Telegram підключено (Chat ID: ' + esc(tgChatId) + ')</span>';
     } else {
       statusEl.innerHTML = '';
     }
@@ -105,7 +108,7 @@ function saveTelegramChatId() {
 
   document.getElementById('btnTestTelegram').style.display = 'block';
   const statusEl = document.getElementById('telegramStatus');
-  statusEl.innerHTML = '<span style="color:#4ade80;font-size:12px">✓ Telegram підключено (Chat ID: ' + chatId + ')</span>';
+  statusEl.innerHTML = '<span style="color:#4ade80;font-size:12px">✓ Telegram підключено (Chat ID: ' + esc(chatId) + ')</span>';
 }
 
 async function sendTestTelegram() {
@@ -120,18 +123,13 @@ async function sendTestTelegram() {
   }
 
   const userName = userProfile.displayName || (currentUser ? currentUser.displayName : '') || 'Інвестор';
-  const apiBase = typeof NOTIFY_API_BASE !== 'undefined' ? NOTIFY_API_BASE : '';
 
   try {
     resultEl.textContent = 'Надсилаю...';
     resultEl.style.color = '#94a3b8';
     resultEl.style.display = 'block';
 
-    const res = await fetch(apiBase + '/telegram/test', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, name: userName })
-    });
+    const res = await apiFetch('/telegram/test', { chat_id: chatId, name: userName });
     const data = await res.json();
 
     if (data.ok) {

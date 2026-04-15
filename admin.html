@@ -239,6 +239,16 @@
   firebase.initializeApp(FIREBASE_CONFIG);
   db = firebase.firestore();
 
+  function adminApiFetch(path, data) {
+    const apiBase = typeof NOTIFY_API_BASE !== 'undefined' ? NOTIFY_API_BASE : '';
+    const apiKey = typeof NOTIFY_API_KEY !== 'undefined' ? NOTIFY_API_KEY : '';
+    return fetch(apiBase + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+      body: JSON.stringify(data)
+    });
+  }
+
   firebase.auth().onAuthStateChanged(async user => {
     document.getElementById('loading').style.display = 'none';
 
@@ -479,12 +489,7 @@
     }
 
     try {
-      const apiBase = typeof NOTIFY_API_BASE !== 'undefined' ? NOTIFY_API_BASE : '';
-      const res = await fetch(apiBase + '/telegram/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, name: 'Admin' })
-      });
+      const res = await adminApiFetch('/telegram/test', { chat_id: chatId, name: 'Admin' });
       const data = await res.json();
       if (data.ok) {
         status.textContent = '✓ Повідомлення надіслано в Telegram';
@@ -551,8 +556,7 @@
 
     if (!confirm('Надіслати повідомлення ' + targets.length + ' користувачам?')) return;
 
-    const apiBase = typeof NOTIFY_API_BASE !== 'undefined' ? NOTIFY_API_BASE : '';
-    if (!apiBase) {
+    if (typeof NOTIFY_API_BASE === 'undefined' || !NOTIFY_API_BASE) {
       status.textContent = 'NOTIFY_API_BASE не налаштовано';
       status.style.color = '#f87171';
       status.style.display = 'block';
@@ -569,20 +573,12 @@
       try {
         const email = u.profile?.contactEmail || u.email;
         if (email) {
-          await fetch(apiBase + '/newsletter/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, subject, body, name: u.profile?.displayName || u.displayName || '' })
-          });
+          await adminApiFetch('/newsletter/send', { email, subject, body, name: u.profile?.displayName || u.displayName || '' });
         }
 
         if (alsoTelegram && u.profile?.telegramChatId) {
           const plainBody = body.replace(/<[^>]*>/g, '').substring(0, 500);
-          await fetch(apiBase + '/telegram/newsletter', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: u.profile.telegramChatId, subject, body: plainBody })
-          });
+          await adminApiFetch('/telegram/newsletter', { chat_id: u.profile.telegramChatId, subject, body: plainBody });
         }
 
         sent++;

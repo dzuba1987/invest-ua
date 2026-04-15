@@ -2149,7 +2149,9 @@ async function loadCurrenciesPage(forceRefresh) {
       ratesCacheTime = Date.now();
     }
 
-    dateEl.textContent = cachedRates._date || '';
+    dateEl.textContent = 'НБУ: ' + (cachedRates._date || '');
+    const updEl = document.getElementById('currenciesUpdatedAt');
+    if (updEl) updEl.textContent = '· оновлено ' + new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
 
     // Pinned cards
     pinnedEl.innerHTML = dashboardCurrencies.map(cc => {
@@ -2166,7 +2168,7 @@ async function loadCurrenciesPage(forceRefresh) {
     // Black market (PrivatBank cash rates) — same order as pinned
     const bmEl = document.getElementById('blackMarketRates');
     try {
-      const bmRes = await fetch('https://darkblue-toad-531724.hostingersite.com/api/api/rates/black');
+      const bmRes = await fetch('https://darkblue-toad-531724.hostingersite.com/api/rates/black');
       const bmData = await bmRes.json();
       const bmMap = {};
       bmData.forEach(r => { bmMap[r.ccy] = r; });
