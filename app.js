@@ -90,7 +90,7 @@ function onGlobalSearch() {
   if (results.length === 0) {
     resultsEl.innerHTML = '<div class="search-no-results">Нічого не знайдено</div>';
   } else {
-    resultsEl.innerHTML = results.map((r, i) =>
+    resultsEl.innerHTML = sanitize(results.map((r, i) =>
       `<div class="search-result-item" onclick="globalSearchResults[${i}]()">
         <span class="search-result-icon">${r.icon}</span>
         <div class="search-result-text">
@@ -99,7 +99,7 @@ function onGlobalSearch() {
         </div>
         <span class="search-result-badge ${r.badgeClass}">${r.badge}</span>
       </div>`
-    ).join('');
+    ).join(''));
     // Store action callbacks
     window.globalSearchResults = results.map(r => r.action);
   }
@@ -130,6 +130,12 @@ function esc(str) {
   const d = document.createElement('div');
   d.textContent = str;
   return d.innerHTML;
+}
+
+// Sanitize HTML for innerHTML (DOMPurify as second layer)
+function sanitize(html) {
+  if (typeof DOMPurify !== 'undefined') return DOMPurify.sanitize(html);
+  return html;
 }
 
 async function hashPin(pin) {
@@ -1630,7 +1636,7 @@ function openInvestmentDetail(id) {
   const detail = document.getElementById('investmentDetail');
   detail.style.display = 'block';
 
-  detail.querySelector('#investmentDetailContent').innerHTML = `
+  detail.querySelector('#investmentDetailContent').innerHTML = sanitize(`
     <div class="detail-header">
       <div class="detail-name">${esc(item.name)}</div>
       <span class="detail-type-badge ${typeColors[item.type] || ''}">${typeLabels[item.type] || item.type}</span>
@@ -1714,7 +1720,7 @@ function openInvestmentDetail(id) {
       <button class="btn-export" onclick="closeInvestmentDetail(); editPortfolioItem('${item.id}')">✎ Редагувати</button>
       <button class="btn-clear" onclick="if(confirm('Видалити це вкладення?')){deletePortfolioItem('${item.id}'); closeInvestmentDetail();}">✕ Видалити</button>
     </div>
-  `;
+  `);
 
   detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -1789,7 +1795,7 @@ function renderPortfolio() {
 
   const typeLabels = { ovdp: 'ОВДП', deposit: 'Депозит', other: 'Інше' };
 
-  list.innerHTML = portfolioItems.map(p => {
+  list.innerHTML = sanitize(portfolioItems.map(p => {
     const isActive = p.dateEnd ? new Date(p.dateEnd) > now : true;
     if (isActive) activeCount++;
     totalInvested += p.invested;
@@ -1856,7 +1862,7 @@ function renderPortfolio() {
         </div>
       </div>
     `;
-  }).join('');
+  }).join(''));
 
   // Dashboard
   summary.style.display = 'block';
@@ -1914,7 +1920,7 @@ function renderExpiryAlerts(items) {
     return;
   }
 
-  container.innerHTML = alerts.map(a => {
+  container.innerHTML = sanitize(alerts.map(a => {
     const isUrgent = a.daysLeft <= 1;
     const cls = isUrgent ? 'expiry-alert-urgent' : 'expiry-alert-warn';
     const icon = isUrgent ? '🔴' : '⚠️';
@@ -1927,7 +1933,7 @@ function renderExpiryAlerts(items) {
         <span class="expiry-alert-name">${esc(a.name)}</span> — завершується <span class="expiry-alert-days">${daysText}</span>
       </div>
     </div>`;
-  }).join('');
+  }).join(''));
 }
 
 // Notification/Telegram functions moved to telegram.js
