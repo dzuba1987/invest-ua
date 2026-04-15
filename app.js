@@ -2418,6 +2418,162 @@ async function verifyPin() {
 }
 
 // ================================================================
+// ==================== CREDIT CALCULATOR =========================
+// ================================================================
+
+let creditChartInstance = null;
+
+function calculateCredit() {
+  const amount = parseNum(document.getElementById('creditAmount').value);
+  const rate = parseNum(document.getElementById('creditRate').value);
+  const months = parseInt(document.getElementById('creditMonths').value);
+  const down = parseNum(document.getElementById('creditDown').value) || 0;
+
+  if (isNaN(amount) || amount <= 0 || isNaN(rate) || rate <= 0 || isNaN(months) || months <= 0) return;
+
+  const principal = amount - down;
+  if (principal <= 0) return;
+
+  const monthlyRate = rate / 100 / 12;
+
+  // Annuity formula: M = P * r * (1+r)^n / ((1+r)^n - 1)
+  const pow = Math.pow(1 + monthlyRate, months);
+  const monthly = principal * monthlyRate * pow / (pow - 1);
+  const totalPay = monthly * months;
+  const overpay = totalPay - principal;
+  const effRate = (overpay / principal) * 100;
+
+  document.getElementById('creditMonthly').textContent = formatShort(Math.round(monthly)) + ' грн';
+  document.getElementById('creditTotalPay').textContent = formatShort(Math.round(totalPay)) + ' грн';
+  document.getElementById('creditOverpay').textContent = '+' + formatShort(Math.round(overpay)) + ' грн';
+  document.getElementById('creditEffRate').textContent = effRate.toFixed(1) + '%';
+  document.getElementById('creditResults').style.display = 'block';
+
+  // Build schedule
+  const schedule = [];
+  let balance = principal;
+  let totalInterest = 0;
+  let totalPrincipal = 0;
+  const labels = [];
+  const principalLine = [];
+  const interestLine = [];
+  const balanceLine = [];
+
+  for (let i = 1; i <= months; i++) {
+    const interest = balance * monthlyRate;
+    const princPart = monthly - interest;
+    balance -= princPart;
+    if (balance < 0) balance = 0;
+    totalInterest += interest;
+    totalPrincipal += princPart;
+
+    schedule.push({
+      month: i,
+      payment: monthly,
+      principal: princPart,
+      interest: interest,
+      balance: balance
+    });
+
+    labels.push(i);
+    principalLine.push(Math.round(princPart));
+    interestLine.push(Math.round(interest));
+    balanceLine.push(Math.round(balance));
+  }
+
+  // Chart
+  const canvas = document.getElementById('creditChart');
+  if (canvas && typeof Chart !== 'undefined') {
+    if (creditChartInstance) creditChartInstance.destroy();
+    creditChartInstance = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Тіло кредиту',
+            data: principalLine,
+            backgroundColor: '#3b82f6',
+            borderRadius: 2,
+          },
+          {
+            label: 'Відсотки',
+            data: interestLine,
+            backgroundColor: '#f87171',
+            borderRadius: 2,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: ctx => ctx.dataset.label + ': ' + formatShort(ctx.raw) + ' грн'
+            }
+          }
+        },
+        scales: {
+          x: {
+            stacked: true,
+            ticks: { color: '#64748b', font: { size: 10 } },
+            grid: { display: false },
+            title: { display: true, text: 'Місяць', color: '#475569', font: { size: 11 } }
+          },
+          y: {
+            stacked: true,
+            ticks: { color: '#64748b', font: { size: 10 }, callback: v => formatShort(v) },
+            grid: { color: '#1e293b' }
+          }
+        }
+      }
+    });
+  }
+
+  // Schedule table
+  const scheduleEl = document.getElementById('creditSchedule');
+  scheduleEl.innerHTML = `<table class="credit-schedule-table">
+    <thead><tr>
+      <th>Міс.</th><th>Платіж</th><th>Тіло</th><th>Відсотки</th><th>Залишок</th>
+    </tr></thead>
+    <tbody>${schedule.map(s => `<tr>
+      <td>${s.month}</td>
+      <td>${formatShort(Math.round(s.payment))}</td>
+      <td class="cr-principal">${formatShort(Math.round(s.principal))}</td>
+      <td class="cr-interest">${formatShort(Math.round(s.interest))}</td>
+      <td class="cr-balance">${formatShort(Math.round(s.balance))}</td>
+    </tr>`).join('')}
+    <tr style="font-weight:700;border-top:2px solid #334155">
+      <td>Всього</td>
+      <td>${formatShort(Math.round(totalPay))}</td>
+      <td class="cr-principal">${formatShort(Math.round(totalPrincipal))}</td>
+      <td class="cr-interest">${formatShort(Math.round(totalInterest))}</td>
+      <td>—</td>
+    </tr></tbody></table>`;
+}
+
+function toggleCreditSchedule() {
+  const el = document.getElementById('creditSchedule');
+  const btn = document.getElementById('btnCreditSchedule');
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+    btn.textContent = 'Сховати';
+  } else {
+    el.style.display = 'none';
+    btn.textContent = 'Показати';
+  }
+}
+
+function updateCreditCalcVisibility() {
+  const section = document.getElementById('creditCalcSection');
+  if (section) {
+    section.style.display = currentUser ? 'block' : 'none';
+  }
+}
+
+// ================================================================
 // ==================== INITIALIZATION ============================
 // ================================================================
 
@@ -2433,9 +2589,5 @@ async function verifyPin() {
   }
 })();
 
-// Apply saved language
-const savedLang = localStorage.getItem('appLang');
-if (savedLang) setAppLanguage(savedLang);
-
-initFirebase();
+// loadFromStorage called here, Firebase init happens in firebase.js after it loads
 loadFromStorage();

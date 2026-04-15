@@ -94,6 +94,7 @@ function updateAuthUI() {
   updatePortfolioUI();
   updateProfileUI();
   checkAnalyticsReady();
+  if (typeof updateCreditCalcVisibility === 'function') updateCreditCalcVisibility();
 }
 
 function googleLogin() {
@@ -313,3 +314,9 @@ async function loadProfileFromFirestore() {
     console.warn('Profile load failed:', e);
   }
 }
+
+// ---- Init on load ----
+const savedLang = localStorage.getItem('appLang');
+if (savedLang) setAppLanguage(savedLang);
+
+initFirebase();

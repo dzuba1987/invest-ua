@@ -132,6 +132,34 @@ button:hover { opacity: 0.9; }
   flex-shrink: 0;
 }
 /* Calculator disclaimer */
+/* Credit schedule table */
+.credit-schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.credit-schedule-table th {
+  background: #0f172a;
+  color: #64748b;
+  padding: 8px 6px;
+  text-align: right;
+  font-weight: 600;
+  border-bottom: 1px solid #334155;
+  position: sticky;
+  top: 0;
+}
+.credit-schedule-table th:first-child { text-align: left; }
+.credit-schedule-table td {
+  padding: 6px;
+  border-bottom: 1px solid #1e293b;
+  color: #e2e8f0;
+  text-align: right;
+}
+.credit-schedule-table td:first-child { text-align: left; color: #64748b; }
+.credit-schedule-table .cr-principal { color: #3b82f6; }
+.credit-schedule-table .cr-interest { color: #f87171; }
+.credit-schedule-table .cr-balance { color: #94a3b8; }
+
 .calc-disclaimer {
   margin-top: 16px;
   padding: 12px 14px;

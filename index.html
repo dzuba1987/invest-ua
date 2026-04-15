@@ -276,6 +276,69 @@
       </div>
       <button class="btn-export" onclick="exportToExcel()" style="margin-top:12px;" data-i18n="saved.export">Експорт у Excel</button>
     </div>
+
+    <!-- Credit calculator (logged in only) -->
+    <div id="creditCalcSection" style="display:none">
+      <div class="a-card" style="margin-top:24px">
+        <h3>Кредитний калькулятор</h3>
+        <p style="font-size:12px;color:#64748b;margin-bottom:14px">Розрахунок щомісячного платежу та загальної вартості кредиту (ануїтет)</p>
+        <div class="form-grid">
+          <div class="field">
+            <label>Сума кредиту (грн)</label>
+            <input type="text" id="creditAmount" placeholder="500 000" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label>Річна ставка (%)</label>
+            <input type="text" id="creditRate" placeholder="20" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label>Термін (місяців)</label>
+            <input type="text" id="creditMonths" placeholder="24" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label>Перший внесок (грн)</label>
+            <input type="text" id="creditDown" placeholder="0" inputmode="decimal">
+          </div>
+        </div>
+        <button onclick="calculateCredit()" style="max-width:250px">Розрахувати кредит</button>
+      </div>
+
+      <div id="creditResults" style="display:none">
+        <div class="dash-grid" style="margin-top:12px">
+          <div class="dash-card">
+            <div class="dash-card-label">Щомісячний платіж</div>
+            <div class="dash-card-value" id="creditMonthly">0 грн</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-label">Загальна сума виплат</div>
+            <div class="dash-card-value" id="creditTotalPay">0 грн</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-label">Переплата</div>
+            <div class="dash-card-value" style="color:#f87171" id="creditOverpay">0 грн</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-label">Ефективна ставка</div>
+            <div class="dash-card-value dash-green" id="creditEffRate">0%</div>
+          </div>
+        </div>
+
+        <div class="a-card" style="margin-top:12px">
+          <h3>Графік платежів</h3>
+          <div style="position:relative;height:280px">
+            <canvas id="creditChart"></canvas>
+          </div>
+        </div>
+
+        <div class="a-card" style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <h3 style="margin:0">Графік погашення</h3>
+            <button class="btn-clear" onclick="toggleCreditSchedule()" style="width:auto;padding:6px 14px;font-size:12px;margin:0" id="btnCreditSchedule">Показати</button>
+          </div>
+          <div id="creditSchedule" style="display:none;max-height:400px;overflow-y:auto"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ====== TAB 2: ANALYTICS ====== -->
@@ -773,8 +836,8 @@
 <script src="i18n.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
-<script src="firebase.js"></script>
-<script src="telegram.js"></script>
+<script src="modules/firebase.js"></script>
+<script src="modules/telegram.js"></script>
 
 </body>
 </html>
