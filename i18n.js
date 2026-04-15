@@ -1,7 +1,7 @@
 const I18N = {
   uk: {
     // Header
-    'app.subtitle': 'ОВДП, депозити та інші вкладення',
+    'app.subtitle': 'Портфель вкладень',
     'help': 'Довідка',
     'login': 'Увійти через Google',
     'logout': 'Вийти',
@@ -179,7 +179,7 @@ const I18N = {
 
   en: {
     // Header
-    'app.subtitle': 'Government bonds, deposits & more',
+    'app.subtitle': 'Investment portfolio',
     'help': 'Help',
     'login': 'Sign in with Google',
     'logout': 'Sign out',

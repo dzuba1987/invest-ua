@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-<title>Invest UA — ОВДП, депозити та вкладення</title>
+<title>Invest UA — портфель вкладень</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <!-- Firebase -->
@@ -29,7 +29,7 @@
   </div>
 
   <h1>Invest UA</h1>
-  <p class="subtitle" data-i18n="app.subtitle">ОВДП, депозити та інші вкладення</p>
+  <p class="subtitle" data-i18n="app.subtitle">Портфель вкладень</p>
 
   <!-- Auth bar -->
   <div class="auth-bar" id="authBar">
@@ -300,7 +300,10 @@
             <input type="text" id="creditDown" placeholder="0" inputmode="decimal">
           </div>
         </div>
-        <button onclick="calculateCredit()" style="max-width:250px">Розрахувати кредит</button>
+        <div class="btn-row" style="max-width:400px">
+          <button onclick="calculateCredit()">Розрахувати кредит</button>
+          <button class="btn-clear" onclick="clearCredit()">Очистити</button>
+        </div>
       </div>
 
       <div id="creditResults" style="display:none">

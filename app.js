@@ -2554,6 +2554,15 @@ function calculateCredit() {
     </tr></tbody></table>`;
 }
 
+function clearCredit() {
+  document.getElementById('creditAmount').value = '';
+  document.getElementById('creditRate').value = '';
+  document.getElementById('creditMonths').value = '';
+  document.getElementById('creditDown').value = '';
+  document.getElementById('creditResults').style.display = 'none';
+  if (creditChartInstance) { creditChartInstance.destroy(); creditChartInstance = null; }
+}
+
 function toggleCreditSchedule() {
   const el = document.getElementById('creditSchedule');
   const btn = document.getElementById('btnCreditSchedule');
