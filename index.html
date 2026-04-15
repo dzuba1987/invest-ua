@@ -508,18 +508,29 @@
       <div class="a-card" id="portfolioFormCard" style="display:none">
         <h3 data-i18n="portfolio.title">Мої вкладення</h3>
         <div class="form-grid" style="margin-bottom:16px">
-          <div class="field field-full">
+          <!-- Row 1: Назва | Тип -->
+          <div class="field">
             <label data-i18n="portfolio.name">Назва вкладення</label>
             <input type="text" id="pName" placeholder="ОВДП серія 456">
           </div>
           <div class="field">
             <label data-i18n="portfolio.type">Тип</label>
-            <select id="pType" style="width:100%;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none">
+            <select id="pType" onchange="togglePortfolioBondFields()" style="width:100%;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none">
               <option value="ovdp" data-i18n="portfolio.typeOvdp">ОВДП</option>
               <option value="deposit" data-i18n="portfolio.typeDeposit">Депозит</option>
               <option value="other" data-i18n="portfolio.typeOther">Інше</option>
             </select>
           </div>
+          <!-- Row 2: Ціна | Кількість (ОВДП) -->
+          <div class="field" id="pBondPriceField">
+            <label data-i18n="portfolio.bondPrice">Вартість 1 облігації (грн)</label>
+            <input type="text" id="pBondPrice" placeholder="1 000" inputmode="decimal">
+          </div>
+          <div class="field" id="pBondCountField">
+            <label data-i18n="portfolio.bondCount">Кількість облігацій</label>
+            <input type="text" id="pBondCount" placeholder="500" inputmode="numeric">
+          </div>
+          <!-- Row 3: Сума | Ставка -->
           <div class="field">
             <label>Сума вкладення (грн)</label>
             <input type="text" id="pInvested" placeholder="500 000" inputmode="decimal">
@@ -528,10 +539,7 @@
             <label data-i18n="portfolio.rate">Річна ставка (%)</label>
             <input type="text" id="pRate" placeholder="15" inputmode="decimal">
           </div>
-          <div class="field">
-            <label data-i18n="portfolio.tax">Податок від доходу (%)</label>
-            <input type="text" id="pTax" placeholder="19.5" inputmode="decimal">
-          </div>
+          <!-- Row 4: Дати -->
           <div class="field">
             <label data-i18n="portfolio.dateStart">Дата початку</label>
             <input type="date" id="pDateStart">
@@ -540,6 +548,12 @@
             <label data-i18n="portfolio.dateEnd">Дата завершення</label>
             <input type="date" id="pDateEnd">
           </div>
+          <!-- Row 5: Податок -->
+          <div class="field" id="pTaxField">
+            <label data-i18n="portfolio.tax">Податок від доходу (%)</label>
+            <input type="text" id="pTax" placeholder="19.5" inputmode="decimal">
+          </div>
+          <!-- Row 6: Банк | Картка -->
           <div class="field">
             <label data-i18n="portfolio.bank">Виведення коштів (банк)</label>
             <input type="text" id="pBank" placeholder="Приватбанк">
@@ -550,6 +564,7 @@
             <input type="text" id="pCard" placeholder="5168 **** **** 1234">
             <p class="field-hint">Не передається третім особам, лише для вашої зручності</p>
           </div>
+          <!-- Row 7: Нотатки (full width) -->
           <div class="field field-full">
             <label data-i18n="portfolio.notes">Нотатки</label>
             <input type="text" id="pNotes" placeholder="Додаткова інформація">

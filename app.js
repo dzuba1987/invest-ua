@@ -256,6 +256,17 @@ document.getElementById('bondName').addEventListener('input', () => calculate())
   document.getElementById(id).addEventListener('change', () => update(id));
 });
 
+// ============ PORTFOLIO BOND FIELDS REACTIVE ============
+['pBondPrice', 'pBondCount'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    const price = parseNum(document.getElementById('pBondPrice').value);
+    const count = parseNum(document.getElementById('pBondCount').value);
+    if (!isNaN(price) && !isNaN(count) && price > 0 && count > 0) {
+      document.getElementById('pInvested').value = formatShort(Math.round(price * count));
+    }
+  });
+});
+
 // ============ COMPOUND FIELDS REACTIVE ============
 ['compoundRate', 'compoundIndex', 'compoundTax'].forEach(id => {
   document.getElementById(id).addEventListener('input', () => calculate());
@@ -1495,6 +1506,7 @@ function togglePortfolioForm(forceOpen) {
     toggleBtn.textContent = '− ' + (t('portfolio.cancel') || 'Скасувати');
     toggleBtn.classList.remove('btn-save');
     toggleBtn.classList.add('btn-export');
+    togglePortfolioBondFields();
   } else {
     card.style.display = 'none';
     toggleBtn.textContent = '+ ' + (t('portfolio.addNew') || 'Новий запис');
@@ -1506,6 +1518,13 @@ function togglePortfolioForm(forceOpen) {
     addBtn.classList.remove('btn-export');
     addBtn.classList.add('btn-save');
   }
+}
+
+function togglePortfolioBondFields() {
+  const isOvdp = document.getElementById('pType').value === 'ovdp';
+  document.getElementById('pBondPriceField').style.display = isOvdp ? '' : 'none';
+  document.getElementById('pBondCountField').style.display = isOvdp ? '' : 'none';
+  document.getElementById('pTaxField').style.display = isOvdp ? 'none' : '';
 }
 
 function togglePortfolioCompound() {
@@ -1534,6 +1553,8 @@ function updatePortfolioUI() {
 function addPortfolioItem() {
   const name = document.getElementById('pName').value.trim();
   const type = document.getElementById('pType').value;
+  const bondPrice = parseNum(document.getElementById('pBondPrice').value);
+  const bondCount = parseNum(document.getElementById('pBondCount').value);
   const invested = parseNum(document.getElementById('pInvested').value);
   const rate = parseNum(document.getElementById('pRate').value);
   const tax = parseNum(document.getElementById('pTax').value);
@@ -1560,6 +1581,8 @@ function addPortfolioItem() {
   portfolioItems.push({
     id: Date.now(),
     name, type, invested, rate: isNaN(rate) ? null : rate,
+    bondPrice: type === 'ovdp' && !isNaN(bondPrice) && bondPrice > 0 ? bondPrice : null,
+    bondCount: type === 'ovdp' && !isNaN(bondCount) && bondCount > 0 ? Math.floor(bondCount) : null,
     tax: isNaN(tax) ? null : tax,
     dateStart, dateEnd, bank, card, notes,
     compound: isCompound,
@@ -1574,6 +1597,8 @@ function addPortfolioItem() {
 
   // Clear form
   document.getElementById('pName').value = '';
+  document.getElementById('pBondPrice').value = '';
+  document.getElementById('pBondCount').value = '';
   document.getElementById('pInvested').value = '';
   document.getElementById('pRate').value = '';
   document.getElementById('pTax').value = '';
@@ -1747,6 +1772,9 @@ function editPortfolioItem(id) {
 
   document.getElementById('pName').value = item.name || '';
   document.getElementById('pType').value = item.type || 'ovdp';
+  document.getElementById('pBondPrice').value = item.bondPrice ? formatShort(item.bondPrice) : '';
+  document.getElementById('pBondCount').value = item.bondCount || '';
+  togglePortfolioBondFields();
   document.getElementById('pInvested').value = item.invested ? Math.round(item.invested).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '';
   document.getElementById('pRate').value = item.rate || '';
   document.getElementById('pTax').value = item.tax || '';
