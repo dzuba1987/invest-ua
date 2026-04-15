@@ -1,7 +1,5 @@
 // ============ SHARED GLOBALS (used across app.js, firebase.js, telegram.js) ============
 var _skipFirestoreSync = false;
-if (typeof saveToFirestore === 'undefined') { function saveToFirestore() {} }
-if (typeof saveProfileToFirestore === 'undefined') { function saveProfileToFirestore() {} }
 
 // ============ GLOBAL SEARCH ============
 function onGlobalSearch() {
@@ -137,9 +135,9 @@ function esc(str) {
   return d.innerHTML;
 }
 
-// Sanitize HTML for innerHTML (DOMPurify as second layer)
+// Sanitize HTML for innerHTML (DOMPurify as second layer, allows onclick for UI)
 function sanitize(html) {
-  if (typeof DOMPurify !== 'undefined') return DOMPurify.sanitize(html);
+  if (typeof DOMPurify !== 'undefined') return DOMPurify.sanitize(html, { ADD_ATTR: ['onclick', 'style', 'data-cc', 'data-name'] });
   return html;
 }
 
