@@ -5,7 +5,7 @@
 let firebaseReady = false;
 let currentUser = null;
 let db = null;
-let _skipFirestoreSync = false;
+// _skipFirestoreSync declared in app.js as var (shared global)
 
 function initFirebase() {
   if (!FIREBASE_CONFIG.apiKey) {

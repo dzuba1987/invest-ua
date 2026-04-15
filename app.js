@@ -1,3 +1,8 @@
+// ============ SHARED GLOBALS (used across app.js, firebase.js, telegram.js) ============
+var _skipFirestoreSync = false;
+if (typeof saveToFirestore === 'undefined') { function saveToFirestore() {} }
+if (typeof saveProfileToFirestore === 'undefined') { function saveProfileToFirestore() {} }
+
 // ============ GLOBAL SEARCH ============
 function onGlobalSearch() {
   const q = document.getElementById('globalSearchInput').value.toLowerCase().trim();
@@ -1153,7 +1158,7 @@ const origRenderSaved = renderSaved;
 renderSaved = function() {
   origRenderSaved();
   saveToStorage();
-  if (!_skipFirestoreSync) saveToFirestore();
+  if (!_skipFirestoreSync && typeof saveToFirestore === 'function') saveToFirestore();
 };
 
 // ============ PWA INSTALL ============
