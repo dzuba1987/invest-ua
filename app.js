@@ -60,7 +60,7 @@ function onGlobalSearch() {
         results.push({
           icon: '💱',
           title: r.cc + ' — ' + r.txt,
-          sub: r.rate.toFixed(4) + ' ₴',
+          sub: r.rate.toFixed(4) + ' грн',
           badge: 'Валюта',
           badgeClass: 'search-badge-currency',
           action: () => { goToTab('currencies'); clearGlobalSearch(); }
@@ -153,11 +153,14 @@ function switchMainTab(tab, btn) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('panel-' + tab).classList.add('active');
+  localStorage.setItem('activeTab', tab);
   if (tab === 'analytics') checkAnalyticsReady();
   if (tab === 'portfolio') updatePortfolioUI();
   if (tab === 'currencies') loadCurrenciesPage();
+  if (tab === 'dreams') updateDreamsUI();
   if (tab === 'profile') { updateProfileUI(); renderDashboardCurrencySettings(); }
 }
+
 
 // ============ STATE ============
 let activeField = null;
@@ -254,6 +257,15 @@ document.getElementById('bondName').addEventListener('input', () => calculate())
 ['dateStart', 'dateEnd'].forEach(id => {
   document.getElementById(id).addEventListener('input', () => update(id));
   document.getElementById(id).addEventListener('change', () => update(id));
+});
+
+// ============ AUTO-FORMAT MONEY FIELDS ============
+['pBondPrice', 'pBondCount', 'pInvested', 'pRate', 'pTax', 'pIndex',
+ 'pCompoundRate', 'pCompoundIndex',
+ 'dreamTarget', 'dreamSaved', 'dreamMonthly', 'dreamExpenses',
+ 'creditAmount', 'creditRate', 'creditDown'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', () => formatInput(el));
 });
 
 // ============ PORTFOLIO BOND FIELDS REACTIVE ============
@@ -552,8 +564,8 @@ function calculate() {
       const yLabel = y + (y === 1 ? ' рік' : y < 5 ? ' роки' : ' років');
       cmpHtmlRows += `<div class="compound-compare-row">
         <span class="cc-label">${yLabel}</span>
-        <span class="cc-value">${formatNum(simpleVal)} ₴</span>
-        <span class="cc-diff">${formatNum(cmpBalance)} ₴ <span style="font-size:11px;color:#4ade80">(+${formatNum(diff)})</span></span>
+        <span class="cc-value">${formatNum(simpleVal)} грн</span>
+        <span class="cc-diff">${formatNum(cmpBalance)} грн <span style="font-size:11px;color:#4ade80">(+${formatNum(diff)})</span></span>
       </div>`;
     }
     compareEl.innerHTML = cmpHtml + cmpHtmlRows;
@@ -1205,7 +1217,7 @@ function checkAnalyticsReady() {
   const empty = document.getElementById('analyticsEmpty');
   const content = document.getElementById('analyticsContent');
 
-  if (!currentUser) {
+  if (typeof currentUser === 'undefined' || !currentUser) {
     authGate.style.display = 'block';
     empty.style.display = 'none';
     content.style.display = 'none';
@@ -1550,7 +1562,7 @@ function togglePortfolioCompound() { togglePortfolioTypeFields(); }
 function updatePortfolioUI() {
   const auth = document.getElementById('portfolioAuth');
   const content = document.getElementById('portfolioContent');
-  if (currentUser) {
+  if (typeof currentUser !== 'undefined' && currentUser) {
     auth.style.display = 'none';
     content.style.display = 'block';
     renderPortfolio();
@@ -2172,9 +2184,9 @@ function renderPortfolioChart(items) {
     <div class="chart-summary">
       <div class="chart-summary-date">На ${endDateStr}</div>
       <div class="chart-summary-grid">
-        <div><div class="chart-summary-label">Вкладено</div><div class="chart-summary-value" style="color:#3b82f6">${formatNum(endInvested)} ₴</div></div>
-        <div><div class="chart-summary-label">Вартість</div><div class="chart-summary-value">${formatNum(endValue)} ₴</div></div>
-        <div><div class="chart-summary-label">Прибуток</div><div class="chart-summary-value" style="color:#4ade80">+${formatNum(endProfit)} ₴</div></div>
+        <div><div class="chart-summary-label">Вкладено</div><div class="chart-summary-value" style="color:#3b82f6">${formatNum(endInvested)} грн</div></div>
+        <div><div class="chart-summary-label">Вартість</div><div class="chart-summary-value">${formatNum(endValue)} грн</div></div>
+        <div><div class="chart-summary-label">Прибуток</div><div class="chart-summary-value" style="color:#4ade80">+${formatNum(endProfit)} грн</div></div>
       </div>
     </div>`;
 
@@ -2356,7 +2368,7 @@ async function loadCurrenciesPage(forceRefresh) {
       if (!rate) return '';
       return `<div class="currency-pinned-card">
         <div class="currency-pinned-code">${cc}</div>
-        <div class="currency-pinned-rate">${rate.toFixed(4)} ₴</div>
+        <div class="currency-pinned-rate">${rate.toFixed(4)} грн</div>
         <div class="currency-pinned-name">${info ? info.txt : ''}</div>
       </div>`;
     }).join('');
@@ -2383,12 +2395,12 @@ async function loadCurrenciesPage(forceRefresh) {
         const changeColor = change > 0 ? '#f87171' : change < 0 ? '#4ade80' : '#475569';
         const changeIcon = change > 0 ? '↑' : change < 0 ? '↓' : '→';
         const changeText = change !== 0 ? `<span style="color:${changeColor};font-size:12px;font-weight:600">${changeIcon} ${change > 0 ? '+' : ''}${change}%</span>` : '';
-        const openInfo = r.open_sale ? `<div style="font-size:10px;color:#475569;margin-top:2px">Відкриття: ${r.open_sale} ₴</div>` : '';
+        const openInfo = r.open_sale ? `<div style="font-size:10px;color:#475569;margin-top:2px">Відкриття: ${r.open_sale} грн</div>` : '';
         return `<div class="currency-pinned-card">
           <div class="currency-pinned-code" style="color:#f59e0b">${r.ccy} ${changeText}</div>
           <div style="display:flex;justify-content:center;gap:16px;margin:6px 0">
-            <div><div style="font-size:10px;color:#64748b">Купівля</div><div class="currency-pinned-rate">${buy.toFixed(2)} ₴</div></div>
-            <div><div style="font-size:10px;color:#64748b">Продаж</div><div class="currency-pinned-rate">${sale.toFixed(2)} ₴</div></div>
+            <div><div style="font-size:10px;color:#64748b">Купівля</div><div class="currency-pinned-rate">${buy.toFixed(2)} грн</div></div>
+            <div><div style="font-size:10px;color:#64748b">Продаж</div><div class="currency-pinned-rate">${sale.toFixed(2)} грн</div></div>
           </div>
           ${openInfo}
           <div class="currency-pinned-name">${diffNbu !== null ? 'НБУ ' + (diffNbu > 0 ? '+' : '') + diffNbu + '%' : ''}</div>
@@ -2455,7 +2467,7 @@ function toggleDashboardCurrency(code) {
       if (!rate) return '';
       return `<div class="currency-pinned-card">
         <div class="currency-pinned-code">${cc}</div>
-        <div class="currency-pinned-rate">${rate.toFixed(4)} ₴</div>
+        <div class="currency-pinned-rate">${rate.toFixed(4)} грн</div>
         <div class="currency-pinned-name">${info ? info.txt : ''}</div>
       </div>`;
     }).join('');
@@ -2615,6 +2627,452 @@ async function verifyPin() {
 }
 
 // ================================================================
+// ==================== DREAMS ====================================
+
+let dreamItems = [];
+let dreamsPieInstance = null;
+
+function updateDreamsUI() {
+  const auth = document.getElementById('dreamsAuth');
+  const content = document.getElementById('dreamsContent');
+  if (typeof currentUser !== 'undefined' && currentUser) {
+    auth.style.display = 'none';
+    content.style.display = 'block';
+    renderDreams();
+  } else {
+    auth.style.display = 'block';
+    content.style.display = 'none';
+  }
+}
+
+let dreamMonthlyManual = false;
+
+function calcDreamMonthly() {
+  if (dreamMonthlyManual) return;
+  const target = parseNum(document.getElementById('dreamTarget').value) || 0;
+  const saved = parseNum(document.getElementById('dreamSaved').value) || 0;
+  const dateEnd = document.getElementById('dreamDateEnd').value;
+  if (target <= 0 || !dateEnd) return;
+  const remaining = target - saved;
+  if (remaining <= 0) { document.getElementById('dreamMonthly').value = '0'; return; }
+  const now = new Date();
+  const end = new Date(dateEnd);
+  const months = Math.max(1, Math.ceil((end - now) / (30.44 * 86400000)));
+  document.getElementById('dreamMonthly').value = formatShort(Math.ceil(remaining / months));
+}
+
+// Auto-calc when target, saved or dateEnd changes
+['dreamTarget', 'dreamSaved'].forEach(id => {
+  document.getElementById(id).addEventListener('input', calcDreamMonthly);
+});
+document.getElementById('dreamDateEnd').addEventListener('change', calcDreamMonthly);
+// Mark manual if user edits monthly
+document.getElementById('dreamMonthly').addEventListener('input', () => { dreamMonthlyManual = true; });
+
+function toggleDreamForm(forceOpen) {
+  const card = document.getElementById('dreamFormCard');
+  const btn = document.getElementById('btnToggleDreamForm');
+  const isHidden = card.style.display === 'none';
+  const shouldOpen = forceOpen !== undefined ? forceOpen : isHidden;
+  if (shouldOpen) {
+    card.style.display = 'block';
+    btn.textContent = '− Скасувати';
+    btn.classList.remove('btn-save');
+    btn.classList.add('btn-export');
+    dreamMonthlyManual = false;
+    if (!document.getElementById('dreamDateStart').value) {
+      document.getElementById('dreamDateStart').value = new Date().toISOString().split('T')[0];
+    }
+  } else {
+    card.style.display = 'none';
+    btn.textContent = '+ Нова мрія';
+    btn.classList.remove('btn-export');
+    btn.classList.add('btn-save');
+    const addBtn = document.getElementById('btnAddDream');
+    addBtn.textContent = 'Додати мрію';
+    addBtn.classList.remove('btn-export');
+    addBtn.classList.add('btn-save');
+  }
+}
+
+function addDream() {
+  const name = document.getElementById('dreamName').value.trim();
+  const target = parseNum(document.getElementById('dreamTarget').value);
+  const saved = parseNum(document.getElementById('dreamSaved').value) || 0;
+  const monthly = parseNum(document.getElementById('dreamMonthly').value) || 0;
+  const dateStart = document.getElementById('dreamDateStart').value;
+  const dateEnd = document.getElementById('dreamDateEnd').value;
+  const notes = document.getElementById('dreamNotes').value.trim();
+
+  if (!name || isNaN(target) || target <= 0) {
+    const err = document.getElementById('dreamError');
+    err.textContent = 'Вкажіть назву та бажану суму';
+    err.style.display = 'block';
+    return;
+  }
+  document.getElementById('dreamError').style.display = 'none';
+
+  dreamItems.push({
+    id: Date.now(), name, target, saved, monthly,
+    dateStart, dateEnd, notes,
+    createdAt: new Date().toISOString()
+  });
+
+  renderDreams();
+  saveDreamsToFirestore();
+
+  // Clear form
+  document.getElementById('dreamName').value = '';
+  document.getElementById('dreamTarget').value = '';
+  document.getElementById('dreamSaved').value = '';
+  document.getElementById('dreamMonthly').value = '';
+  document.getElementById('dreamNotes').value = '';
+  toggleDreamForm(false);
+
+  const msg = document.getElementById('dreamSuccess');
+  msg.textContent = '✓ Мрію додано!';
+  msg.style.display = 'block';
+  msg.style.animation = 'none';
+  msg.offsetHeight;
+  msg.style.animation = 'fadeOut 3s forwards';
+  setTimeout(() => { msg.style.display = 'none'; }, 3000);
+}
+
+function deleteDream(id) {
+  dreamItems = dreamItems.filter(d => String(d.id) !== String(id));
+  renderDreams();
+  saveDreamsToFirestore();
+}
+
+function showDreamDeposit(id) {
+  const el = document.getElementById('dreamDeposit-' + id);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  if (el.style.display === 'block') {
+    const input = document.getElementById('dreamDepositAmount-' + id);
+    input.value = '';
+    input.focus();
+    input.addEventListener('input', () => formatInput(input), { once: false });
+  }
+}
+
+function addDreamDeposit(id) {
+  const input = document.getElementById('dreamDepositAmount-' + id);
+  const amount = parseNum(input.value);
+  if (isNaN(amount) || amount <= 0) return;
+
+  const item = dreamItems.find(d => String(d.id) === String(id));
+  if (!item) return;
+
+  item.saved = (item.saved || 0) + amount;
+
+  // Save deposit history
+  if (!item.deposits) item.deposits = [];
+  item.deposits.push({ amount, date: new Date().toISOString() });
+
+  renderDreams();
+  saveDreamsToFirestore();
+}
+
+let dreamDetailChartInstance = null;
+
+function openDreamDetail(id) {
+  const d = dreamItems.find(x => String(x.id) === String(id));
+  if (!d) return;
+
+  const now = new Date();
+  const progress = d.target > 0 ? Math.min(100, ((d.saved || 0) / d.target) * 100) : 0;
+  const remaining = Math.max(0, d.target - (d.saved || 0));
+  const netMonthly = d.monthly || 0;
+  const monthsLeft = netMonthly > 0 && remaining > 0 ? Math.ceil(remaining / netMonthly) : null;
+
+  let deadlineInfo = '';
+  if (d.dateEnd) {
+    const end = new Date(d.dateEnd);
+    const daysLeft = Math.ceil((end - now) / 86400000);
+    if (daysLeft <= 0) deadlineInfo = 'Термін минув';
+    else deadlineInfo = daysLeft + ' дн. (' + Math.ceil(daysLeft / 30) + ' міс.)';
+  }
+
+  // Deposits history
+  let depositsHtml = '';
+  if (d.deposits && d.deposits.length) {
+    depositsHtml = '<div class="a-card"><h3>Історія внесків</h3>' +
+      '<div style="max-height:300px;overflow-y:auto"><table class="credit-schedule-table"><thead><tr>' +
+      '<th style="text-align:left">Дата</th><th>Сума</th></tr></thead><tbody>' +
+      d.deposits.map(dep => '<tr><td>' + new Date(dep.date).toLocaleDateString('uk-UA') + '</td><td style="color:#4ade80">+' + formatNum(dep.amount) + ' грн</td></tr>').join('') +
+      '</tbody></table></div></div>';
+  }
+
+  document.getElementById('dreamsContent').style.display = 'none';
+  document.getElementById('dreamsDashboard').style.display = 'none';
+  const detail = document.getElementById('dreamDetail');
+  detail.style.display = 'block';
+
+  detail.querySelector('#dreamDetailContent').innerHTML = sanitize(`
+    <div class="dash-hero">
+      <div class="dash-hero-label">${esc(d.name)}</div>
+      <div class="dash-hero-value">${progress.toFixed(0)}%</div>
+      <div style="font-size:13px;color:#94a3b8;margin-top:4px">${formatNum(d.saved || 0)} з ${formatNum(d.target)} грн</div>
+      <div class="detail-progress" style="margin-top:10px;width:100%"><div class="detail-progress-bar" style="width:${progress.toFixed(1)}%"></div></div>
+      <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap">
+        <button class="btn-save" onclick="depositDreamFromDetail('${d.id}')" style="width:auto;padding:8px 16px;margin:0">+ Внести кошти</button>
+        <button class="btn-export" onclick="editDreamFromDetail('${d.id}')" style="width:auto;padding:8px 16px;margin:0">✎ Редагувати</button>
+        <button class="btn-clear" onclick="if(confirm('Видалити мрію?')){deleteDream('${d.id}');closeDreamDetail();}" style="width:auto;padding:8px 16px;margin:0">✕ Видалити</button>
+      </div>
+    </div>
+
+    <div style="position:relative;height:220px;margin:12px auto;max-width:280px">
+      <canvas id="dreamDetailPie"></canvas>
+    </div>
+
+    <div class="detail-grid">
+      <div class="detail-metric">
+        <div class="detail-metric-label">Накопичено</div>
+        <div class="detail-metric-value green">${formatNum(d.saved || 0)} грн</div>
+      </div>
+      <div class="detail-metric">
+        <div class="detail-metric-label">Залишилось</div>
+        <div class="detail-metric-value" style="color:#f87171">${formatNum(remaining)} грн</div>
+      </div>
+      ${d.monthly ? '<div class="detail-metric"><div class="detail-metric-label">Внесок / міс</div><div class="detail-metric-value">' + formatNum(d.monthly) + ' грн</div></div>' : ''}
+      ${monthsLeft ? '<div class="detail-metric"><div class="detail-metric-label">До цілі</div><div class="detail-metric-value">≈ ' + monthsLeft + ' міс.</div></div>' : ''}
+    </div>
+
+    <div class="a-card">
+      <h3>Деталі</h3>
+      ${d.dateStart ? '<div class="detail-info-row"><span class="detail-info-label">Створено</span><span class="detail-info-value">' + formatDate(d.dateStart) + '</span></div>' : ''}
+      ${d.dateEnd ? '<div class="detail-info-row"><span class="detail-info-label">Планую до</span><span class="detail-info-value">' + formatDate(d.dateEnd) + '</span></div>' : ''}
+      ${deadlineInfo ? '<div class="detail-info-row"><span class="detail-info-label">Залишилось часу</span><span class="detail-info-value">' + deadlineInfo + '</span></div>' : ''}
+      ${d.deposits ? '<div class="detail-info-row"><span class="detail-info-label">Внесків</span><span class="detail-info-value">' + d.deposits.length + '</span></div>' : ''}
+      ${d.notes ? '<div class="detail-info-row"><span class="detail-info-label">Нотатки</span><span class="detail-info-value">' + esc(d.notes) + '</span></div>' : ''}
+    </div>
+
+    ${depositsHtml}
+
+  `);
+
+  // Pie chart on detail
+  const pieCanvas = document.getElementById('dreamDetailPie');
+  if (pieCanvas && typeof Chart !== 'undefined') {
+    if (dreamDetailChartInstance) dreamDetailChartInstance.destroy();
+    dreamDetailChartInstance = new Chart(pieCanvas, {
+      type: 'doughnut',
+      data: {
+        labels: ['Накопичено', 'Залишилось'],
+        datasets: [{
+          data: [d.saved || 0, remaining],
+          backgroundColor: ['#4ade80', '#334155'],
+          borderColor: '#0f172a',
+          borderWidth: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '60%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: { label: ctx => ctx.label + ': ' + formatNum(ctx.raw) + ' грн' }
+          }
+        }
+      }
+    });
+  }
+
+  detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function editDreamFromDetail(id) {
+  // Close detail, show content, then edit
+  document.getElementById('dreamDetail').style.display = 'none';
+  document.getElementById('dreamsContent').style.display = 'block';
+  if (dreamDetailChartInstance) { dreamDetailChartInstance.destroy(); dreamDetailChartInstance = null; }
+  editDream(id);
+}
+
+function depositDreamFromDetail(id) {
+  // Close detail, show content with list, then open deposit form
+  document.getElementById('dreamDetail').style.display = 'none';
+  document.getElementById('dreamsContent').style.display = 'block';
+  if (dreamDetailChartInstance) { dreamDetailChartInstance.destroy(); dreamDetailChartInstance = null; }
+  renderDreams();
+  // Wait for DOM to update then show deposit
+  setTimeout(() => showDreamDeposit(id), 50);
+}
+
+function closeDreamDetail() {
+  document.getElementById('dreamDetail').style.display = 'none';
+  document.getElementById('dreamsContent').style.display = 'block';
+  if (dreamDetailChartInstance) { dreamDetailChartInstance.destroy(); dreamDetailChartInstance = null; }
+  renderDreams();
+}
+
+function editDream(id) {
+  const item = dreamItems.find(d => String(d.id) === String(id));
+  if (!item) return;
+  document.getElementById('dreamName').value = item.name || '';
+  document.getElementById('dreamTarget').value = item.target ? formatShort(item.target) : '';
+  document.getElementById('dreamSaved').value = item.saved ? formatShort(item.saved) : '';
+  document.getElementById('dreamMonthly').value = item.monthly ? formatShort(item.monthly) : '';
+  document.getElementById('dreamDateStart').value = item.dateStart || '';
+  document.getElementById('dreamDateEnd').value = item.dateEnd || '';
+  document.getElementById('dreamNotes').value = item.notes || '';
+
+  dreamItems = dreamItems.filter(d => String(d.id) !== String(id));
+  renderDreams();
+  saveDreamsToFirestore();
+
+  const btn = document.getElementById('btnAddDream');
+  btn.textContent = 'Зберегти зміни';
+  btn.classList.remove('btn-save');
+  btn.classList.add('btn-export');
+  toggleDreamForm(true);
+}
+
+function renderDreams() {
+  const list = document.getElementById('dreamsList');
+  const dashboard = document.getElementById('dreamsDashboard');
+
+  if (dreamItems.length === 0) {
+    list.innerHTML = '<div class="a-empty">Додайте свою першу фінансову мрію 🌟</div>';
+    dashboard.style.display = 'none';
+    return;
+  }
+
+  const now = new Date();
+  let totalTarget = 0, totalSaved = 0;
+  const pieLabels = [], pieData = [], pieColors = [];
+  const colors = ['#3b82f6', '#4ade80', '#f59e0b', '#a855f7', '#f472b6', '#60a5fa', '#facc15', '#34d399'];
+
+  list.innerHTML = sanitize(dreamItems.map((d, i) => {
+    const progress = d.target > 0 ? Math.min(100, (d.saved / d.target) * 100) : 0;
+    totalTarget += d.target;
+    totalSaved += d.saved || 0;
+
+    // Months to goal
+    const netMonthly = d.monthly || 0;
+    const remaining = d.target - (d.saved || 0);
+    const monthsLeft = netMonthly > 0 ? Math.ceil(remaining / netMonthly) : null;
+    const estimatedDate = monthsLeft ? new Date(now.getFullYear(), now.getMonth() + monthsLeft, 1) : null;
+
+    // Deadline
+    let deadlineInfo = '';
+    if (d.dateEnd) {
+      const end = new Date(d.dateEnd);
+      const daysLeft = Math.ceil((end - now) / 86400000);
+      if (daysLeft <= 0) deadlineInfo = '<span style="color:#f87171">Термін минув</span>';
+      else if (daysLeft <= 30) deadlineInfo = '<span style="color:#facc15">' + daysLeft + ' дн. залишилось</span>';
+      else deadlineInfo = Math.ceil(daysLeft / 30) + ' міс. залишилось';
+    }
+
+    pieLabels.push(d.name);
+    pieData.push(d.target);
+    pieColors.push(colors[i % colors.length]);
+
+    return `<div class="p-item" style="flex-wrap:wrap;cursor:pointer" onclick="if(!event.target.closest('.btn-delete')&&!event.target.closest('#dreamDeposit-${d.id}')&&!event.target.closest('input'))openDreamDetail('${d.id}')"
+      <div class="p-item-info" style="width:100%">
+        <div class="p-item-name">${esc(d.name)}</div>
+        <div class="detail-progress" style="margin:8px 0"><div class="detail-progress-bar" style="width:${progress.toFixed(1)}%"></div></div>
+        <div class="p-item-details">
+          <span>${formatNum(d.saved || 0)} з ${formatNum(d.target)} грн (${progress.toFixed(0)}%)</span>
+          ${d.monthly ? '<span>Внесок: ' + formatNum(d.monthly) + '/міс</span>' : ''}
+          ${monthsLeft ? '<span>≈ ' + monthsLeft + ' міс. до цілі</span>' : ''}
+          ${deadlineInfo ? '<span>' + deadlineInfo + '</span>' : ''}
+          ${d.deposits && d.deposits.length ? '<span>Внесків: ' + d.deposits.length + '</span>' : ''}
+        </div>
+        ${d.notes ? '<div class="p-item-notes">' + esc(d.notes) + '</div>' : ''}
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn-delete" onclick="event.stopPropagation();showDreamDeposit('${d.id}')" style="color:#4ade80;font-size:16px" title="Внести кошти">+</button>
+          <button class="btn-delete" onclick="event.stopPropagation();editDream('${d.id}')" style="color:#60a5fa">✎</button>
+          <button class="btn-delete" onclick="event.stopPropagation();if(confirm('Видалити мрію?'))deleteDream('${d.id}')">✕</button>
+        </div>
+      </div>
+      <div id="dreamDeposit-${d.id}" style="display:none;width:100%;margin-top:8px;padding-top:8px;border-top:1px solid #1e293b">
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="dreamDepositAmount-${d.id}" placeholder="Сума внеску" inputmode="decimal" style="flex:1;padding:8px 10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;outline:none">
+          <button class="btn-save" onclick="addDreamDeposit('${d.id}')" style="width:auto;padding:8px 16px;margin:0;white-space:nowrap">Внести</button>
+          <button class="btn-clear" onclick="document.getElementById('dreamDeposit-${d.id}').style.display='none'" style="width:auto;padding:8px 12px;margin:0">✕</button>
+        </div>
+      </div>
+    </div>`;
+  }).join(''));
+
+  // Dashboard
+  dashboard.style.display = 'block';
+  const totalProgress = totalTarget > 0 ? (totalSaved / totalTarget * 100) : 0;
+  document.getElementById('dreamsTotalProgress').textContent = totalProgress.toFixed(0) + '%';
+  document.getElementById('dreamsTotalSummary').textContent =
+    formatNum(totalSaved) + ' з ' + formatNum(totalTarget) + ' грн';
+
+  // Bar chart: saved vs remaining per dream
+  const canvas = document.getElementById('dreamsPieChart');
+  if (canvas && typeof Chart !== 'undefined') {
+    if (dreamsPieInstance) dreamsPieInstance.destroy();
+    dreamsPieInstance = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: pieLabels,
+        datasets: [
+          { label: 'Накопичено', data: dreamItems.map(d => d.saved || 0), backgroundColor: '#4ade80', borderRadius: 4 },
+          { label: 'Залишилось', data: dreamItems.map(d => Math.max(0, d.target - (d.saved || 0))), backgroundColor: '#334155', borderRadius: 4 }
+        ]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 12 }, padding: 16 } },
+          tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + formatNum(ctx.raw) + ' грн' } }
+        },
+        scales: {
+          x: { stacked: true, ticks: { color: '#475569', font: { size: 10 }, callback: v => formatShort(v) }, grid: { color: '#1e293b' } },
+          y: { stacked: true, ticks: { color: '#e2e8f0', font: { size: 12 } }, grid: { display: false } }
+        }
+      }
+    });
+  }
+}
+
+async function saveDreamsToFirestore() {
+  if (!firebaseReady || !currentUser) {
+    console.warn('Dreams save skipped: no auth');
+    return;
+  }
+  try {
+    const uid = currentUser.uid;
+    const ref = db.collection('users').doc(uid).collection('dreams');
+
+    // Delete existing docs
+    const existing = await ref.get();
+    const delPromises = [];
+    existing.forEach(doc => delPromises.push(doc.ref.delete()));
+    if (delPromises.length) await Promise.all(delPromises);
+
+    // Write new docs
+    const writePromises = dreamItems.map(d => ref.doc(String(d.id)).set(d));
+    if (writePromises.length) await Promise.all(writePromises);
+
+    console.log('Dreams saved:', dreamItems.length);
+  } catch(e) {
+    console.error('Dreams save failed:', e.code, e.message);
+  }
+}
+
+async function loadDreamsFromFirestore() {
+  if (!firebaseReady || !currentUser) return;
+  try {
+    const ref = db.collection('users').doc(currentUser.uid).collection('dreams');
+    const snapshot = await ref.get();
+    if (!snapshot.empty) {
+      dreamItems = [];
+      snapshot.forEach(doc => dreamItems.push(doc.data()));
+      renderDreams();
+    }
+  } catch(e) { console.warn('Dreams load failed:', e); }
+}
+
 // ==================== CREDIT CALCULATOR =========================
 // ================================================================
 
@@ -2775,7 +3233,7 @@ function toggleCreditSchedule() {
 function updateCreditCalcVisibility() {
   const section = document.getElementById('creditCalcSection');
   if (section) {
-    section.style.display = currentUser ? 'block' : 'none';
+    section.style.display = (typeof currentUser !== 'undefined' && currentUser) ? 'block' : 'none';
   }
 }
 
@@ -2797,3 +3255,12 @@ function updateCreditCalcVisibility() {
 
 // loadFromStorage called here, Firebase init happens in firebase.js after it loads
 loadFromStorage();
+
+// Restore last active tab
+(function() {
+  const saved = localStorage.getItem('activeTab');
+  if (saved) {
+    const btn = document.querySelector('.main-tab[onclick*="\'' + saved + '\'"]');
+    if (btn) switchMainTab(saved, btn);
+  }
+})();

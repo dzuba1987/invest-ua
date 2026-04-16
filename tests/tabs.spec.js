@@ -39,6 +39,6 @@ test.describe('Tab Navigation', () => {
 
   test('all 5 tabs exist', async ({ page }) => {
     const tabs = page.locator('.main-tab');
-    await expect(tabs).toHaveCount(5);
+    await expect(tabs).toHaveCount(6);
   });
 });

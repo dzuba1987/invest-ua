@@ -8,8 +8,8 @@ let db = null;
 // _skipFirestoreSync declared in app.js as var (shared global)
 
 function initFirebase() {
-  if (!FIREBASE_CONFIG.apiKey) {
-    console.warn('Firebase not configured');
+  if (typeof firebase === 'undefined' || !FIREBASE_CONFIG.apiKey) {
+    console.warn('Firebase not available or not configured');
     return;
   }
   try {
@@ -24,6 +24,7 @@ function initFirebase() {
         saveUserMeta(user);
         loadFromFirestore();
         loadPortfolioFromFirestore();
+        if (typeof loadDreamsFromFirestore === 'function') loadDreamsFromFirestore();
         loadProfileFromFirestore();
       }
       checkMaintenance();
@@ -96,6 +97,7 @@ function updateAuthUI() {
   updateProfileUI();
   checkAnalyticsReady();
   if (typeof updateCreditCalcVisibility === 'function') updateCreditCalcVisibility();
+  if (typeof updateDreamsUI === 'function') updateDreamsUI();
 }
 
 function googleLogin() {
@@ -490,3 +492,42 @@ if (savedLang) setAppLanguage(savedLang);
 
 initFirebase();
 startHeartbeat();
+
+// Check tab visibility: per-user profile overrides global settings
+async function applyTabVisibility() {
+  if (!firebaseReady || !db) return;
+  try {
+    // Global settings
+    const globalDoc = await db.collection('settings').doc('tabs').get();
+    const global = globalDoc.exists ? globalDoc.data() : {};
+
+    // Per-user settings (from profile)
+    let userTabs = {};
+    if (currentUser) {
+      userTabs = {
+        analytics: userProfile.tabAnalytics,
+        dreams: userProfile.tabDreams
+      };
+    }
+
+    // User setting takes priority, fallback to global
+    const showAnalytics = userTabs.analytics !== undefined ? userTabs.analytics : !!global.analytics;
+    const showDreams = userTabs.dreams !== undefined ? userTabs.dreams : !!global.dreams;
+
+    const analyticsBtn = document.querySelector('.main-tab[onclick*="analytics"]');
+    const dreamsBtn = document.querySelector('.main-tab[onclick*="dreams"]');
+    if (analyticsBtn) analyticsBtn.style.display = showAnalytics ? '' : 'none';
+    if (dreamsBtn) dreamsBtn.style.display = showDreams ? '' : 'none';
+
+    if (!showAnalytics) document.getElementById('panel-analytics').classList.remove('active');
+    if (!showDreams) document.getElementById('panel-dreams').classList.remove('active');
+  } catch(e) {
+    console.warn('Tab visibility check failed:', e.message);
+    // Show all tabs as fallback
+    const analyticsBtn = document.querySelector('.main-tab[onclick*="analytics"]');
+    const dreamsBtn = document.querySelector('.main-tab[onclick*="dreams"]');
+    if (analyticsBtn) analyticsBtn.style.display = '';
+    if (dreamsBtn) dreamsBtn.style.display = '';
+  }
+}
+applyTabVisibility();

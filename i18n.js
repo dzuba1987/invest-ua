@@ -12,6 +12,7 @@ const I18N = {
     'tab.calc': 'Калькулятор',
     'tab.analytics': 'Аналітика',
     'tab.portfolio': 'Портфель',
+    'tab.dreams': 'Мрії',
     'tab.profile': 'Профіль',
 
     // Calculator
@@ -205,6 +206,7 @@ const I18N = {
     'tab.calc': 'Calculator',
     'tab.analytics': 'Analytics',
     'tab.portfolio': 'Portfolio',
+    'tab.dreams': 'Dreams',
     'tab.profile': 'Profile',
 
     // Calculator

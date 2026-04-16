@@ -168,6 +168,23 @@
       <p id="maintenanceStatus" style="font-size:12px;margin-top:6px;display:none"></p>
     </div>
 
+    <!-- Tab visibility -->
+    <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:24px">
+      <h3 style="font-size:15px;color:#f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:20px">📑</span> Видимість вкладок
+      </h3>
+      <p style="font-size:12px;color:#64748b;margin-bottom:10px">Вимкнені вкладки не відображаються для користувачів</p>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#e2e8f0;cursor:pointer;margin-bottom:6px">
+        <input type="checkbox" id="tabAnalytics" onchange="saveTabVisibility()" style="width:16px;height:16px;accent-color:#3b82f6">
+        Аналітика
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#e2e8f0;cursor:pointer">
+        <input type="checkbox" id="tabDreams" onchange="saveTabVisibility()" style="width:16px;height:16px;accent-color:#3b82f6">
+        Мрії
+      </label>
+      <p id="tabVisibilityStatus" style="font-size:12px;margin-top:6px;display:none"></p>
+    </div>
+
     <!-- Telegram settings -->
     <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:24px">
       <h3 style="font-size:15px;color:#f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px">
@@ -290,6 +307,7 @@
     document.getElementById('adminContent').style.display = 'block';
     loadUsers();
     loadMaintenance();
+    loadTabVisibility();
     loadTelegramConfig();
     loadFeedback();
   });
@@ -384,11 +402,20 @@
           <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
             <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8;cursor:pointer">
               <input type="checkbox" ${u.profile?.notifyTelegram ? 'checked' : ''} onchange="toggleUserNotify('${u.id}','notifyTelegram',this.checked)" style="width:14px;height:14px;accent-color:#3b82f6">
-              Telegram
+              TG
             </label>
             <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8;cursor:pointer">
               <input type="checkbox" ${u.profile?.notifyEmail ? 'checked' : ''} onchange="toggleUserNotify('${u.id}','notifyEmail',this.checked)" style="width:14px;height:14px;accent-color:#3b82f6">
               Email
+            </label>
+            <span style="color:#334155;font-size:11px">│</span>
+            <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8;cursor:pointer">
+              <input type="checkbox" ${u.profile?.tabAnalytics ? 'checked' : ''} onchange="toggleUserNotify('${u.id}','tabAnalytics',this.checked)" style="width:14px;height:14px;accent-color:#f59e0b">
+              Аналітика
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8;cursor:pointer">
+              <input type="checkbox" ${u.profile?.tabDreams ? 'checked' : ''} onchange="toggleUserNotify('${u.id}','tabDreams',this.checked)" style="width:14px;height:14px;accent-color:#f59e0b">
+              Мрії
             </label>
           </div>
           <div class="user-card-actions">
@@ -683,6 +710,35 @@
       await db.collection('settings').doc('maintenance').set({ enabled, message });
       status.textContent = enabled ? '✓ Режим обслуговування увімкнено' : '✓ Режим обслуговування вимкнено';
       status.style.color = enabled ? '#f59e0b' : '#4ade80';
+      status.style.display = 'block';
+      setTimeout(() => { status.style.display = 'none'; }, 3000);
+    } catch(e) {
+      status.textContent = 'Помилка: ' + e.message;
+      status.style.color = '#f87171';
+      status.style.display = 'block';
+    }
+  }
+
+  // ---- Tab visibility ----
+  async function loadTabVisibility() {
+    try {
+      const doc = await db.collection('settings').doc('tabs').get();
+      if (doc.exists) {
+        const d = doc.data();
+        document.getElementById('tabAnalytics').checked = !!d.analytics;
+        document.getElementById('tabDreams').checked = !!d.dreams;
+      }
+    } catch(e) { /* ignore */ }
+  }
+
+  async function saveTabVisibility() {
+    const analytics = document.getElementById('tabAnalytics').checked;
+    const dreams = document.getElementById('tabDreams').checked;
+    const status = document.getElementById('tabVisibilityStatus');
+    try {
+      await db.collection('settings').doc('tabs').set({ analytics, dreams });
+      status.textContent = '✓ Збережено';
+      status.style.color = '#4ade80';
       status.style.display = 'block';
       setTimeout(() => { status.style.display = 'none'; }, 3000);
     } catch(e) {
