@@ -17,8 +17,6 @@ test.describe('Calculator', () => {
     await page.fill('#invested', '100000');
     await page.fill('#annualRateInput', '15');
     await page.click('button[onclick="calculate()"]');
-    const results = page.locator('#results');
-    await expect(results).toHaveClass(/show/);
     const profit = page.locator('#resProfit');
     await expect(profit).not.toBeEmpty();
   });

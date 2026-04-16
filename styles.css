@@ -967,6 +967,17 @@ button:hover { opacity: 0.9; }
 .expiry-alert-name { font-weight: 600; color: #f1f5f9; }
 .expiry-alert-days { font-weight: 700; }
 
+/* Chart summary */
+.chart-summary { padding: 10px 0; }
+.chart-summary-date { font-size: 12px; color: #64748b; margin-bottom: 8px; }
+.chart-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.chart-summary-label { font-size: 10px; color: #64748b; }
+.chart-summary-value { font-size: 16px; font-weight: 700; color: #f1f5f9; }
+
 /* Investment detail */
 .detail-header {
   text-align: center;
@@ -1069,6 +1080,8 @@ button:hover { opacity: 0.9; }
 }
 .p-type-ovdp { background: rgba(59,130,246,0.12); color: #60a5fa; }
 .p-type-deposit { background: rgba(74,222,128,0.12); color: #4ade80; }
+.p-type-compound { background: rgba(168,85,247,0.12); color: #a855f7; }
+.p-type-insurance { background: rgba(244,114,182,0.12); color: #f472b6; }
 .p-type-other { background: rgba(250,204,21,0.12); color: #facc15; }
 .p-item-details {
   display: flex;
@@ -1391,6 +1404,10 @@ button:hover { opacity: 0.9; }
   .dash-card { padding: 12px; }
   .dash-card-value { font-size: 15px; }
   .dash-card-label { font-size: 10px; }
+
+  /* Chart summary mobile */
+  .chart-summary-grid { grid-template-columns: 1fr !important; gap: 4px !important; }
+  .chart-summary-value { font-size: 14px !important; }
 
   /* Investment detail mobile */
   .detail-header { padding: 16px; }

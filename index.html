@@ -515,9 +515,10 @@
           </div>
           <div class="field">
             <label data-i18n="portfolio.type">Тип</label>
-            <select id="pType" onchange="togglePortfolioBondFields()" style="width:100%;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none">
+            <select id="pType" onchange="togglePortfolioTypeFields()" style="width:100%;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none">
               <option value="ovdp" data-i18n="portfolio.typeOvdp">ОВДП</option>
               <option value="deposit" data-i18n="portfolio.typeDeposit">Депозит</option>
+              <option value="insurance" data-i18n="portfolio.typeInsurance">Страхування із накопиченням</option>
               <option value="other" data-i18n="portfolio.typeOther">Інше</option>
             </select>
           </div>
@@ -539,6 +540,11 @@
             <label data-i18n="portfolio.rate">Річна ставка (%)</label>
             <input type="text" id="pRate" placeholder="15" inputmode="decimal">
           </div>
+          <div class="field" id="pIndexField" style="display:none">
+            <label data-i18n="portfolio.indexation">Індексація внеску (%/рік)</label>
+            <input type="text" id="pIndex" placeholder="5" inputmode="decimal">
+            <p class="field-hint">Щорічне збільшення суми внеску</p>
+          </div>
           <!-- Row 4: Дати -->
           <div class="field">
             <label data-i18n="portfolio.dateStart">Дата початку</label>
@@ -559,42 +565,16 @@
             <input type="text" id="pBank" placeholder="Приватбанк">
             <p class="field-hint">Ваша нотатка — зберігається тільки у вашому профілі</p>
           </div>
-          <div class="field">
-            <label data-i18n="portfolio.card">Номер картки / рахунку</label>
-            <input type="text" id="pCard" placeholder="5168 **** **** 1234">
-            <p class="field-hint">Не передається третім особам, лише для вашої зручності</p>
-          </div>
           <!-- Row 7: Нотатки (full width) -->
           <div class="field field-full">
             <label data-i18n="portfolio.notes">Нотатки</label>
             <input type="text" id="pNotes" placeholder="Додаткова інформація">
           </div>
-          <div class="field field-full compound-toggle">
+          <div class="field field-full" id="pCompoundField" style="display:none">
             <label class="checkbox-label">
-              <input type="checkbox" id="pCompound" onchange="togglePortfolioCompound()">
-              <span data-i18n="calc.compound">Складний відсоток (реінвестування)</span>
+              <input type="checkbox" id="pCompound">
+              <span data-i18n="portfolio.compoundCheck">Складний відсоток (реінвестування щорічно)</span>
             </label>
-          </div>
-          <div class="field" id="pCompoundRateField" style="display:none">
-            <label data-i18n="calc.compoundRate">Ставка реінвестування (%)</label>
-            <input type="text" id="pCompoundRate" placeholder="15" inputmode="decimal">
-          </div>
-          <div class="field" id="pCompoundIndexField" style="display:none">
-            <label data-i18n="calc.compoundIndex">Індексація (%/рік)</label>
-            <input type="text" id="pCompoundIndex" placeholder="0" inputmode="decimal">
-          </div>
-          <div class="field" id="pCompoundYearsField" style="display:none">
-            <label data-i18n="calc.compoundYears">Горизонт (років)</label>
-            <select id="pCompoundYears" style="width:100%;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none">
-              <option value="1">1 рік</option>
-              <option value="2" selected>2 роки</option>
-              <option value="3">3 роки</option>
-              <option value="5">5 років</option>
-              <option value="7">7 років</option>
-              <option value="10">10 років</option>
-              <option value="15">15 років</option>
-              <option value="20">20 років</option>
-            </select>
           </div>
         </div>
         <button class="btn-save" id="btnAddPortfolio" onclick="addPortfolioItem()" data-i18n="portfolio.add">Додати до портфеля</button>
@@ -650,7 +630,11 @@
 
         <!-- Chart -->
         <div class="a-card">
-          <h3 data-i18n="portfolio.chart">Графік приросту портфеля</h3>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+            <h3 style="margin:0" data-i18n="portfolio.chart">Графік приросту портфеля</h3>
+            <select id="chartYearFilter" onchange="portfolioChartYear=this.value==='all'?null:parseInt(this.value);renderPortfolioChart(portfolioItems)" style="padding:6px 12px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:13px;outline:none"></select>
+          </div>
+          <div id="chartSummary" style="margin-bottom:12px"></div>
           <div style="position:relative;height:300px">
             <canvas id="portfolioChart"></canvas>
           </div>
@@ -882,7 +866,6 @@
             <li>Firebase Firestore (при вході через Google)</li>
           </ul>
           <p><strong>Що не зберігається:</strong> паролі, IP-адреси. PIN зберігається як хеш (SHA-256).</p>
-          <p style="font-size:12px;color:#475569;margin-top:4px"><strong>Примітка:</strong> поле «Номер картки / рахунку» в портфелі — це ваша нотатка для себе (куди виводити кошти). Дані зберігаються у вашому профілі Firestore і не передаються третім особам.</p>
         </div>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">

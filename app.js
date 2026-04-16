@@ -1506,7 +1506,7 @@ function togglePortfolioForm(forceOpen) {
     toggleBtn.textContent = '− ' + (t('portfolio.cancel') || 'Скасувати');
     toggleBtn.classList.remove('btn-save');
     toggleBtn.classList.add('btn-export');
-    togglePortfolioBondFields();
+    togglePortfolioTypeFields();
   } else {
     card.style.display = 'none';
     toggleBtn.textContent = '+ ' + (t('portfolio.addNew') || 'Новий запис');
@@ -1520,22 +1520,32 @@ function togglePortfolioForm(forceOpen) {
   }
 }
 
-function togglePortfolioBondFields() {
-  const isOvdp = document.getElementById('pType').value === 'ovdp';
+function togglePortfolioTypeFields() {
+  const type = document.getElementById('pType').value;
+  const isOvdp = type === 'ovdp';
+  const isDeposit = type === 'deposit';
+  const isInsurance = type === 'insurance';
+
+  // Bond fields — only ОВДП
   document.getElementById('pBondPriceField').style.display = isOvdp ? '' : 'none';
   document.getElementById('pBondCountField').style.display = isOvdp ? '' : 'none';
-  document.getElementById('pTaxField').style.display = isOvdp ? 'none' : '';
-}
 
-function togglePortfolioCompound() {
-  const show = document.getElementById('pCompound').checked;
-  document.getElementById('pCompoundRateField').style.display = show ? '' : 'none';
-  document.getElementById('pCompoundIndexField').style.display = show ? '' : 'none';
-  document.getElementById('pCompoundYearsField').style.display = show ? '' : 'none';
-  if (show && !document.getElementById('pCompoundRate').value) {
-    document.getElementById('pCompoundRate').value = document.getElementById('pRate').value;
-  }
+  // Rate — show for all types
+  document.getElementById('pRate').closest('.field').style.display = '';
+
+  // Tax — deposit and other
+  document.getElementById('pTaxField').style.display = (isDeposit || type === 'other') ? '' : 'none';
+
+  // Indexation — only insurance
+  document.getElementById('pIndexField').style.display = isInsurance ? '' : 'none';
+
+  // Compound checkbox — only deposit
+  document.getElementById('pCompoundField').style.display = isDeposit ? '' : 'none';
+  if (!isDeposit) document.getElementById('pCompound').checked = false;
 }
+// Legacy aliases
+function togglePortfolioBondFields() { togglePortfolioTypeFields(); }
+function togglePortfolioCompound() { togglePortfolioTypeFields(); }
 
 function updatePortfolioUI() {
   const auth = document.getElementById('portfolioAuth');
@@ -1561,14 +1571,10 @@ function addPortfolioItem() {
   const dateStart = document.getElementById('pDateStart').value;
   const dateEnd = document.getElementById('pDateEnd').value;
   const bank = document.getElementById('pBank').value.trim();
-  const card = document.getElementById('pCard').value.trim();
   const notes = document.getElementById('pNotes').value.trim();
+  const indexation = parseNum(document.getElementById('pIndex').value);
 
-  // Compound interest fields
   const isCompound = document.getElementById('pCompound').checked;
-  const compoundRate = parseNum(document.getElementById('pCompoundRate').value);
-  const compoundIndex = parseNum(document.getElementById('pCompoundIndex').value);
-  const compoundYears = parseInt(document.getElementById('pCompoundYears').value) || 0;
 
   if (!name || isNaN(invested) || invested <= 0) {
     const err = document.getElementById('pError');
@@ -1584,11 +1590,9 @@ function addPortfolioItem() {
     bondPrice: type === 'ovdp' && !isNaN(bondPrice) && bondPrice > 0 ? bondPrice : null,
     bondCount: type === 'ovdp' && !isNaN(bondCount) && bondCount > 0 ? Math.floor(bondCount) : null,
     tax: isNaN(tax) ? null : tax,
-    dateStart, dateEnd, bank, card, notes,
+    dateStart, dateEnd, bank, notes,
+    indexation: !isNaN(indexation) && indexation > 0 ? indexation : null,
     compound: isCompound,
-    compoundRate: isCompound && !isNaN(compoundRate) ? compoundRate : null,
-    compoundIndex: isCompound && !isNaN(compoundIndex) ? compoundIndex : null,
-    compoundYears: isCompound ? compoundYears : null,
     createdAt: new Date().toISOString()
   });
 
@@ -1603,12 +1607,11 @@ function addPortfolioItem() {
   document.getElementById('pRate').value = '';
   document.getElementById('pTax').value = '';
   document.getElementById('pBank').value = '';
-  document.getElementById('pCard').value = '';
+
   document.getElementById('pNotes').value = '';
+  document.getElementById('pIndex').value = '';
   document.getElementById('pCompound').checked = false;
-  document.getElementById('pCompoundRate').value = '';
-  document.getElementById('pCompoundIndex').value = '';
-  togglePortfolioCompound();
+  togglePortfolioTypeFields();
   const now = new Date();
   document.getElementById('pDateStart').value = now.toISOString().split('T')[0];
   const f = new Date(now); f.setMonth(f.getMonth() + 3);
@@ -1631,7 +1634,7 @@ function openInvestmentDetail(id) {
   if (!item) return;
 
   const now = new Date();
-  const typeLabels = { ovdp: 'ОВДП', deposit: 'Депозит', other: 'Інше' };
+  const typeLabels = { ovdp: 'ОВДП', deposit: 'Депозит', compound: 'Складний %', insurance: 'Страхування', other: 'Інше' };
   const typeColors = { ovdp: 'p-type-ovdp', deposit: 'p-type-deposit', other: 'p-type-other' };
   const isActive = item.dateEnd ? new Date(item.dateEnd) > now : true;
 
@@ -1645,9 +1648,20 @@ function openInvestmentDetail(id) {
     progress = days > 0 ? Math.min(100, (elapsed / days) * 100) : 0;
 
     if (item.rate && days > 0) {
-      expectedProfit = item.invested * (item.rate / 100) * (days / 365.25);
-      earnedSoFar = item.invested * (item.rate / 100) * (Math.min(elapsed, days) / 365.25);
-      earnedSoFar = Math.min(earnedSoFar, expectedProfit);
+      const totalYears = days / 365.25;
+      const elapsedYears = Math.min(elapsed, days) / 365.25;
+
+      if (item.compound) {
+        // Compound: balance = invested * (1 + rate)^years
+        expectedProfit = item.invested * Math.pow(1 + item.rate / 100, totalYears) - item.invested;
+        earnedSoFar = item.invested * Math.pow(1 + item.rate / 100, elapsedYears) - item.invested;
+        earnedSoFar = Math.min(earnedSoFar, expectedProfit);
+      } else {
+        // Simple interest
+        expectedProfit = item.invested * (item.rate / 100) * totalYears;
+        earnedSoFar = item.invested * (item.rate / 100) * elapsedYears;
+        earnedSoFar = Math.min(earnedSoFar, expectedProfit);
+      }
       dailyGross = item.invested * (item.rate / 100) / 365.25;
       const taxRate = item.tax ? item.tax / 100 : 0;
       dailyNet = dailyGross * (1 - taxRate);
@@ -1670,7 +1684,7 @@ function openInvestmentDetail(id) {
       <span class="detail-type-badge ${typeColors[item.type] || ''}">${typeLabels[item.type] || item.type}</span>
       <div class="detail-invested">${formatNum(item.invested)} грн</div>
       ${item.bondPrice ? `<div style="font-size:12px;color:#64748b;margin-top:2px">${formatShort(item.bondPrice)} грн × ${item.bondCount} шт.</div>` : ''}
-      <div class="detail-status" style="color:${isActive ? '#4ade80' : '#64748b'}">${isActive ? '● Активна' : '○ Завершена'}</div>
+      <div class="detail-status" style="color:${isActive ? '#4ade80' : '#64748b'}">${isActive ? '● Активна' : '○ Завершена'}${item.compound ? ' · <span style="color:#a855f7">реінвестування</span>' : ''}</div>
       ${days > 0 ? `<div class="detail-progress"><div class="detail-progress-bar" style="width:${progress.toFixed(1)}%"></div></div>
       <div style="font-size:11px;color:#475569;margin-top:4px">${elapsed} з ${days} днів (${progress.toFixed(0)}%)</div>` : ''}
     </div>
@@ -1702,28 +1716,21 @@ function openInvestmentDetail(id) {
       </div>
     </div>
 
-    ${item.compound ? (() => {
-      const cRate = item.compoundRate || item.rate || 0;
-      const cIndex = item.compoundIndex || 0;
-      const cYears = item.compoundYears || 2;
-      const periodDays = days || 90;
-      const periodsPerYear = 365.25 / periodDays;
-      const ratePerPeriod = (cRate / 100) * (periodDays / 365.25);
-      const totalPeriods = Math.round(cYears * periodsPerYear);
-      let bal = item.invested;
-      for (let y = 0; y < cYears; y++) {
-        const yr = cIndex ? ratePerPeriod * Math.pow(1 + cIndex / 100, y) : ratePerPeriod;
-        const pp = Math.round(periodsPerYear);
-        for (let p = 0; p < pp; p++) bal += bal * yr;
-      }
-      const compProfit = bal - item.invested;
+    ${item.compound && item.rate && days > 0 ? (() => {
+      const totalYears = Math.ceil(days / 365.25);
+      const r = item.rate / 100;
+      const finalBalance = item.invested * Math.pow(1 + r, totalYears);
+      const compProfit = finalBalance - item.invested;
+      const simpleProfit = item.invested * r * totalYears;
+      const advantage = compProfit - simpleProfit;
       return `<div class="a-card">
         <h3>Складний відсоток</h3>
-        <div class="detail-info-row"><span class="detail-info-label">Ставка реінвестування</span><span class="detail-info-value">${cRate}%</span></div>
-        ${cIndex ? `<div class="detail-info-row"><span class="detail-info-label">Індексація</span><span class="detail-info-value">${cIndex}%/рік</span></div>` : ''}
-        <div class="detail-info-row"><span class="detail-info-label">Горизонт</span><span class="detail-info-value">${cYears} р. (${totalPeriods} реінвестицій)</span></div>
-        <div class="detail-info-row"><span class="detail-info-label">Підсумкова сума</span><span class="detail-info-value" style="color:#4ade80">${formatNum(bal)} грн</span></div>
+        <div class="detail-info-row"><span class="detail-info-label">Ставка</span><span class="detail-info-value">${item.rate}% річних</span></div>
+        <div class="detail-info-row"><span class="detail-info-label">Термін</span><span class="detail-info-value">${totalYears} р. (щорічне реінвестування)</span></div>
+        <div class="detail-info-row"><span class="detail-info-label">Підсумкова сума</span><span class="detail-info-value" style="color:#4ade80">${formatNum(finalBalance)} грн</span></div>
         <div class="detail-info-row"><span class="detail-info-label">Прибуток (складний)</span><span class="detail-info-value" style="color:#4ade80">+${formatNum(compProfit)} грн</span></div>
+        <div class="detail-info-row"><span class="detail-info-label">Простий відсоток був би</span><span class="detail-info-value">+${formatNum(simpleProfit)} грн</span></div>
+        <div class="detail-info-row"><span class="detail-info-label">Вигода від реінвестування</span><span class="detail-info-value" style="color:#a855f7">+${formatNum(advantage)} грн</span></div>
       </div>`;
     })() : ''}
 
@@ -1738,14 +1745,81 @@ function openInvestmentDetail(id) {
       <h3>Деталі</h3>
       ${item.bondPrice ? `<div class="detail-info-row"><span class="detail-info-label">Вартість 1 облігації</span><span class="detail-info-value">${formatNum(item.bondPrice)} грн</span></div>` : ''}
       ${item.bondCount ? `<div class="detail-info-row"><span class="detail-info-label">Кількість облігацій</span><span class="detail-info-value">${item.bondCount} шт.</span></div>` : ''}
+      ${item.indexation ? `<div class="detail-info-row"><span class="detail-info-label">Індексація внеску</span><span class="detail-info-value">${item.indexation}% / рік</span></div>` : ''}
       <div class="detail-info-row"><span class="detail-info-label">Дата початку</span><span class="detail-info-value">${item.dateStart ? formatDate(item.dateStart) : '—'}</span></div>
       <div class="detail-info-row"><span class="detail-info-label">Дата завершення</span><span class="detail-info-value">${item.dateEnd ? formatDate(item.dateEnd) : '—'}</span></div>
       <div class="detail-info-row"><span class="detail-info-label">Термін</span><span class="detail-info-value">${days > 0 ? formatTerm(days) : '—'}</span></div>
       ${item.bank ? `<div class="detail-info-row"><span class="detail-info-label">Банк</span><span class="detail-info-value">${esc(item.bank)}</span></div>` : ''}
-      ${item.card ? `<div class="detail-info-row"><span class="detail-info-label">Картка / рахунок</span><span class="detail-info-value">${esc(item.card)}</span></div>` : ''}
       ${item.notes ? `<div class="detail-info-row"><span class="detail-info-label">Нотатки</span><span class="detail-info-value">${esc(item.notes)}</span></div>` : ''}
       ${item.createdAt ? `<div class="detail-info-row"><span class="detail-info-label">Створено</span><span class="detail-info-value">${new Date(item.createdAt).toLocaleDateString('uk-UA')}</span></div>` : ''}
     </div>
+
+    ${(() => {
+      // Yearly schedule for insurance (with indexation) or compound deposits
+      if (!item.dateStart || !item.dateEnd || days <= 0) return '';
+      const totalYears = Math.ceil(days / 365.25);
+      if (totalYears < 1) return '';
+
+      const isIns = item.type === 'insurance';
+      const isCmp = !!item.compound;
+      if (!isIns && !isCmp) return '';
+
+      let rows = '';
+      let yearlyPayment = item.invested;
+      const idxPct = item.indexation ? item.indexation / 100 : 0;
+      const ratePct = item.rate ? item.rate / 100 : 0;
+      let balance = 0;
+      let totalPaid = 0;
+
+      if (isIns) {
+        // Insurance: yearly table with calendar year, payment, indexation, interest, balance
+        const hasIdx = idxPct > 0;
+        const startYear = item.dateStart ? new Date(item.dateStart).getFullYear() : new Date().getFullYear();
+        let totalInterest = 0;
+        for (let y = 1; y <= totalYears; y++) {
+          if (y > 1 && hasIdx) yearlyPayment = item.invested * Math.pow(1 + idxPct, y - 1);
+          const idxAmount = y > 1 && hasIdx ? yearlyPayment - item.invested * Math.pow(1 + idxPct, y - 2) : 0;
+          const interest = balance * ratePct;
+          balance += yearlyPayment + interest;
+          totalPaid += yearlyPayment;
+          totalInterest += interest;
+          rows += '<tr><td>' + y + '</td><td>' + (startYear + y - 1) + '</td><td>' + formatNum(yearlyPayment) + '</td>' +
+            (hasIdx ? '<td style="color:#f59e0b">' + (idxAmount > 0 ? '+' + formatNum(idxAmount) : '—') + '</td>' : '') +
+            '<td style="color:#4ade80">' + (interest > 0 ? '+' + formatNum(interest) : '—') + '</td>' +
+            '<td><strong>' + formatNum(balance) + '</strong></td></tr>';
+        }
+        return '<div class="a-card"><h3>Графік внесків по роках</h3>' +
+          '<div style="max-height:400px;overflow-y:auto"><table class="credit-schedule-table"><thead><tr>' +
+          '<th style="text-align:left">№</th><th>Рік</th><th>Внесок</th>' +
+          (hasIdx ? '<th>Індексація</th>' : '') +
+          '<th>Відсотки</th><th>Баланс</th>' +
+          '</tr></thead><tbody>' + rows +
+          '<tr style="font-weight:700;border-top:2px solid #334155"><td></td><td>Всього</td><td>' + formatNum(totalPaid) + '</td>' +
+          (hasIdx ? '<td>—</td>' : '') +
+          '<td style="color:#4ade80">' + (totalInterest > 0 ? '+' + formatNum(totalInterest) : '—') + '</td>' +
+          '<td><strong>' + formatNum(balance) + '</strong></td></tr>' +
+          '</tbody></table></div></div>';
+      } else {
+        // Compound deposit: balance on start, interest, balance on end
+        balance = item.invested;
+        let totalInterest = 0;
+        for (let y = 1; y <= totalYears; y++) {
+          const balStart = balance;
+          const interest = balance * ratePct;
+          balance += interest;
+          totalInterest += interest;
+          rows += '<tr><td>' + y + '</td><td>' + formatNum(balStart) + '</td><td style="color:#4ade80">+' +
+            formatNum(interest) + '</td><td><strong>' + formatNum(balance) + '</strong></td></tr>';
+        }
+        return '<div class="a-card"><h3>Графік нарахувань по роках</h3>' +
+          '<div style="max-height:400px;overflow-y:auto"><table class="credit-schedule-table"><thead><tr>' +
+          '<th style="text-align:left">Рік</th><th>Баланс (поч.)</th><th>Нараховано</th><th>Баланс (кін.)</th>' +
+          '</tr></thead><tbody>' + rows +
+          '<tr style="font-weight:700;border-top:2px solid #334155"><td>Всього</td><td>' + formatNum(item.invested) +
+          '</td><td style="color:#4ade80">+' + formatNum(totalInterest) + '</td><td><strong>' + formatNum(balance) + '</strong></td></tr>' +
+          '</tbody></table></div></div>';
+      }
+    })()}
 
     <div class="detail-actions">
       <button class="btn-export" onclick="closeInvestmentDetail(); editPortfolioItem('${item.id}')">✎ Редагувати</button>
@@ -1784,14 +1858,12 @@ function editPortfolioItem(id) {
   document.getElementById('pDateStart').value = item.dateStart || '';
   document.getElementById('pDateEnd').value = item.dateEnd || '';
   document.getElementById('pBank').value = item.bank || '';
-  document.getElementById('pCard').value = item.card || '';
   document.getElementById('pNotes').value = item.notes || '';
 
   // Compound fields
+  // If saved as compound, set type to compound
+  document.getElementById('pIndex').value = item.indexation || '';
   document.getElementById('pCompound').checked = !!item.compound;
-  document.getElementById('pCompoundRate').value = item.compoundRate || '';
-  document.getElementById('pCompoundIndex').value = item.compoundIndex || '';
-  if (item.compoundYears) document.getElementById('pCompoundYears').value = item.compoundYears;
   togglePortfolioCompound();
 
   // Remove old item
@@ -1827,7 +1899,7 @@ function renderPortfolio() {
   let totalDailyGross = 0, totalDailyNet = 0, totalProfitToEOY = 0;
   const dailyBreakdown = [];
 
-  const typeLabels = { ovdp: 'ОВДП', deposit: 'Депозит', other: 'Інше' };
+  const typeLabels = { ovdp: 'ОВДП', deposit: 'Депозит', compound: 'Складний %', insurance: 'Страхування', other: 'Інше' };
 
   list.innerHTML = sanitize(portfolioItems.map(p => {
     const isActive = p.dateEnd ? new Date(p.dateEnd) > now : true;
@@ -1838,7 +1910,12 @@ function renderPortfolio() {
     if (p.dateStart && p.dateEnd) {
       days = Math.round((new Date(p.dateEnd) - new Date(p.dateStart)) / 86400000);
       if (p.rate && days > 0) {
-        expectedProfit = p.invested * (p.rate / 100) * (days / 365.25);
+        const totalYears = days / 365.25;
+        if (p.compound) {
+          expectedProfit = p.invested * Math.pow(1 + p.rate / 100, totalYears) - p.invested;
+        } else {
+          expectedProfit = p.invested * (p.rate / 100) * totalYears;
+        }
         totalExpectedProfit += expectedProfit;
 
         // Daily earnings (only for active investments)
@@ -1851,7 +1928,12 @@ function renderPortfolio() {
 
           // Earned so far
           const elapsedDays = (now - new Date(p.dateStart)) / 86400000;
-          earnedSoFar = p.invested * (p.rate / 100) * (elapsedDays / 365.25);
+          const elapsedYears = elapsedDays / 365.25;
+          if (p.compound) {
+            earnedSoFar = p.invested * Math.pow(1 + p.rate / 100, elapsedYears) - p.invested;
+          } else {
+            earnedSoFar = p.invested * (p.rate / 100) * elapsedYears;
+          }
           earnedSoFar = Math.min(earnedSoFar, expectedProfit);
           totalEarnedSoFar += earnedSoFar;
 
@@ -1878,6 +1960,7 @@ function renderPortfolio() {
             ${esc(p.name)}
             <span class="p-item-type p-type-${esc(p.type)}">${esc(typeLabels[p.type] || p.type)}</span>
             <span class="${isActive ? 'p-status-active' : 'p-status-ended'}" style="font-size:11px">${isActive ? '● Активна' : '○ Завершена'}</span>
+            ${p.compound ? '<span class="p-item-type p-type-compound" style="font-size:10px">реінвест.</span>' : ''}
           </div>
           <div class="p-item-details">
             <span>Вкладено: <strong>${formatNum(p.invested)} грн</strong></span>
@@ -1887,7 +1970,7 @@ function renderPortfolio() {
             ${days > 0 ? '<span>Строк: <strong>' + days + ' дн.</strong></span>' : ''}
             ${p.dateStart ? '<span>' + formatDate(p.dateStart) + ' → ' + (p.dateEnd ? formatDate(p.dateEnd) : '...') + '</span>' : ''}
           </div>
-          ${p.bank || p.card ? '<div class="p-item-details" style="margin-top:4px"><span>Виведення: <strong>' + esc(p.bank || '') + (p.bank && p.card ? ' · ' : '') + esc(p.card || '') + '</strong></span></div>' : ''}
+          ${p.bank ? '<div class="p-item-details" style="margin-top:4px"><span>Банк: <strong>' + esc(p.bank) + '</strong></span></div>' : ''}
           ${p.notes ? '<div class="p-item-notes">' + esc(p.notes) + '</div>' : ''}
         </div>
         <div class="p-item-actions">
@@ -1976,6 +2059,8 @@ function renderExpiryAlerts(items) {
 // ---- Portfolio Chart ----
 let portfolioChartInstance = null;
 
+let portfolioChartYear = null; // null = auto (latest dateEnd)
+
 function renderPortfolioChart(items) {
   const canvas = document.getElementById('portfolioChart');
   if (!canvas || typeof Chart === 'undefined') return;
@@ -1989,10 +2074,11 @@ function renderPortfolioChart(items) {
 
   if (activeItems.length === 0) {
     canvas.parentElement.innerHTML = '<p style="text-align:center;color:#475569;padding:40px;font-size:13px">Додайте вкладення зі ставкою та датами для графіку</p>';
+    document.getElementById('chartYearFilters').innerHTML = '';
     return;
   }
 
-  // Find date range — start from earliest investment date
+  // Find date range
   let minDate = new Date(activeItems[0].dateStart);
   let maxDate = new Date(activeItems[0].dateEnd);
   activeItems.forEach(p => {
@@ -2001,6 +2087,23 @@ function renderPortfolioChart(items) {
     if (s < minDate) minDate = s;
     if (e > maxDate) maxDate = e;
   });
+
+  // Build year filter select (show chart from start up to selected year end)
+  const minYear = minDate.getFullYear();
+  const maxYear = maxDate.getFullYear();
+  const sel = document.getElementById('chartYearFilter');
+  const currentVal = portfolioChartYear === null ? 'all' : String(portfolioChartYear);
+  const extendedMaxYear = minYear + 60;
+  let opts = '<option value="all"' + (currentVal === 'all' ? ' selected' : '') + '>До кінця (' + maxYear + ')</option>';
+  for (let yr = extendedMaxYear; yr >= minYear; yr--) {
+    opts += '<option value="' + yr + '"' + (currentVal === String(yr) ? ' selected' : '') + '>До ' + yr + '</option>';
+  }
+  sel.innerHTML = opts;
+
+  // Apply year filter — keep minDate, adjust maxDate
+  if (portfolioChartYear !== null) {
+    maxDate = new Date(portfolioChartYear, 11, 31);
+  }
 
   const dayMs = 86400000;
   const startTime = minDate.getTime();
@@ -2018,7 +2121,7 @@ function renderPortfolioChart(items) {
 
   for (let d = 0; d <= totalDays; d += step) {
     const date = new Date(startTime + d * dayMs);
-    labels.push(date.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' }));
+    labels.push(date.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' }));
 
     let inv = 0, val = 0;
     activeItems.forEach(p => {
@@ -2058,6 +2161,22 @@ function renderPortfolioChart(items) {
   if (todayIndex > 0 && todayIndex < projectedLine.length && valueLine[todayIndex - 1] != null) {
     projectedLine[todayIndex] = valueLine[todayIndex - 1];
   }
+
+  // Summary: values at chart end date
+  const lastIdx = labels.length - 1;
+  const endInvested = investedLine[lastIdx] || 0;
+  const endValue = (valueLine[lastIdx] || projectedLine[lastIdx]) || 0;
+  const endProfit = endValue - endInvested;
+  const endDateStr = maxDate.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  document.getElementById('chartSummary').innerHTML = `
+    <div class="chart-summary">
+      <div class="chart-summary-date">На ${endDateStr}</div>
+      <div class="chart-summary-grid">
+        <div><div class="chart-summary-label">Вкладено</div><div class="chart-summary-value" style="color:#3b82f6">${formatNum(endInvested)} ₴</div></div>
+        <div><div class="chart-summary-label">Вартість</div><div class="chart-summary-value">${formatNum(endValue)} ₴</div></div>
+        <div><div class="chart-summary-label">Прибуток</div><div class="chart-summary-value" style="color:#4ade80">+${formatNum(endProfit)} ₴</div></div>
+      </div>
+    </div>`;
 
   portfolioChartInstance = new Chart(canvas, {
     type: 'line',
@@ -2126,7 +2245,12 @@ function renderPortfolioChart(items) {
       },
       scales: {
         x: {
-          ticks: { color: '#475569', maxTicksLimit: 12, font: { size: 11 } },
+          ticks: {
+            color: '#475569',
+            maxTicksLimit: window.innerWidth < 500 ? 6 : 12,
+            maxRotation: 45,
+            font: { size: window.innerWidth < 500 ? 9 : 11 }
+          },
           grid: { color: 'rgba(51,65,85,0.3)' }
         },
         y: {
