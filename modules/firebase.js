@@ -26,6 +26,7 @@ function initFirebase() {
         loadPortfolioFromFirestore();
         loadProfileFromFirestore();
       }
+      checkMaintenance();
     });
   } catch(e) {
     console.warn('Firebase init failed:', e);
@@ -455,6 +456,32 @@ async function deleteAllUserData() {
     resultEl.style.color = '#f87171';
     resultEl.style.display = 'block';
   }
+}
+
+// ---- Maintenance mode check ----
+async function checkMaintenance() {
+  if (!firebaseReady || !db) return;
+  try {
+    const doc = await db.collection('settings').doc('maintenance').get();
+    if (doc.exists && doc.data().enabled) {
+      // Admins can bypass
+      if (currentUser) {
+        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        if (userDoc.exists && userDoc.data().meta && userDoc.data().meta.isAdmin) return;
+      }
+      const msg = doc.data().message || 'Сайт на обслуговуванні. Скоро повернемось!';
+      const overlay = document.createElement('div');
+      overlay.id = 'maintenanceOverlay';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#0f172a;display:flex;align-items:center;justify-content:center;z-index:99999;flex-direction:column;padding:20px;text-align:center';
+      overlay.innerHTML = `
+        <div style="font-size:60px;margin-bottom:20px">🔧</div>
+        <h2 style="color:#f1f5f9;font-size:22px;margin-bottom:12px">Технічне обслуговування</h2>
+        <p style="color:#94a3b8;font-size:15px;max-width:400px;line-height:1.6">${esc(msg)}</p>
+        <p style="color:#475569;font-size:12px;margin-top:24px">Invest UA</p>
+      `;
+      document.body.appendChild(overlay);
+    }
+  } catch(e) { /* ignore */ }
 }
 
 // ---- Init on load ----
