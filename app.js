@@ -2952,13 +2952,15 @@ function renderDreams() {
   const colors = ['#3b82f6', '#4ade80', '#f59e0b', '#a855f7', '#f472b6', '#60a5fa', '#facc15', '#34d399'];
 
   list.innerHTML = sanitize(dreamItems.map((d, i) => {
-    const progress = d.target > 0 ? Math.min(100, (d.saved / d.target) * 100) : 0;
-    totalTarget += d.target;
-    totalSaved += d.saved || 0;
+    const target = d.target || 0;
+    const saved = d.saved || 0;
+    const progress = target > 0 ? Math.min(100, (saved / target) * 100) : 0;
+    totalTarget += target;
+    totalSaved += saved;
 
     // Months to goal
     const netMonthly = d.monthly || 0;
-    const remaining = d.target - (d.saved || 0);
+    const remaining = target - saved;
     const monthsLeft = netMonthly > 0 ? Math.ceil(remaining / netMonthly) : null;
     const estimatedDate = monthsLeft ? new Date(now.getFullYear(), now.getMonth() + monthsLeft, 1) : null;
 
@@ -2976,12 +2978,12 @@ function renderDreams() {
     pieData.push(d.target);
     pieColors.push(colors[i % colors.length]);
 
-    return `<div class="p-item" style="flex-wrap:wrap;cursor:pointer" onclick="if(!event.target.closest('.btn-delete')&&!event.target.closest('#dreamDeposit-${d.id}')&&!event.target.closest('input'))openDreamDetail('${d.id}')"
+    return `<div class="p-item" style="flex-wrap:wrap;cursor:pointer" onclick="if(!event.target.closest('.btn-delete')&&!event.target.closest('#dreamDeposit-${d.id}')&&!event.target.closest('input'))openDreamDetail('${d.id}')">
       <div class="p-item-info" style="width:100%">
         <div class="p-item-name">${esc(d.name)}</div>
         <div class="detail-progress" style="margin:8px 0"><div class="detail-progress-bar" style="width:${progress.toFixed(1)}%"></div></div>
         <div class="p-item-details">
-          <span>${formatNum(d.saved || 0)} з ${formatNum(d.target)} грн (${progress.toFixed(0)}%)</span>
+          <span>${formatNum(saved)} з ${formatNum(target)} грн (${progress.toFixed(0)}%)</span>
           ${d.monthly ? '<span>Внесок: ' + formatNum(d.monthly) + '/міс</span>' : ''}
           ${monthsLeft ? '<span>≈ ' + monthsLeft + ' міс. до цілі</span>' : ''}
           ${deadlineInfo ? '<span>' + deadlineInfo + '</span>' : ''}
