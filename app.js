@@ -168,10 +168,12 @@ let savedRecords = [];
 
 // ============ HELPERS ============
 function formatNum(n) {
-  return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
+  if (n == null || isNaN(n)) return '0,00';
+  return Number(n).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function formatShort(n) {
-  return n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
+  if (n == null || isNaN(n)) return '0,00';
+  return Number(n).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function parseNum(str) {
   if (!str) return NaN;
@@ -1217,7 +1219,8 @@ function checkAnalyticsReady() {
   const empty = document.getElementById('analyticsEmpty');
   const content = document.getElementById('analyticsContent');
 
-  if (typeof currentUser === 'undefined' || !currentUser) {
+  if (typeof currentUser === 'undefined') return;
+  if (!currentUser) {
     authGate.style.display = 'block';
     empty.style.display = 'none';
     content.style.display = 'none';
@@ -1562,7 +1565,8 @@ function togglePortfolioCompound() { togglePortfolioTypeFields(); }
 function updatePortfolioUI() {
   const auth = document.getElementById('portfolioAuth');
   const content = document.getElementById('portfolioContent');
-  if (typeof currentUser !== 'undefined' && currentUser) {
+  if (typeof currentUser === 'undefined') return;
+  if (currentUser) {
     auth.style.display = 'none';
     content.style.display = 'block';
     renderPortfolio();
@@ -2635,7 +2639,9 @@ let dreamsPieInstance = null;
 function updateDreamsUI() {
   const auth = document.getElementById('dreamsAuth');
   const content = document.getElementById('dreamsContent');
-  if (typeof currentUser !== 'undefined' && currentUser) {
+  // Don't show auth prompt until Firebase has determined auth state
+  if (typeof currentUser === 'undefined') return;
+  if (currentUser) {
     auth.style.display = 'none';
     content.style.display = 'block';
     renderDreams();
