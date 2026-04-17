@@ -210,9 +210,13 @@
           <input type="checkbox" id="tgNotifyLogin" onchange="saveTelegramConfig()" style="width:16px;height:16px;accent-color:#3b82f6">
           Повідомляти при кожному логіні
         </label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#e2e8f0;cursor:pointer">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#e2e8f0;cursor:pointer;margin-bottom:6px">
           <input type="checkbox" id="tgNotifyNewUser" onchange="saveTelegramConfig()" checked style="width:16px;height:16px;accent-color:#3b82f6">
           Повідомляти при реєстрації нового користувача
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#e2e8f0;cursor:pointer">
+          <input type="checkbox" id="tgNotifyFeedback" onchange="saveTelegramConfig()" checked style="width:16px;height:16px;accent-color:#3b82f6">
+          Повідомляти про новий відгук (форма зворотного зв'язку)
         </label>
       </div>
     </div>
@@ -515,6 +519,7 @@
         document.getElementById('tgChatId').value = d.chatId || '';
         document.getElementById('tgNotifyLogin').checked = d.notifyLogin !== false;
         document.getElementById('tgNotifyNewUser').checked = d.notifyNewUser !== false;
+        document.getElementById('tgNotifyFeedback').checked = d.notifyFeedback !== false;
       }
     } catch(e) { /* ignore */ }
   }
@@ -524,10 +529,11 @@
     const chatId = document.getElementById('tgChatId').value.trim();
     const notifyLogin = document.getElementById('tgNotifyLogin').checked;
     const notifyNewUser = document.getElementById('tgNotifyNewUser').checked;
+    const notifyFeedback = document.getElementById('tgNotifyFeedback').checked;
     const status = document.getElementById('tgStatus');
 
     try {
-      await db.collection('settings').doc('telegram').set({ botToken, chatId, notifyLogin, notifyNewUser });
+      await db.collection('settings').doc('telegram').set({ botToken, chatId, notifyLogin, notifyNewUser, notifyFeedback });
       status.textContent = '✓ Збережено';
       status.style.color = '#4ade80';
       status.style.display = 'block';

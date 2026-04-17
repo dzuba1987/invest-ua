@@ -71,7 +71,7 @@ button:hover { opacity: 0.9; }
   margin-top: 8px;
 }
 .btn-import {
-  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  background: linear-gradient(135deg, #0ea5e9, #0284c7);
   margin-top: 8px;
 }
 .btn-row { display: flex; gap: 8px; }

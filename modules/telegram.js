@@ -42,6 +42,23 @@ async function notifyTelegram(event, user) {
   }
 }
 
+async function notifyTelegramFeedback(name, email, text) {
+  const config = await getTelegramConfig();
+  if (!config || !config.chatId || config.notifyFeedback === false) return;
+
+  try {
+    await apiFetch('/telegram/admin-notify', {
+      event: 'feedback',
+      name: name || 'Анонім',
+      email: email || '—',
+      text: text,
+      admin_chat_id: config.chatId
+    });
+  } catch(e) {
+    console.warn('Feedback notify failed:', e);
+  }
+}
+
 // ---- User notification settings ----
 
 function saveNotifySettings() {

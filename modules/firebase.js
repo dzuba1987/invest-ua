@@ -349,13 +349,22 @@ async function sendFeedback() {
   }
 
   try {
+    const up = (typeof userProfile === 'object' && userProfile) ? userProfile : {};
+    const fbName = up.displayName || (currentUser && currentUser.displayName) || 'Анонім';
+    const fbEmail = up.contactEmail || (currentUser && currentUser.email) || '';
     await db.collection('feedback').add({
       uid: currentUser ? currentUser.uid : null,
-      name: userProfile.displayName || (currentUser ? currentUser.displayName : 'Анонім'),
-      email: userProfile.contactEmail || (currentUser ? currentUser.email : ''),
+      name: fbName,
+      email: fbEmail,
       text: text,
       createdAt: new Date().toISOString()
     });
+
+    if (typeof notifyTelegramFeedback === 'function') {
+      Promise.resolve()
+        .then(() => notifyTelegramFeedback(fbName, fbEmail, text))
+        .catch(err => console.warn('Telegram feedback notify failed:', err));
+    }
 
     document.getElementById('feedbackText').value = '';
     resultEl.textContent = '✓ Дякуємо за відгук!';
@@ -366,7 +375,8 @@ async function sendFeedback() {
     resultEl.style.animation = 'fadeOut 5s forwards';
     setTimeout(() => { resultEl.style.display = 'none'; }, 5000);
   } catch(e) {
-    resultEl.textContent = 'Помилка: ' + e.message;
+    console.error('sendFeedback error:', e);
+    resultEl.textContent = 'Помилка: ' + (e && e.message ? e.message : 'unknown');
     resultEl.style.color = '#f87171';
     resultEl.style.display = 'block';
   }
