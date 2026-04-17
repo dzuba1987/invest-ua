@@ -1491,3 +1491,125 @@ button:hover { opacity: 0.9; }
   .currency-pinned-rate { font-size: 14px; }
   .bm-value { font-size: 12px; }
 }
+
+/* ============ MINFIN IMPORT ============ */
+.minfin-import-section {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid #334155;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 18px;
+}
+.minfin-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.btn-minfin-import {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 1px dashed #475569;
+  border-radius: 10px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.btn-minfin-import:hover {
+  border-color: #38bdf8;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.05);
+}
+.minfin-icon { font-size: 18px; }
+.minfin-count {
+  font-size: 13px;
+  color: #22c55e;
+  font-weight: 500;
+}
+.minfin-filters {
+  display: flex;
+  gap: 16px;
+  margin: 10px 0 8px;
+}
+.minfin-filter-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #94a3b8;
+  cursor: pointer;
+}
+.minfin-filter-label input[type="checkbox"] {
+  accent-color: #38bdf8;
+}
+#minfinBondSelect,
+#ovdpBondSelect,
+#pOvdpBondSelect {
+  width: 100%;
+  padding: 12px 40px 12px 14px;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background-color: #0f172a;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path fill='none' stroke='%2394a3b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M2 4.5l4 4 4-4'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  color: #f1f5f9;
+  font-size: 14px;
+  line-height: 1.3;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  transition: border-color .2s, box-shadow .2s, background-color .2s;
+}
+#minfinBondSelect:hover,
+#ovdpBondSelect:hover,
+#pOvdpBondSelect:hover {
+  border-color: #475569;
+  background-color: #111c33;
+}
+#minfinBondSelect:focus,
+#ovdpBondSelect:focus,
+#pOvdpBondSelect:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+}
+#minfinBondSelect option,
+#ovdpBondSelect option,
+#pOvdpBondSelect option {
+  background: #0f172a;
+  color: #f1f5f9;
+  padding: 8px;
+}
+#minfinBondSelect option:disabled,
+#ovdpBondSelect option:disabled,
+#pOvdpBondSelect option:disabled {
+  color: #64748b;
+}
+@media (max-width: 400px) {
+  #minfinBondSelect,
+  #ovdpBondSelect,
+  #pOvdpBondSelect {
+    padding: 10px 36px 10px 12px;
+    font-size: 13px;
+    background-position: right 12px center;
+  }
+}
+.minfin-bond-info {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: rgba(56, 189, 248, 0.06);
+  border: 1px solid rgba(56, 189, 248, 0.15);
+  border-radius: 10px;
+  font-size: 13px;
+  color: #cbd5e1;
+  line-height: 1.6;
+}
+.minfin-bond-info strong {
+  color: #38bdf8;
+}

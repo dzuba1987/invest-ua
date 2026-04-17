@@ -336,6 +336,41 @@ function update(changedField) {
   calculate();
 }
 
+function toggleCalcTypeFields() {
+  const type = document.getElementById('calcType').value;
+  const isOvdp = type === 'ovdp';
+  const isDeposit = type === 'deposit';
+  const isInsurance = type === 'insurance';
+
+  const compoundToggle = document.querySelector('.compound-toggle');
+  const cb = document.getElementById('compoundCheck');
+
+  if (compoundToggle) compoundToggle.style.display = isDeposit ? '' : 'none';
+
+  if (isInsurance && !cb.checked) {
+    cb.checked = true;
+    toggleCompoundOptions();
+  } else if (!isDeposit && !isInsurance && cb.checked) {
+    cb.checked = false;
+    toggleCompoundOptions();
+  }
+
+  document.getElementById('fieldBondName').style.display = isOvdp ? '' : 'none';
+  document.getElementById('fieldBondPrice').style.display = isOvdp ? '' : 'none';
+  document.getElementById('fieldBondCount').style.display = isOvdp ? '' : 'none';
+  document.getElementById('fieldReceived').style.display = isInsurance ? 'none' : '';
+  document.getElementById('fieldDiff').style.display = isInsurance ? 'none' : '';
+
+  const ovdpSection = document.getElementById('ovdpSection');
+  if (ovdpSection && typeof ovdpBonds !== 'undefined' && ovdpBonds.length > 0) {
+    ovdpSection.style.display = isOvdp ? 'block' : 'none';
+  } else if (ovdpSection && !isOvdp) {
+    ovdpSection.style.display = 'none';
+  }
+
+  calculate();
+}
+
 function toggleCompoundOptions() {
   const isCompound = document.getElementById('compoundCheck').checked;
   document.getElementById('compoundTermField').style.display = isCompound ? '' : 'none';
@@ -363,10 +398,18 @@ function toggleCompoundOptions() {
     document.getElementById('dateEnd').value = end.toISOString().split('T')[0];
   }
 
-  // Hide bond-specific fields in compound mode
-  const bondFields = ['fieldBondName', 'fieldBondPrice', 'fieldBondCount', 'fieldReceived', 'fieldDiff'];
+  // Hide bond-specific fields in compound mode; also respect calcType if present
+  const calcTypeEl = document.getElementById('calcType');
+  const ctype = calcTypeEl ? calcTypeEl.value : null;
+  const isOvdpType = ctype === 'ovdp';
+  const bondFields = ['fieldBondName', 'fieldBondPrice', 'fieldBondCount'];
   bondFields.forEach(id => {
-    document.getElementById(id).style.display = isCompound ? 'none' : '';
+    const hide = isCompound || (ctype && !isOvdpType);
+    document.getElementById(id).style.display = hide ? 'none' : '';
+  });
+  ['fieldReceived', 'fieldDiff'].forEach(id => {
+    const hide = isCompound || ctype === 'insurance';
+    document.getElementById(id).style.display = hide ? 'none' : '';
   });
 
   // Update labels
@@ -702,8 +745,10 @@ function saveRecord() {
   const compoundIndex = isCompound ? (parseNum(document.getElementById('compoundIndex').value) || 0) : null;
   const compoundYears = isCompound ? (parseInt(document.getElementById('compoundYears').value) || 2) : null;
 
+  const calcTypeEl = document.getElementById('calcType');
   const record = {
     id: Date.now(),
+    calcType: calcTypeEl ? calcTypeEl.value : null,
     name: document.getElementById('bondName').value.trim() || (isCompound ? 'Вклад (складний %)' : '—'),
     bondPrice: hasBondPrice ? bondPrice : null,
     bondCount: hasBondCount ? Math.floor(bondCount) : null,
@@ -825,6 +870,12 @@ function loadRecordToForm(r) {
   document.getElementById('compoundIndex').value = r.compoundIndex || '';
   if (r.compoundYears) document.getElementById('compoundYears').value = r.compoundYears;
   toggleCompoundOptions();
+
+  const ct = document.getElementById('calcType');
+  if (ct) {
+    ct.value = r.calcType || (r.bondPrice || r.bondCount ? 'ovdp' : (r.compound ? 'deposit' : 'other'));
+    toggleCalcTypeFields();
+  }
 
   // Mark manual fields so calculate() doesn't override them
   numFields.forEach(id => document.getElementById(id).classList.remove('auto-filled'));
@@ -1099,6 +1150,213 @@ function importFromExcel(event) {
   event.target.value = '';
 }
 
+// ============ ОВДП SELECT (bonds from Firestore, managed in admin) ============
+let ovdpBonds = [];
+
+// Load ОВДП bonds from Firestore and populate select
+async function loadOvdpBonds() {
+  try {
+    if (typeof firebase === 'undefined' || !firebase.firestore) return;
+    const doc = await firebase.firestore().collection('settings').doc('ovdp').get();
+    if (!doc.exists) return;
+    const data = doc.data();
+    ovdpBonds = data.bonds || [];
+    if (ovdpBonds.length === 0) return;
+
+    // Sort by maturity date
+    ovdpBonds.sort((a, b) => (a.maturityDate || '').localeCompare(b.maturityDate || ''));
+
+    const section = document.getElementById('ovdpSection');
+    const select = document.getElementById('ovdpBondSelect');
+    const pSelect = document.getElementById('pOvdpBondSelect');
+
+    const placeholder = '<option value="">— Оберіть облігацію ОВДП (' + ovdpBonds.length + ') —</option>';
+    [select, pSelect].forEach(sel => { if (sel) sel.innerHTML = placeholder; });
+
+    ovdpBonds.forEach((b, i) => {
+      const daysLeft = b.maturityDate ? Math.max(0, Math.round((new Date(b.maturityDate) - new Date()) / 86400000)) : 0;
+      const label = b.name + ' — до ' + b.maturityDate + ' (' + daysLeft + ' дн.)';
+      [select, pSelect].forEach(sel => {
+        if (!sel) return;
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = label;
+        sel.appendChild(opt);
+      });
+    });
+
+    if (section) section.style.display = 'block';
+    if (typeof togglePortfolioTypeFields === 'function' && document.getElementById('pType')) togglePortfolioTypeFields();
+  } catch(e) {
+    console.log('ОВДП load:', e.message);
+  }
+}
+
+function onOvdpSelect() {
+  const select = document.getElementById('ovdpBondSelect');
+  const infoEl = document.getElementById('ovdpBondInfo');
+  const idx = select.value;
+
+  if (idx === '' || idx === null) {
+    infoEl.style.display = 'none';
+    return;
+  }
+
+  const bond = ovdpBonds[parseInt(idx)];
+  if (!bond) return;
+
+  const today = new Date();
+  const daysLeft = bond.maturityDate ? Math.max(0, Math.round((new Date(bond.maturityDate) - today) / 86400000)) : 0;
+
+  // Info card
+  infoEl.innerHTML =
+    '<strong>' + bond.name + '</strong><br>' +
+    '<strong>ISIN:</strong> ' + bond.isin + '<br>' +
+    '<strong>Погашення:</strong> ' + bond.maturityDate + ' (~' + daysLeft + ' дн.)<br>' +
+    '<strong>Купон:</strong> ' + (bond.couponAmount > 0 ? bond.couponAmount.toFixed(2) + ' грн' : '—') + '<br>' +
+    '<span style="color:#f59e0b;font-size:12px">⚠ Введіть ціну з Дії — ставка розрахується автоматично</span>';
+  infoEl.style.display = 'block';
+
+  // Auto-fill
+  document.getElementById('bondName').value = bond.name + ' ' + bond.isin;
+  document.getElementById('bondPrice').value = '';
+  document.getElementById('annualRateInput').value = '';
+  document.getElementById('dateStart').value = today.toISOString().split('T')[0];
+  if (bond.maturityDate) {
+    document.getElementById('dateEnd').value = bond.maturityDate;
+  }
+
+  ['dateStart', 'dateEnd'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('auto-filled');
+  });
+
+  // Auto-calc yield when user enters price
+  const priceEl = document.getElementById('bondPrice');
+  priceEl._ovdpBond = bond;
+  priceEl.removeEventListener('input', onBondPriceInputOvdp);
+  priceEl.addEventListener('input', onBondPriceInputOvdp);
+
+  setTimeout(() => priceEl.focus(), 100);
+}
+
+function onBondPriceInputOvdp() {
+  const priceEl = document.getElementById('bondPrice');
+  const bond = priceEl._ovdpBond;
+  if (!bond) return;
+
+  const price = parseFloat(priceEl.value.replace(/\s/g, '').replace(',', '.'));
+  if (!price || price <= 0 || !bond.maturityDate) return;
+
+  const today = new Date();
+  const maturity = new Date(bond.maturityDate);
+  const daysLeft = Math.max(1, Math.round((maturity - today) / 86400000));
+
+  // Count remaining coupon payments after today
+  let remainingCoupons = 0;
+  if (bond.couponDates && bond.couponDates.length > 0) {
+    const todayStr = today.toISOString().split('T')[0];
+    remainingCoupons = bond.couponDates.filter(d => d > todayStr).length;
+  }
+
+  const totalCoupons = remainingCoupons * (bond.couponAmount || 0);
+  const receivedAtMaturity = 1000 + totalCoupons;
+  const profit = receivedAtMaturity - price;
+  const effectiveYield = (profit / price) * (365 / daysLeft) * 100;
+
+  if (effectiveYield > -50 && effectiveYield < 200) {
+    document.getElementById('annualRateInput').value = effectiveYield.toFixed(2);
+    document.getElementById('annualRateInput').classList.add('auto-filled');
+
+    const infoEl = document.getElementById('ovdpBondInfo');
+    const existingCalc = infoEl.querySelector('.minfin-calc-yield');
+    const calcHtml = '<span class="minfin-calc-yield" style="display:block;margin-top:6px;padding:6px 10px;background:rgba(34,197,94,0.1);border-radius:8px;color:#22c55e;font-weight:600">' +
+      '📈 Дохідність: ' + effectiveYield.toFixed(2) + '% річних' +
+      ' <span style="font-weight:400;color:#94a3b8;font-size:12px">(отримаєте ' + receivedAtMaturity.toFixed(2) + ' грн через ' + daysLeft + ' дн.)</span></span>';
+    if (existingCalc) {
+      existingCalc.outerHTML = calcHtml;
+    } else {
+      infoEl.insertAdjacentHTML('beforeend', calcHtml);
+    }
+  }
+}
+
+// ============ PORTFOLIO ОВДП SELECT ============
+function onPortfolioOvdpSelect() {
+  const select = document.getElementById('pOvdpBondSelect');
+  const infoEl = document.getElementById('pOvdpBondInfo');
+  const idx = select.value;
+
+  if (idx === '' || idx === null) {
+    infoEl.style.display = 'none';
+    return;
+  }
+
+  const bond = ovdpBonds[parseInt(idx)];
+  if (!bond) return;
+
+  const today = new Date();
+  const daysLeft = bond.maturityDate ? Math.max(0, Math.round((new Date(bond.maturityDate) - today) / 86400000)) : 0;
+
+  infoEl.innerHTML =
+    '<strong>' + bond.name + '</strong><br>' +
+    '<strong>ISIN:</strong> ' + bond.isin + '<br>' +
+    '<strong>Погашення:</strong> ' + bond.maturityDate + ' (~' + daysLeft + ' дн.)<br>' +
+    '<strong>Купон:</strong> ' + (bond.couponAmount > 0 ? bond.couponAmount.toFixed(2) + ' грн' : '—') + '<br>' +
+    '<span style="color:#f59e0b;font-size:12px">⚠ Введіть ціну з Дії — ставка розрахується автоматично</span>';
+  infoEl.style.display = 'block';
+
+  document.getElementById('pName').value = bond.name + ' ' + bond.isin;
+  document.getElementById('pBondPrice').value = '';
+  document.getElementById('pBondCount').value = '';
+  document.getElementById('pRate').value = '';
+  document.getElementById('pDateStart').value = today.toISOString().split('T')[0];
+  if (bond.maturityDate) document.getElementById('pDateEnd').value = bond.maturityDate;
+
+  const priceEl = document.getElementById('pBondPrice');
+  priceEl._ovdpBond = bond;
+  priceEl.removeEventListener('input', onPortfolioBondPriceInputOvdp);
+  priceEl.addEventListener('input', onPortfolioBondPriceInputOvdp);
+
+  setTimeout(() => priceEl.focus(), 100);
+}
+
+function onPortfolioBondPriceInputOvdp() {
+  const priceEl = document.getElementById('pBondPrice');
+  const bond = priceEl._ovdpBond;
+  if (!bond) return;
+
+  const price = parseFloat(priceEl.value.replace(/\s/g, '').replace(',', '.'));
+  if (!price || price <= 0 || !bond.maturityDate) return;
+
+  const today = new Date();
+  const maturity = new Date(bond.maturityDate);
+  const daysLeft = Math.max(1, Math.round((maturity - today) / 86400000));
+
+  let remainingCoupons = 0;
+  if (bond.couponDates && bond.couponDates.length > 0) {
+    const todayStr = today.toISOString().split('T')[0];
+    remainingCoupons = bond.couponDates.filter(d => d > todayStr).length;
+  }
+
+  const totalCoupons = remainingCoupons * (bond.couponAmount || 0);
+  const receivedAtMaturity = 1000 + totalCoupons;
+  const profit = receivedAtMaturity - price;
+  const effectiveYield = (profit / price) * (365 / daysLeft) * 100;
+
+  if (effectiveYield > -50 && effectiveYield < 200) {
+    document.getElementById('pRate').value = effectiveYield.toFixed(2);
+
+    const infoEl = document.getElementById('pOvdpBondInfo');
+    const existingCalc = infoEl.querySelector('.minfin-calc-yield');
+    const calcHtml = '<span class="minfin-calc-yield" style="display:block;margin-top:6px;padding:6px 10px;background:rgba(34,197,94,0.1);border-radius:8px;color:#22c55e;font-weight:600">' +
+      '📈 Дохідність: ' + effectiveYield.toFixed(2) + '% річних' +
+      ' <span style="font-weight:400;color:#94a3b8;font-size:12px">(отримаєте ' + receivedAtMaturity.toFixed(2) + ' грн через ' + daysLeft + ' дн.)</span></span>';
+    if (existingCalc) existingCalc.outerHTML = calcHtml;
+    else infoEl.insertAdjacentHTML('beforeend', calcHtml);
+  }
+}
+
 // ============ CLEAR ============
 function clearAll() {
   numFields.forEach(id => {
@@ -1122,11 +1380,19 @@ function clearAll() {
    'receivedCalcRow','profitPerBondRow','netPerBondRow','bonusSectionLabel',
    'bonusAmountRow','totalWithBonusRow'
   ].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  // Reset ОВДП select
+  const ovdpSel = document.getElementById('ovdpBondSelect');
+  if (ovdpSel) ovdpSel.selectedIndex = 0;
+  const ovdpInfo = document.getElementById('ovdpBondInfo');
+  if (ovdpInfo) ovdpInfo.style.display = 'none';
+
   document.getElementById('compoundCheck').checked = false;
   document.getElementById('compoundRate').value = '';
   document.getElementById('compoundTax').value = '';
   document.getElementById('compoundIndex').value = '';
   toggleCompoundOptions();
+  const ct = document.getElementById('calcType');
+  if (ct) { ct.value = 'ovdp'; toggleCalcTypeFields(); }
   document.getElementById('compoundSection').style.display = 'none';
   document.getElementById('compoundFullWidth').style.display = 'none';
   if (compoundChartInstance) { compoundChartInstance.destroy(); compoundChartInstance = null; }
@@ -1541,6 +1807,12 @@ function togglePortfolioTypeFields() {
   const isDeposit = type === 'deposit';
   const isInsurance = type === 'insurance';
 
+  // ОВДП bond picker — only when type is ovdp and bonds loaded
+  const pOvdpSection = document.getElementById('pOvdpSection');
+  if (pOvdpSection) {
+    pOvdpSection.style.display = (isOvdp && typeof ovdpBonds !== 'undefined' && ovdpBonds.length > 0) ? 'block' : 'none';
+  }
+
   // Bond fields — only ОВДП
   document.getElementById('pBondPriceField').style.display = isOvdp ? '' : 'none';
   document.getElementById('pBondCountField').style.display = isOvdp ? '' : 'none';
@@ -1627,6 +1899,10 @@ function addPortfolioItem() {
   document.getElementById('pNotes').value = '';
   document.getElementById('pIndex').value = '';
   document.getElementById('pCompound').checked = false;
+  const pOvdpSel = document.getElementById('pOvdpBondSelect');
+  if (pOvdpSel) pOvdpSel.selectedIndex = 0;
+  const pOvdpInfo = document.getElementById('pOvdpBondInfo');
+  if (pOvdpInfo) pOvdpInfo.style.display = 'none';
   togglePortfolioTypeFields();
   const now = new Date();
   document.getElementById('pDateStart').value = now.toISOString().split('T')[0];
@@ -3342,6 +3618,9 @@ function updateCreditCalcVisibility() {
 
 // loadFromStorage called here, Firebase init happens in firebase.js after it loads
 loadFromStorage();
+
+// Initialize calculator type-dependent field visibility
+if (document.getElementById('calcType')) toggleCalcTypeFields();
 
 // Restore last active tab
 (function() {

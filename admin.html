@@ -2,12 +2,13 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://darkblue-toad-531724.hostingersite.com; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://*.firebaseapp.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://cdn.jsdelivr.net https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://darkblue-toad-531724.hostingersite.com; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://*.firebaseapp.com;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#1e293b">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <title>Admin — Invest UA</title>
 <link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -251,6 +252,21 @@
       <p id="emailStatus" style="font-size:12px;margin-top:8px;display:none"></p>
     </div>
 
+    <!-- ОВДП Bonds management -->
+    <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:24px">
+      <h3 style="font-size:15px;color:#f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:20px">📊</span> ОВДП — облігації Дія
+      </h3>
+      <p style="font-size:12px;color:#64748b;margin-bottom:12px">Завантажте файл Мінфіну (.xlsx) — система зматчить ISIN з назвами Дії та збереже список для калькулятора</p>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <button class="btn-sm" onclick="document.getElementById('minfinFile').click()" style="padding:10px 20px;border-style:dashed">📎 Завантажити файл Мінфіну</button>
+        <input type="file" id="minfinFile" accept=".xlsx,.xls" style="display:none" onchange="importMinfinAdmin(event)">
+        <span id="minfinCount" style="font-size:13px;color:#4ade80;display:none"></span>
+      </div>
+      <div id="minfinPreview" style="display:none;margin-top:14px;max-height:300px;overflow-y:auto"></div>
+      <p id="minfinStatus" style="font-size:12px;margin-top:8px;display:none"></p>
+    </div>
+
     <input type="text" class="search-input" id="searchInput" placeholder="Пошук за ім'ям або email..." oninput="filterUsers()">
 
     <div class="user-list" id="userList"></div>
@@ -310,6 +326,7 @@
     loadTabVisibility();
     loadTelegramConfig();
     loadFeedback();
+    loadMinfinBonds();
   });
 
   async function loadUsers() {
@@ -717,6 +734,144 @@
       status.style.color = '#f87171';
       status.style.display = 'block';
     }
+  }
+
+  // ---- ОВДП Minfin import ----
+  const DIIA_NAMES = {
+    'UA4000234215': 'Соледар',
+    'UA4000235378': 'Генічеськ',
+    'UA4000235865': 'Алушта',
+    'UA4000236624': 'Бахмут',
+    'UA4000237416': 'Лисичанськ',
+    'UA4000238281': 'Амросіївка',
+    'UA4000238976': 'Феодосія',
+    'UA4000233340': 'Скадовськ',
+    'UA4000233704': 'Новий Світ',
+    'UA4000232904': 'Дебальцеве',
+    'UA4000234223': 'Лівадія',
+    'UA4000233712': 'Форос',
+    'UA4000237804': 'Алчевськ',
+    'UA4000231559': 'Джарилгач',
+  };
+
+  function parseMinfinDate(val) {
+    if (!val) return '';
+    if (val instanceof Date || (typeof val === 'object' && val.getFullYear)) {
+      return val.toISOString().split('T')[0];
+    }
+    if (typeof val === 'number') {
+      const d = new Date((val - 25569) * 86400000);
+      return d.toISOString().split('T')[0];
+    }
+    const s = String(val).trim();
+    const m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+    if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+    if (s.match(/^\d{4}-\d{2}-\d{2}/)) return s.substring(0, 10);
+    return '';
+  }
+
+  function importMinfinAdmin(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+        const startRow = rows.length > 2 && rows[1] && typeof rows[1][1] === 'string' && String(rows[1][1]).includes('ISIN') ? 2 : 1;
+        const bonds = [];
+
+        for (let i = startRow; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || !row[1]) continue;
+          const isin = String(row[1]).trim();
+          if (!isin || isin.length < 5) continue;
+
+          const diiaName = DIIA_NAMES[isin];
+          if (!diiaName) continue; // тільки відомі облігації Дія
+
+          const maturityDate = parseMinfinDate(row[6]);
+          const couponAmount = parseFloat(row[8]) || 0;
+
+          // Parse coupon dates
+          const couponDatesRaw = String(row[5] || '');
+          const couponDates = [];
+          const dateRegex = /(\d{1,2})\.(\d{1,2})\.(\d{4})/g;
+          let dm;
+          while ((dm = dateRegex.exec(couponDatesRaw)) !== null) {
+            couponDates.push(dm[3] + '-' + dm[2].padStart(2, '0') + '-' + dm[1].padStart(2, '0'));
+          }
+
+          bonds.push({ isin, name: diiaName, maturityDate, couponAmount, couponDates });
+        }
+
+        // Sort by maturity
+        bonds.sort((a, b) => a.maturityDate.localeCompare(b.maturityDate));
+
+        document.getElementById('minfinCount').textContent = '✓ Знайдено ' + bonds.length + ' облігацій Дія';
+        document.getElementById('minfinCount').style.display = 'inline';
+
+        // Preview
+        let html = '<table style="width:100%;font-size:13px;border-collapse:collapse">';
+        html += '<tr style="color:#64748b;font-size:11px;text-align:left"><th style="padding:6px">Назва</th><th>ISIN</th><th>Погашення</th><th>Купон</th></tr>';
+        bonds.forEach(b => {
+          html += '<tr style="border-top:1px solid #1e293b"><td style="padding:6px;color:#f1f5f9;font-weight:600">' + b.name + '</td><td style="color:#94a3b8">' + b.isin + '</td><td style="color:#94a3b8">' + b.maturityDate + '</td><td style="color:#94a3b8">' + b.couponAmount.toFixed(2) + '</td></tr>';
+        });
+        html += '</table>';
+        html += '<button class="btn-sm success" onclick="saveMinfinBonds()" style="margin-top:12px;padding:10px 20px">💾 Зберегти в базу</button>';
+        document.getElementById('minfinPreview').innerHTML = html;
+        document.getElementById('minfinPreview').style.display = 'block';
+
+        // Store temporarily for save
+        window._minfinBondsToSave = bonds;
+
+      } catch (err) {
+        const status = document.getElementById('minfinStatus');
+        status.textContent = 'Помилка: ' + err.message;
+        status.style.color = '#f87171';
+        status.style.display = 'block';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    event.target.value = '';
+  }
+
+  async function saveMinfinBonds() {
+    const bonds = window._minfinBondsToSave;
+    if (!bonds || bonds.length === 0) return;
+    const status = document.getElementById('minfinStatus');
+    try {
+      await db.collection('settings').doc('ovdp').set({
+        bonds: bonds,
+        updatedAt: new Date().toISOString(),
+        updatedBy: currentUser.email
+      });
+      status.textContent = '✓ Збережено ' + bonds.length + ' облігацій';
+      status.style.color = '#4ade80';
+      status.style.display = 'block';
+      setTimeout(() => { status.style.display = 'none'; }, 5000);
+    } catch(e) {
+      status.textContent = 'Помилка: ' + e.message;
+      status.style.color = '#f87171';
+      status.style.display = 'block';
+    }
+  }
+
+  // Load existing ОВДП on page load
+  async function loadMinfinBonds() {
+    try {
+      const doc = await db.collection('settings').doc('ovdp').get();
+      if (doc.exists) {
+        const d = doc.data();
+        const count = (d.bonds || []).length;
+        const updated = d.updatedAt ? new Date(d.updatedAt).toLocaleDateString('uk-UA') : '';
+        document.getElementById('minfinCount').textContent = '📋 ' + count + ' облігацій (оновлено ' + updated + ')';
+        document.getElementById('minfinCount').style.display = 'inline';
+      }
+    } catch(e) { /* ignore */ }
   }
 
   // ---- Tab visibility ----

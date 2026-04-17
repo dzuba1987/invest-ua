@@ -28,6 +28,8 @@ function initFirebase() {
         loadProfileFromFirestore();
       }
       checkMaintenance();
+      // Load ОВДП bonds for calculator select (available to all, even without auth)
+      if (typeof loadOvdpBonds === 'function') loadOvdpBonds();
     });
   } catch(e) {
     console.warn('Firebase init failed:', e);
