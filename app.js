@@ -1922,9 +1922,13 @@ function renderPortfolio() {
     if (isActive) activeCount++;
     totalInvested += p.invested;
 
-    let days = 0, expectedProfit = 0, dailyGross = 0, dailyNet = 0, earnedSoFar = 0;
+    let days = 0, elapsed = 0, progress = 0, daysLeft = 0;
+    let expectedProfit = 0, dailyGross = 0, dailyNet = 0, earnedSoFar = 0;
     if (p.dateStart && p.dateEnd) {
       days = Math.round((new Date(p.dateEnd) - new Date(p.dateStart)) / 86400000);
+      elapsed = Math.max(0, Math.round((now - new Date(p.dateStart)) / 86400000));
+      daysLeft = Math.max(0, Math.round((new Date(p.dateEnd) - now) / 86400000));
+      progress = days > 0 ? Math.min(100, (elapsed / days) * 100) : 0;
       if (p.rate && days > 0) {
         const totalYears = days / 365.25;
         if (p.compound) {
@@ -1978,6 +1982,7 @@ function renderPortfolio() {
             <span class="${isActive ? 'p-status-active' : 'p-status-ended'}" style="font-size:11px">${isActive ? '● Активна' : '○ Завершена'}</span>
             ${p.compound ? '<span class="p-item-type p-type-compound" style="font-size:10px">реінвест.</span>' : ''}
           </div>
+          ${days > 0 ? '<div class="detail-progress" style="margin:6px 0"><div class="detail-progress-bar" style="width:' + progress.toFixed(1) + '%"></div></div><div style="display:flex;justify-content:space-between;font-size:10px;color:#475569;margin-bottom:4px"><span>' + (isActive ? elapsed + ' з ' + days + ' дн. (' + progress.toFixed(0) + '%)' : 'Завершено') + '</span><span>' + (daysLeft > 0 ? daysLeft + ' дн. залишилось' : '') + '</span></div>' : ''}
           <div class="p-item-details">
             <span>Вкладено: <strong>${formatNum(p.invested)} грн</strong></span>
             ${p.bondPrice ? '<span>' + formatShort(p.bondPrice) + ' грн × ' + p.bondCount + ' шт.</span>' : ''}
