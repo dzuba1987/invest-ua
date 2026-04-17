@@ -1663,19 +1663,48 @@ function openInvestmentDetail(id) {
     daysLeft = Math.max(0, Math.round((end - now) / 86400000));
     progress = days > 0 ? Math.min(100, (elapsed / days) * 100) : 0;
 
-    if (item.rate && days > 0) {
-      const totalYears = days / 365.25;
-      const elapsedYears = Math.min(elapsed, days) / 365.25;
+    if (days > 0) {
+      const totalYears = Math.ceil(days / 365.25);
+      const elapsedYears = Math.min(Math.ceil(elapsed / 365.25), totalYears);
+      const ratePct = (item.rate || 0) / 100;
+      const idxPct = (item.indexation || 0) / 100;
+      const isIns = item.type === 'insurance';
 
-      if (item.compound) {
-        // Compound: balance = invested * (1 + rate)^years
-        expectedProfit = item.invested * Math.pow(1 + item.rate / 100, totalYears) - item.invested;
-        earnedSoFar = item.invested * Math.pow(1 + item.rate / 100, elapsedYears) - item.invested;
-        earnedSoFar = Math.min(earnedSoFar, expectedProfit);
-      } else {
+      if (isIns || item.compound) {
+        // Year-by-year simulation (same logic as the yearly table)
+        let balance = 0, totalInterest = 0, totalPaid = 0;
+        let balanceAtElapsed = 0, interestAtElapsed = 0;
+        let yearlyPayment = item.invested;
+
+        for (let y = 1; y <= totalYears; y++) {
+          if (isIns) {
+            // Insurance: yearly payment with indexation + interest on balance
+            if (y > 1 && idxPct > 0) yearlyPayment = item.invested * Math.pow(1 + idxPct, y - 1);
+            const interest = balance * ratePct;
+            balance += yearlyPayment + interest;
+            totalPaid += yearlyPayment;
+            totalInterest += interest;
+          } else {
+            // Compound deposit: interest on balance
+            if (y === 1) balance = item.invested;
+            const interest = balance * ratePct;
+            balance += interest;
+            totalInterest += interest;
+          }
+          if (y <= elapsedYears) {
+            balanceAtElapsed = balance;
+            interestAtElapsed = totalInterest;
+          }
+        }
+
+        expectedProfit = totalInterest;
+        earnedSoFar = interestAtElapsed;
+      } else if (item.rate) {
         // Simple interest
-        expectedProfit = item.invested * (item.rate / 100) * totalYears;
-        earnedSoFar = item.invested * (item.rate / 100) * elapsedYears;
+        const ty = days / 365.25;
+        const ey = Math.min(elapsed, days) / 365.25;
+        expectedProfit = item.invested * ratePct * ty;
+        earnedSoFar = item.invested * ratePct * ey;
         earnedSoFar = Math.min(earnedSoFar, expectedProfit);
       }
       dailyGross = item.invested * (item.rate / 100) / 365.25;
@@ -1771,27 +1800,21 @@ function openInvestmentDetail(id) {
     </div>
 
     ${(() => {
-      // Yearly schedule for insurance (with indexation) or compound deposits
-      if (!item.dateStart || !item.dateEnd || days <= 0) return '';
+      if (!item.dateStart || !item.dateEnd || days <= 0 || !item.rate) return '';
       const totalYears = Math.ceil(days / 365.25);
-      if (totalYears < 1) return '';
-
+      const totalMonths = Math.round(days / 30.44);
       const isIns = item.type === 'insurance';
       const isCmp = !!item.compound;
-      if (!isIns && !isCmp) return '';
-
-      let rows = '';
-      let yearlyPayment = item.invested;
-      const idxPct = item.indexation ? item.indexation / 100 : 0;
-      const ratePct = item.rate ? item.rate / 100 : 0;
-      let balance = 0;
-      let totalPaid = 0;
+      const ratePct = item.rate / 100;
+      const idxPct = (item.indexation || 0) / 100;
+      const startYear = new Date(item.dateStart).getFullYear();
+      const startDate = new Date(item.dateStart);
+      let rows = '', balance = 0, totalPaid = 0, totalInterest = 0;
 
       if (isIns) {
-        // Insurance: yearly table with calendar year, payment, indexation, interest, balance
+        // Insurance: yearly with indexation
         const hasIdx = idxPct > 0;
-        const startYear = item.dateStart ? new Date(item.dateStart).getFullYear() : new Date().getFullYear();
-        let totalInterest = 0;
+        let yearlyPayment = item.invested;
         for (let y = 1; y <= totalYears; y++) {
           if (y > 1 && hasIdx) yearlyPayment = item.invested * Math.pow(1 + idxPct, y - 1);
           const idxAmount = y > 1 && hasIdx ? yearlyPayment - item.invested * Math.pow(1 + idxPct, y - 2) : 0;
@@ -1807,33 +1830,67 @@ function openInvestmentDetail(id) {
         return '<div class="a-card"><h3>Графік внесків по роках</h3>' +
           '<div style="max-height:400px;overflow-y:auto"><table class="credit-schedule-table"><thead><tr>' +
           '<th style="text-align:left">№</th><th>Рік</th><th>Внесок</th>' +
-          (hasIdx ? '<th>Індексація</th>' : '') +
-          '<th>Відсотки</th><th>Баланс</th>' +
+          (hasIdx ? '<th>Індексація</th>' : '') + '<th>Відсотки</th><th>Баланс</th>' +
           '</tr></thead><tbody>' + rows +
           '<tr style="font-weight:700;border-top:2px solid #334155"><td></td><td>Всього</td><td>' + formatNum(totalPaid) + '</td>' +
           (hasIdx ? '<td>—</td>' : '') +
           '<td style="color:#4ade80">' + (totalInterest > 0 ? '+' + formatNum(totalInterest) : '—') + '</td>' +
-          '<td><strong>' + formatNum(balance) + '</strong></td></tr>' +
-          '</tbody></table></div></div>';
-      } else {
-        // Compound deposit: balance on start, interest, balance on end
+          '<td><strong>' + formatNum(balance) + '</strong></td></tr></tbody></table></div></div>';
+
+      } else if (isCmp) {
+        // Compound deposit: yearly
         balance = item.invested;
-        let totalInterest = 0;
         for (let y = 1; y <= totalYears; y++) {
           const balStart = balance;
           const interest = balance * ratePct;
           balance += interest;
           totalInterest += interest;
-          rows += '<tr><td>' + y + '</td><td>' + formatNum(balStart) + '</td><td style="color:#4ade80">+' +
-            formatNum(interest) + '</td><td><strong>' + formatNum(balance) + '</strong></td></tr>';
+          rows += '<tr><td>' + y + '</td><td>' + (startYear + y - 1) + '</td><td>' + formatNum(balStart) +
+            '</td><td style="color:#4ade80">+' + formatNum(interest) + '</td><td><strong>' + formatNum(balance) + '</strong></td></tr>';
         }
         return '<div class="a-card"><h3>Графік нарахувань по роках</h3>' +
           '<div style="max-height:400px;overflow-y:auto"><table class="credit-schedule-table"><thead><tr>' +
-          '<th style="text-align:left">Рік</th><th>Баланс (поч.)</th><th>Нараховано</th><th>Баланс (кін.)</th>' +
+          '<th style="text-align:left">Рік</th><th>Календ.</th><th>Баланс (поч.)</th><th>Нараховано</th><th>Баланс (кін.)</th>' +
           '</tr></thead><tbody>' + rows +
-          '<tr style="font-weight:700;border-top:2px solid #334155"><td>Всього</td><td>' + formatNum(item.invested) +
-          '</td><td style="color:#4ade80">+' + formatNum(totalInterest) + '</td><td><strong>' + formatNum(balance) + '</strong></td></tr>' +
-          '</tbody></table></div></div>';
+          '<tr style="font-weight:700;border-top:2px solid #334155"><td colspan="2">Всього</td><td>' + formatNum(item.invested) +
+          '</td><td style="color:#4ade80">+' + formatNum(totalInterest) + '</td><td><strong>' + formatNum(balance) + '</strong></td></tr></tbody></table></div></div>';
+
+      } else if (totalYears <= 2) {
+        // Simple deposit/OVDP up to 2 years: monthly table
+        balance = item.invested;
+        const monthlyRate = ratePct / 12;
+        for (let m = 1; m <= totalMonths; m++) {
+          const d = new Date(startDate.getFullYear(), startDate.getMonth() + m, 1);
+          const dateStr = d.toLocaleDateString('uk-UA', { month: '2-digit', year: 'numeric' });
+          const interest = balance * monthlyRate;
+          balance += interest;
+          totalInterest += interest;
+          rows += '<tr><td>' + m + '</td><td>' + dateStr + '</td><td style="color:#4ade80">+' + formatNum(interest) +
+            '</td><td><strong>' + formatNum(balance) + '</strong></td></tr>';
+        }
+        return '<div class="a-card"><h3>Графік нарахувань по місяцях</h3>' +
+          '<div style="max-height:400px;overflow-y:auto"><table class="credit-schedule-table"><thead><tr>' +
+          '<th style="text-align:left">Міс.</th><th>Дата</th><th>Нараховано</th><th>Баланс</th>' +
+          '</tr></thead><tbody>' + rows +
+          '<tr style="font-weight:700;border-top:2px solid #334155"><td colspan="2">Всього</td>' +
+          '<td style="color:#4ade80">+' + formatNum(totalInterest) + '</td><td><strong>' + formatNum(balance) + '</strong></td></tr></tbody></table></div></div>';
+
+      } else {
+        // Simple deposit/OVDP over 2 years: yearly table
+        balance = item.invested;
+        for (let y = 1; y <= totalYears; y++) {
+          const interest = item.invested * ratePct;
+          balance += interest;
+          totalInterest += interest;
+          rows += '<tr><td>' + y + '</td><td>' + (startYear + y - 1) + '</td><td style="color:#4ade80">+' + formatNum(interest) +
+            '</td><td><strong>' + formatNum(balance) + '</strong></td></tr>';
+        }
+        return '<div class="a-card"><h3>Графік нарахувань по роках</h3>' +
+          '<div style="max-height:400px;overflow-y:auto"><table class="credit-schedule-table"><thead><tr>' +
+          '<th style="text-align:left">Рік</th><th>Календ.</th><th>Нараховано</th><th>Баланс</th>' +
+          '</tr></thead><tbody>' + rows +
+          '<tr style="font-weight:700;border-top:2px solid #334155"><td colspan="2">Всього</td>' +
+          '<td style="color:#4ade80">+' + formatNum(totalInterest) + '</td><td><strong>' + formatNum(balance) + '</strong></td></tr></tbody></table></div></div>';
       }
     })()}
 
@@ -1929,32 +1986,49 @@ function renderPortfolio() {
       elapsed = Math.max(0, Math.round((now - new Date(p.dateStart)) / 86400000));
       daysLeft = Math.max(0, Math.round((new Date(p.dateEnd) - now) / 86400000));
       progress = days > 0 ? Math.min(100, (elapsed / days) * 100) : 0;
-      if (p.rate && days > 0) {
-        const totalYears = days / 365.25;
-        if (p.compound) {
-          expectedProfit = p.invested * Math.pow(1 + p.rate / 100, totalYears) - p.invested;
-        } else {
-          expectedProfit = p.invested * (p.rate / 100) * totalYears;
+      if (days > 0) {
+        const totalYearsN = Math.ceil(days / 365.25);
+        const elapsedYearsN = Math.min(Math.ceil(elapsed / 365.25), totalYearsN);
+        const ratePct = (p.rate || 0) / 100;
+        const idxPct = (p.indexation || 0) / 100;
+        const isIns = p.type === 'insurance';
+
+        if (isIns || p.compound) {
+          // Year-by-year simulation
+          let bal = 0, totalInt = 0, intAtElapsed = 0;
+          let yPayment = p.invested;
+          for (let y = 1; y <= totalYearsN; y++) {
+            if (isIns) {
+              if (y > 1 && idxPct > 0) yPayment = p.invested * Math.pow(1 + idxPct, y - 1);
+              const interest = bal * ratePct;
+              bal += yPayment + interest;
+              totalInt += interest;
+            } else {
+              if (y === 1) bal = p.invested;
+              const interest = bal * ratePct;
+              bal += interest;
+              totalInt += interest;
+            }
+            if (y <= elapsedYearsN) intAtElapsed = totalInt;
+          }
+          expectedProfit = totalInt;
+          earnedSoFar = intAtElapsed;
+        } else if (p.rate) {
+          const ty = days / 365.25;
+          const ey = Math.min(elapsed, days) / 365.25;
+          expectedProfit = p.invested * ratePct * ty;
+          earnedSoFar = p.invested * ratePct * ey;
+          earnedSoFar = Math.min(earnedSoFar, expectedProfit);
         }
         totalExpectedProfit += expectedProfit;
 
         // Daily earnings (only for active investments)
         if (isActive && new Date(p.dateStart) <= now) {
-          dailyGross = p.invested * (p.rate / 100) / 365.25;
+          dailyGross = (p.rate || 0) > 0 ? p.invested * (p.rate / 100) / 365.25 : 0;
           const taxRate = p.tax ? p.tax / 100 : 0;
           dailyNet = dailyGross * (1 - taxRate);
           totalDailyGross += dailyGross;
           totalDailyNet += dailyNet;
-
-          // Earned so far
-          const elapsedDays = (now - new Date(p.dateStart)) / 86400000;
-          const elapsedYears = elapsedDays / 365.25;
-          if (p.compound) {
-            earnedSoFar = p.invested * Math.pow(1 + p.rate / 100, elapsedYears) - p.invested;
-          } else {
-            earnedSoFar = p.invested * (p.rate / 100) * elapsedYears;
-          }
-          earnedSoFar = Math.min(earnedSoFar, expectedProfit);
           totalEarnedSoFar += earnedSoFar;
 
           // Profit from now to end of year (or dateEnd if earlier)
