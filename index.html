@@ -8,6 +8,34 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Invest UA">
 <meta name="theme-color" content="#1e293b">
+<!-- Theme init: runs BEFORE stylesheet to avoid flash of wrong theme -->
+<script>
+(function() {
+  try {
+    var saved = localStorage.getItem('appTheme') || 'dark';
+    var effective = saved;
+    if (saved === 'auto') {
+      effective = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    } else if (saved !== 'light' && saved !== 'dark') {
+      // Legacy/unknown values (напр. "bento") -> fallback to dark
+      saved = 'dark';
+      effective = 'dark';
+      try { localStorage.setItem('appTheme', 'dark'); } catch(_){}
+    }
+    document.documentElement.setAttribute('data-theme', saved);
+    document.documentElement.setAttribute('data-theme-effective', effective);
+    // Update mobile browser chrome color before rendering
+    var metaTc = document.querySelector('meta[name="theme-color"]');
+    if (metaTc) {
+      var tc = effective === 'light' ? '#ffffff' : '#1e293b';
+      metaTc.setAttribute('content', tc);
+    }
+  } catch(e) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.setAttribute('data-theme-effective', 'dark');
+  }
+})();
+</script>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
@@ -544,6 +572,7 @@
               <option value="ovdp" data-i18n="portfolio.typeOvdp">ОВДП</option>
               <option value="deposit" data-i18n="portfolio.typeDeposit">Депозит</option>
               <option value="insurance" data-i18n="portfolio.typeInsurance">Страхування із накопиченням</option>
+              <option value="cash" data-i18n="portfolio.typeCash">Готівка</option>
               <option value="other" data-i18n="portfolio.typeOther">Інше</option>
             </select>
           </div>
@@ -561,7 +590,7 @@
             <label>Сума вкладення (грн)</label>
             <input type="text" id="pInvested" placeholder="500 000" inputmode="decimal">
           </div>
-          <div class="field">
+          <div class="field" id="pRateField">
             <label data-i18n="portfolio.rate">Річна ставка (%)</label>
             <input type="text" id="pRate" placeholder="15" inputmode="decimal">
           </div>
@@ -571,11 +600,11 @@
             <p class="field-hint">Щорічне збільшення суми внеску</p>
           </div>
           <!-- Row 4: Дати -->
-          <div class="field">
+          <div class="field" id="pDateStartField">
             <label data-i18n="portfolio.dateStart">Дата початку</label>
             <input type="date" id="pDateStart">
           </div>
-          <div class="field">
+          <div class="field" id="pDateEndField">
             <label data-i18n="portfolio.dateEnd">Дата завершення</label>
             <input type="date" id="pDateEnd">
           </div>
@@ -801,6 +830,23 @@
           </button>
           <button class="profile-lang-btn" id="langBtnEn" onclick="setAppLanguage('en')">
             <span class="profile-lang-flag">🇬🇧</span> English
+          </button>
+        </div>
+      </div>
+
+      <!-- Theme -->
+      <div class="a-card">
+        <h3 data-i18n="profile.theme">Тема оформлення</h3>
+        <p style="font-size:12px;color:#64748b;margin-bottom:12px" data-i18n="profile.themeDesc">Режим «Авто» слідує за налаштуваннями вашої системи</p>
+        <div class="profile-lang-options">
+          <button class="profile-lang-btn profile-theme-btn" id="themeBtnDark" onclick="setAppTheme('dark')">
+            <span class="profile-lang-flag">🌙</span> <span data-i18n="profile.themeDark">Темна</span>
+          </button>
+          <button class="profile-lang-btn profile-theme-btn" id="themeBtnLight" onclick="setAppTheme('light')">
+            <span class="profile-lang-flag">☀️</span> <span data-i18n="profile.themeLight">Світла</span>
+          </button>
+          <button class="profile-lang-btn profile-theme-btn" id="themeBtnAuto" onclick="setAppTheme('auto')">
+            <span class="profile-lang-flag">🖥️</span> <span data-i18n="profile.themeAuto">Авто</span>
           </button>
         </div>
       </div>

@@ -59,10 +59,23 @@
       <div class="section">
         <h2><span class="icon icon-blue">2</span> Портфель</h2>
         <p>Головна сторінка додатку. Показує загальну картину ваших вкладень.</p>
+        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Додавання запису</h3>
+        <p>Кнопка «+ Новий запис». Оберіть <strong>Тип</strong> — від нього залежить які поля показуються:</p>
+        <ul style="font-size:13px;color:#94a3b8;margin:8px 0 8px 20px">
+          <li><strong>ОВДП</strong> — поля ціни та кількості облігацій. Якщо адмін додав список облігацій Дії, зверху зʼявиться селектор: оберіть облігацію → назва та дати заповняться автоматично; введіть ціну з Дії — ставка порахується сама.</li>
+          <li><strong>Депозит</strong> — сума, ставка, податок; чекбокс «Складний %» для реінвестування.</li>
+          <li><strong>Страхування із накопиченням</strong> — поле «Індексація внеску (%/рік)» для щорічного збільшення внеску.</li>
+          <li><strong>Інше</strong> — базовий набір полів без специфічних розрахунків.</li>
+        </ul>
+        <div style="background:rgba(245,158,11,0.08);border-left:3px solid #f59e0b;padding:10px 12px;border-radius:6px;margin:12px 0;font-size:13px;color:#cbd5e1">
+          <strong style="color:#f59e0b">💳 Комісія «Дії» 0.20%</strong><br>
+          З <strong>15 квітня 2026</strong> при купівлі ОВДП через застосунок «Дія» вводиться комісія — <strong>0.20% від суми операції</strong>. Вона списується <strong>загальною сумою</strong> разом із вартістю облігацій.<br>
+          Для записів з датою початку ≥ 15.04.2026 додаток автоматично: додає комісію до суми вкладення (<code>ціна × к-сть × 1.002</code>), враховує її в ефективній дохідності та показує суму комісії в картці облігації.
+        </div>
         <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Дашборд</h3>
         <p>Вартість портфеля, зароблено всього, дохід за день, кількість активних вкладень. Нижче — розбивка денного доходу по кожному вкладенню.</p>
         <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Сторінка вкладення</h3>
-        <p>Натисніть на будь-яке вкладення — відкриється детальна сторінка з прогресом, зарахованим доходом, ставкою, оподаткуванням та іншою інформацією.</p>
+        <p>Натисніть на будь-яке вкладення — відкриється детальна сторінка з прогрес-баром (минулі/залишилось днів, %), зарахованим доходом, ставкою, оподаткуванням. Для вкладень до 2 років показується <strong>щомісячна</strong> таблиця нарахувань, довших — щорічна; для страхування — графік внесків з індексацією.</p>
         <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Сповіщення</h3>
         <p>Банери на дашборді попереджають коли термін вкладення закінчується. Налаштовується в Профілі (за скільки днів нагадувати).</p>
       </div>
@@ -70,16 +83,36 @@
       <div class="section">
         <h2><span class="icon icon-blue">3</span> Калькулятор</h2>
         <p>Розрахунок дохідності окремого вкладення. Заповніть будь-які відомі поля — решта розрахується автоматично.</p>
-        <div class="step"><div class="step-num">1</div><div class="step-text">Введіть <strong>суму вкладення</strong> та <strong>річну ставку</strong>.</div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-text">Вкажіть <strong>дати</strong> початку та завершення.</div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-text">Натисніть <strong>«Розрахувати»</strong> або <span class="kbd">Enter</span>.</div></div>
-        <div class="step"><div class="step-num">4</div><div class="step-text"><strong>«Зберегти запис»</strong> — додає до історії розрахунків.</div></div>
+        <div class="step"><div class="step-num">1</div><div class="step-text">Оберіть <strong>Тип</strong> — ОВДП, Депозит, Страхування або Інше. Залежно від типу показуються релевантні поля.</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">Введіть <strong>суму вкладення</strong> та <strong>річну ставку</strong>.</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">Вкажіть <strong>дати</strong> початку та завершення.</div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-text">Натисніть <strong>«Розрахувати»</strong> або <span class="kbd">Enter</span>.</div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-text"><strong>«Зберегти запис»</strong> — додає до історії розрахунків.</div></div>
+        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Типи</h3>
+        <ul style="font-size:13px;color:#94a3b8;margin:8px 0 8px 20px">
+          <li><strong>ОВДП</strong> — додаткові поля: ціна/кількість облігацій. Якщо адмін додав список — зʼявиться селектор для швидкого вибору. З 15.04.2026 автоматично враховується комісія «Дії» 0.20% (див. нижче).</li>
+          <li><strong>Депозит</strong> — чекбокс «Складний %» для реінвестування.</li>
+          <li><strong>Страхування</strong> — автоматично вмикається складний режим з індексацією.</li>
+          <li><strong>Інше</strong> — проста відсоткова ставка без специфічних полів.</li>
+        </ul>
+        <div style="background:rgba(245,158,11,0.08);border-left:3px solid #f59e0b;padding:10px 12px;border-radius:6px;margin:12px 0;font-size:13px;color:#cbd5e1">
+          <strong style="color:#f59e0b">💳 Комісія «Дії» для ОВДП (0.20%)</strong><br>
+          З <strong>15 квітня 2026</strong> при купівлі ОВДП через застосунок «Дія» діє комісія <strong>0.20% від суми операції</strong>, яка списується разом з вартістю облігацій.<br><br>
+          <strong>Як це впливає на розрахунок:</strong>
+          <ul style="margin:6px 0 0 20px">
+            <li>Сума вкладення = <code>ціна × к-сть × 1.002</code> (комісія додається автоматично)</li>
+            <li>Ефективна ціна облігації = <code>ціна + 0.20%</code> — з неї рахується дохідність</li>
+            <li>У картці облігації показується розмір комісії в гривнях та фактична ціна</li>
+            <li>Для записів з датою початку <strong>до 15.04.2026</strong> комісія не застосовується</li>
+          </ul>
+          <strong style="color:#f59e0b">Приклад:</strong> ціна 920 грн × 10 шт. = 9 200 грн + комісія 18.40 грн = <strong>9 218.40 грн</strong> фактичної суми.
+        </div>
         <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Складний відсоток</h3>
-        <p>Увімкніть чекбокс — з'являться поля:</p>
+        <p>Чекбокс доступний для Депозиту (і авто-ON для Страхування) — зʼявляться поля:</p>
         <ul style="font-size:13px;color:#94a3b8;margin:8px 0 8px 20px">
           <li><strong>Ставка реінвестування</strong> — річна ставка (дефолт 10%)</li>
           <li><strong>Податок від доходу</strong> — % податку на прибуток</li>
-          <li><strong>Індексація</strong> — щорічна зміна ставки</li>
+          <li><strong>Індексація</strong> — щорічна зміна ставки/внеску</li>
           <li><strong>Горизонт</strong> — 1-20 років</li>
         </ul>
         <p>Реінвестування відбувається раз на рік. Графік та таблиця порівнюють простий і складний відсоток.</p>
@@ -217,17 +250,26 @@
       <div class="section">
         <h2><span class="icon icon-blue">2</span> Portfolio</h2>
         <p>Main page of the app. Shows an overview of all your entries.</p>
-        <p><strong>Dashboard:</strong> total value, earned so far, daily income, active entries count. Tap any entry for a detailed view with progress, earnings, and tax info.</p>
+        <p><strong>Add entry:</strong> "+ New record" opens the form. Pick a <strong>Type</strong> — fields shown depend on it:</p>
+        <ul style="font-size:13px;color:#94a3b8;margin:8px 0 8px 20px">
+          <li><strong>Gov. bonds (OVDP)</strong> — price and count fields. If admin added a bond list, a picker appears: select a bond → name/dates auto-fill; enter price from Diia → yield auto-computes.</li>
+          <li><strong>Deposit</strong> — amount, rate, tax; "Compound %" checkbox for reinvestment.</li>
+          <li><strong>Savings insurance</strong> — "Indexation" field for yearly premium increase.</li>
+          <li><strong>Other</strong> — basic fields, no special calculations.</li>
+        </ul>
+        <p><strong>Dashboard:</strong> total value, earned so far, daily income, active entries count. Tap any entry for a detailed view with a progress bar (elapsed/remaining days, %), earnings and tax info. For entries ≤2 years — a monthly accrual table; longer — yearly; insurance — premium schedule with indexation.</p>
         <p><strong>Alerts:</strong> banners warn when an entry is about to expire. Configure in Profile (days before reminder).</p>
       </div>
 
       <div class="section">
         <h2><span class="icon icon-blue">3</span> Calculator</h2>
         <p>Calculate returns for a single entry. Fill in any known fields — the rest is auto-calculated.</p>
-        <div class="step"><div class="step-num">1</div><div class="step-text">Enter <strong>amount</strong> and <strong>annual rate</strong>.</div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-text">Set <strong>start and end dates</strong>.</div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-text">Click <strong>"Calculate"</strong> or press <span class="kbd">Enter</span>.</div></div>
-        <p style="margin-top:12px"><strong>Compound interest:</strong> yearly reinvestment with custom rate, tax, indexation, and 1-20 year horizon. Chart compares simple vs compound growth.</p>
+        <div class="step"><div class="step-num">1</div><div class="step-text">Pick a <strong>Type</strong> — OVDP, Deposit, Insurance, or Other. Fields adapt to the type.</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">Enter <strong>amount</strong> and <strong>annual rate</strong>.</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">Set <strong>start and end dates</strong>.</div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-text">Click <strong>"Calculate"</strong> or press <span class="kbd">Enter</span>.</div></div>
+        <p style="margin-top:12px"><strong>Types:</strong> OVDP shows bond price/count (and a bond picker if admin provided a list). Deposit shows the compound checkbox. Insurance auto-enables compound mode with indexation. Other keeps a simple-interest form.</p>
+        <p><strong>Compound interest:</strong> yearly reinvestment with custom rate, tax, indexation, and 1-20 year horizon. Chart compares simple vs compound growth.</p>
         <p><strong>Credit calculator:</strong> available for logged-in users. Annuity payments, total overpayment, monthly chart with principal/interest breakdown.</p>
         <p><strong>History:</strong> saved records in a table. Click a row to reload data into the form.</p>
       </div>

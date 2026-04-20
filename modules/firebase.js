@@ -65,7 +65,8 @@ async function saveUserMeta(user) {
         'meta.lastLogin': new Date().toISOString(),
         'meta.provider': user.providerData[0]?.providerId || 'unknown'
       });
-      notifyTelegram('login', user);
+      const isAdmin = doc.data() && doc.data().meta && doc.data().meta.isAdmin;
+      if (!isAdmin) notifyTelegram('login', user);
     }
   } catch(e) {
     console.warn('User meta save failed:', e);
@@ -249,6 +250,57 @@ function setAppLanguage(lang) {
   if (currentUser) saveProfileToFirestore();
 }
 
+// ================ THEME (dark / light / auto) ================
+function resolveEffectiveTheme(theme) {
+  if (theme === 'auto') {
+    return (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+  }
+  if (theme === 'light') return 'light';
+  return 'dark';
+}
+
+function applyThemeDom(theme) {
+  const effective = resolveEffectiveTheme(theme);
+  document.documentElement.setAttribute('data-theme', theme);
+  document.documentElement.setAttribute('data-theme-effective', effective);
+  // Update mobile browser chrome color per theme
+  const metaTc = document.querySelector('meta[name="theme-color"]');
+  if (metaTc) {
+    const tc = effective === 'light' ? '#ffffff' : '#1e293b';
+    metaTc.setAttribute('content', tc);
+  }
+  // Update active button states (if UI is present)
+  const btnDark = document.getElementById('themeBtnDark');
+  const btnLight = document.getElementById('themeBtnLight');
+  const btnAuto = document.getElementById('themeBtnAuto');
+  if (btnDark) btnDark.classList.toggle('active', theme === 'dark');
+  if (btnLight) btnLight.classList.toggle('active', theme === 'light');
+  if (btnAuto) btnAuto.classList.toggle('active', theme === 'auto');
+  // Notify listeners (charts redraw, etc.)
+  window.dispatchEvent(new CustomEvent('themechange', { detail: { theme, effective } }));
+}
+
+function setAppTheme(theme, opts) {
+  theme = (theme === 'light' || theme === 'auto') ? theme : 'dark';
+  applyThemeDom(theme);
+  if (!userProfile) userProfile = {};
+  userProfile.theme = theme;
+  localStorage.setItem('appTheme', theme);
+  if (currentUser && !(opts && opts.skipSync)) saveProfileToFirestore();
+}
+
+// Listen to system theme changes (affects only "auto" mode)
+(function initThemeAutoListener(){
+  if (!window.matchMedia) return;
+  const mql = window.matchMedia('(prefers-color-scheme: light)');
+  const handler = () => {
+    const current = localStorage.getItem('appTheme') || 'dark';
+    if (current === 'auto') applyThemeDom('auto');
+  };
+  if (mql.addEventListener) mql.addEventListener('change', handler);
+  else if (mql.addListener) mql.addListener(handler); // Safari < 14
+})();
+
 async function saveProfile() {
   userProfile.displayName = document.getElementById('profileDisplayName').value.trim();
   userProfile.contactEmail = document.getElementById('profileContactEmail').value.trim();
@@ -275,6 +327,7 @@ async function saveProfileToFirestore() {
         phone: userProfile.phone || '',
         contactEmail: userProfile.contactEmail || '',
         language: userProfile.language || 'uk',
+        theme: userProfile.theme || 'dark',
         pin: userProfile.pin || null,
         dashboardCurrencies: dashboardCurrencies,
         notifyDays: userProfile.notifyDays || 3,
@@ -306,6 +359,10 @@ async function loadProfileFromFirestore() {
         if (userProfile.language) {
           localStorage.setItem('appLang', userProfile.language);
           setAppLanguage(userProfile.language);
+        }
+        if (userProfile.theme) {
+          // sync-free — не писати назад у Firestore одразу після завантаження
+          setAppTheme(userProfile.theme, { skipSync: true });
         }
         if (userProfile.dashboardCurrencies && userProfile.dashboardCurrencies.length) {
           dashboardCurrencies = userProfile.dashboardCurrencies;
@@ -501,6 +558,12 @@ async function checkMaintenance() {
 // ---- Init on load ----
 const savedLang = localStorage.getItem('appLang');
 if (savedLang) setAppLanguage(savedLang);
+
+// Theme: apply saved (or default dark) and highlight active button.
+// data-theme-effective уже встановлено inline-скриптом у <head> до FOUC,
+// але кнопки потребують активного стану після рендеру DOM.
+const savedTheme = localStorage.getItem('appTheme') || 'dark';
+applyThemeDom(savedTheme);
 
 initFirebase();
 startHeartbeat();

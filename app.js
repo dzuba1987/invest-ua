@@ -1,6 +1,49 @@
 // ============ SHARED GLOBALS (used across app.js, firebase.js, telegram.js) ============
 var _skipFirestoreSync = false;
 
+// ============ THEME ↔ CHART.JS ============
+// Оновлює кольори гридів/легенди існуючих графіків при зміні теми.
+function updateChartJsColors() {
+  if (typeof Chart === 'undefined') return;
+  var isLight = document.documentElement.getAttribute('data-theme-effective') === 'light';
+  var gridColor = isLight ? '#e2e8f0' : '#1e293b';
+  var tickColor = isLight ? '#475569' : '#64748b';
+  var legendColor = isLight ? '#334155' : '#94a3b8';
+
+  Chart.defaults.color = legendColor;
+  if (Chart.defaults.scale) {
+    Chart.defaults.scale.grid = Chart.defaults.scale.grid || {};
+    Chart.defaults.scale.grid.color = gridColor;
+    Chart.defaults.scale.ticks = Chart.defaults.scale.ticks || {};
+    Chart.defaults.scale.ticks.color = tickColor;
+  }
+
+  var instances = Chart.instances || {};
+  Object.keys(instances).forEach(function(key) {
+    var chart = instances[key];
+    try {
+      if (chart.options && chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels) {
+        chart.options.plugins.legend.labels.color = legendColor;
+      }
+      if (chart.options && chart.options.scales) {
+        Object.keys(chart.options.scales).forEach(function(sk) {
+          var scale = chart.options.scales[sk];
+          if (!scale) return;
+          if (scale.ticks) scale.ticks.color = tickColor;
+          if (scale.grid) scale.grid.color = gridColor;
+        });
+      }
+      chart.update('none');
+    } catch(e) { /* noop */ }
+  });
+}
+
+window.addEventListener('themechange', updateChartJsColors);
+// При початковому завантаженні (Chart може завантажитись пізніше)
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof Chart !== 'undefined') updateChartJsColors();
+});
+
 // ============ GLOBAL SEARCH ============
 function onGlobalSearch() {
   const q = document.getElementById('globalSearchInput').value.toLowerCase().trim();
@@ -276,7 +319,14 @@ document.getElementById('bondName').addEventListener('input', () => calculate())
     const price = parseNum(document.getElementById('pBondPrice').value);
     const count = parseNum(document.getElementById('pBondCount').value);
     if (!isNaN(price) && !isNaN(count) && price > 0 && count > 0) {
-      document.getElementById('pInvested').value = formatNum(price * count);
+      // Для ОВДП через Дію додаємо комісію 0.20% (з 15.04.2026)
+      const priceEl = document.getElementById('pBondPrice');
+      const isOvdp = priceEl && priceEl._ovdpBond;
+      const dateStartEl = document.getElementById('pDateStart');
+      const dateStartVal = dateStartEl ? dateStartEl.value : '';
+      const hasCommission = isOvdp && typeof applyDiiaCommission === 'function' && applyDiiaCommission(dateStartVal);
+      const totalCost = hasCommission ? price * count * (1 + DIIA_COMMISSION_RATE) : price * count;
+      document.getElementById('pInvested').value = formatNum(totalCost);
     }
   });
 });
@@ -299,7 +349,13 @@ function update(changedField) {
     const price = getVal('bondPrice');
     const count = getVal('bondCount');
     if (!isNaN(price) && !isNaN(count) && price > 0 && count > 0) {
-      setAutoVal('invested', price * count);
+      // Для ОВДП через Дію додаємо комісію 0.20% (з 15.04.2026)
+      const priceEl = document.getElementById('bondPrice');
+      const isOvdp = priceEl && priceEl._ovdpBond;
+      const dateStartVal = document.getElementById('dateStart') ? document.getElementById('dateStart').value : '';
+      const hasCommission = isOvdp && typeof applyDiiaCommission === 'function' && applyDiiaCommission(dateStartVal);
+      const totalCost = hasCommission ? price * count * (1 + DIIA_COMMISSION_RATE) : price * count;
+      setAutoVal('invested', totalCost);
     } else { clearAutoVal('invested'); }
   }
 
@@ -619,6 +675,7 @@ function calculate() {
     const canvas = document.getElementById('compoundChart');
     if (canvas && typeof Chart !== 'undefined') {
       if (compoundChartInstance) compoundChartInstance.destroy();
+      const simpleColor = '#f59e0b';
       compoundChartInstance = new Chart(canvas, {
         type: 'line',
         data: {
@@ -636,10 +693,10 @@ function calculate() {
             {
               label: 'Простий відсоток',
               data: simpleLine,
-              borderColor: '#f59e0b',
+              borderColor: simpleColor,
               borderDash: [6, 3],
               pointRadius: 2,
-              pointBackgroundColor: '#f59e0b',
+              pointBackgroundColor: simpleColor,
               borderWidth: 1.5,
               fill: false
             },
@@ -1207,6 +1264,8 @@ function onOvdpSelect() {
 
   const today = new Date();
   const daysLeft = bond.maturityDate ? Math.max(0, Math.round((new Date(bond.maturityDate) - today) / 86400000)) : 0;
+  const todayStr = today.toISOString().split('T')[0];
+  const hasCommission = applyDiiaCommission(todayStr);
 
   // Info card
   infoEl.innerHTML =
@@ -1214,6 +1273,9 @@ function onOvdpSelect() {
     '<strong>ISIN:</strong> ' + bond.isin + '<br>' +
     '<strong>Погашення:</strong> ' + bond.maturityDate + ' (~' + daysLeft + ' дн.)<br>' +
     '<strong>Купон:</strong> ' + (bond.couponAmount > 0 ? bond.couponAmount.toFixed(2) + ' грн' : '—') + '<br>' +
+    (hasCommission
+      ? '<span style="color:#f59e0b;font-size:12px;display:block;margin-top:4px">💳 Комісія Дії: 0.20% від суми (з 15.04.2026), списується разом з вартістю облігацій</span>'
+      : '') +
     '<span style="color:#f59e0b;font-size:12px">⚠ Введіть ціну з Дії — ставка розрахується автоматично</span>';
   infoEl.style.display = 'block';
 
@@ -1240,6 +1302,15 @@ function onOvdpSelect() {
   setTimeout(() => priceEl.focus(), 100);
 }
 
+// Комісія Дії 0.20% від суми операції — з 15.04.2026
+const DIIA_COMMISSION_RATE = 0.002;
+const DIIA_COMMISSION_START = '2026-04-15';
+
+function applyDiiaCommission(dateStart) {
+  const d = dateStart || new Date().toISOString().split('T')[0];
+  return d >= DIIA_COMMISSION_START;
+}
+
 function onBondPriceInputOvdp() {
   const priceEl = document.getElementById('bondPrice');
   const bond = priceEl._ovdpBond;
@@ -1259,10 +1330,16 @@ function onBondPriceInputOvdp() {
     remainingCoupons = bond.couponDates.filter(d => d > todayStr).length;
   }
 
+  // Комісія Дії 0.20% — додається до ціни купівлі
+  const dateStartVal = document.getElementById('dateStart').value;
+  const hasCommission = applyDiiaCommission(dateStartVal);
+  const commissionPerBond = hasCommission ? price * DIIA_COMMISSION_RATE : 0;
+  const effectivePrice = price + commissionPerBond;
+
   const totalCoupons = remainingCoupons * (bond.couponAmount || 0);
   const receivedAtMaturity = 1000 + totalCoupons;
-  const profit = receivedAtMaturity - price;
-  const effectiveYield = (profit / price) * (365 / daysLeft) * 100;
+  const profit = receivedAtMaturity - effectivePrice;
+  const effectiveYield = (profit / effectivePrice) * (365 / daysLeft) * 100;
 
   if (effectiveYield > -50 && effectiveYield < 200) {
     document.getElementById('annualRateInput').value = effectiveYield.toFixed(2);
@@ -1270,9 +1347,13 @@ function onBondPriceInputOvdp() {
 
     const infoEl = document.getElementById('ovdpBondInfo');
     const existingCalc = infoEl.querySelector('.minfin-calc-yield');
+    const commissionHtml = hasCommission
+      ? ' <span style="font-weight:400;color:#f59e0b;font-size:11px;display:block;margin-top:2px">💳 Комісія Дії (0.20%): +' + commissionPerBond.toFixed(2) + ' грн/облігацію, фактична ціна ' + effectivePrice.toFixed(2) + ' грн</span>'
+      : '';
     const calcHtml = '<span class="minfin-calc-yield" style="display:block;margin-top:6px;padding:6px 10px;background:rgba(34,197,94,0.1);border-radius:8px;color:#22c55e;font-weight:600">' +
       '📈 Дохідність: ' + effectiveYield.toFixed(2) + '% річних' +
-      ' <span style="font-weight:400;color:#94a3b8;font-size:12px">(отримаєте ' + receivedAtMaturity.toFixed(2) + ' грн через ' + daysLeft + ' дн.)</span></span>';
+      ' <span style="font-weight:400;color:#94a3b8;font-size:12px">(отримаєте ' + receivedAtMaturity.toFixed(2) + ' грн через ' + daysLeft + ' дн.)</span>' +
+      commissionHtml + '</span>';
     if (existingCalc) {
       existingCalc.outerHTML = calcHtml;
     } else {
@@ -1297,12 +1378,17 @@ function onPortfolioOvdpSelect() {
 
   const today = new Date();
   const daysLeft = bond.maturityDate ? Math.max(0, Math.round((new Date(bond.maturityDate) - today) / 86400000)) : 0;
+  const todayStr = today.toISOString().split('T')[0];
+  const hasCommission = applyDiiaCommission(todayStr);
 
   infoEl.innerHTML =
     '<strong>' + bond.name + '</strong><br>' +
     '<strong>ISIN:</strong> ' + bond.isin + '<br>' +
     '<strong>Погашення:</strong> ' + bond.maturityDate + ' (~' + daysLeft + ' дн.)<br>' +
     '<strong>Купон:</strong> ' + (bond.couponAmount > 0 ? bond.couponAmount.toFixed(2) + ' грн' : '—') + '<br>' +
+    (hasCommission
+      ? '<span style="color:#f59e0b;font-size:12px;display:block;margin-top:4px">💳 Комісія Дії: 0.20% від суми (з 15.04.2026), списується разом з вартістю облігацій</span>'
+      : '') +
     '<span style="color:#f59e0b;font-size:12px">⚠ Введіть ціну з Дії — ставка розрахується автоматично</span>';
   infoEl.style.display = 'block';
 
@@ -1339,19 +1425,29 @@ function onPortfolioBondPriceInputOvdp() {
     remainingCoupons = bond.couponDates.filter(d => d > todayStr).length;
   }
 
+  // Комісія Дії 0.20% — додається до ціни купівлі
+  const dateStartVal = document.getElementById('pDateStart').value;
+  const hasCommission = applyDiiaCommission(dateStartVal);
+  const commissionPerBond = hasCommission ? price * DIIA_COMMISSION_RATE : 0;
+  const effectivePrice = price + commissionPerBond;
+
   const totalCoupons = remainingCoupons * (bond.couponAmount || 0);
   const receivedAtMaturity = 1000 + totalCoupons;
-  const profit = receivedAtMaturity - price;
-  const effectiveYield = (profit / price) * (365 / daysLeft) * 100;
+  const profit = receivedAtMaturity - effectivePrice;
+  const effectiveYield = (profit / effectivePrice) * (365 / daysLeft) * 100;
 
   if (effectiveYield > -50 && effectiveYield < 200) {
     document.getElementById('pRate').value = effectiveYield.toFixed(2);
 
     const infoEl = document.getElementById('pOvdpBondInfo');
     const existingCalc = infoEl.querySelector('.minfin-calc-yield');
+    const commissionHtml = hasCommission
+      ? ' <span style="font-weight:400;color:#f59e0b;font-size:11px;display:block;margin-top:2px">💳 Комісія Дії (0.20%): +' + commissionPerBond.toFixed(2) + ' грн/облігацію, фактична ціна ' + effectivePrice.toFixed(2) + ' грн</span>'
+      : '';
     const calcHtml = '<span class="minfin-calc-yield" style="display:block;margin-top:6px;padding:6px 10px;background:rgba(34,197,94,0.1);border-radius:8px;color:#22c55e;font-weight:600">' +
       '📈 Дохідність: ' + effectiveYield.toFixed(2) + '% річних' +
-      ' <span style="font-weight:400;color:#94a3b8;font-size:12px">(отримаєте ' + receivedAtMaturity.toFixed(2) + ' грн через ' + daysLeft + ' дн.)</span></span>';
+      ' <span style="font-weight:400;color:#94a3b8;font-size:12px">(отримаєте ' + receivedAtMaturity.toFixed(2) + ' грн через ' + daysLeft + ' дн.)</span>' +
+      commissionHtml + '</span>';
     if (existingCalc) existingCalc.outerHTML = calcHtml;
     else infoEl.insertAdjacentHTML('beforeend', calcHtml);
   }
@@ -1512,7 +1608,10 @@ function getAnalyzedBonds(horizonMonths) {
     const pricePerUnit = r.bondPrice || (r.bondCount > 0 ? r.invested / r.bondCount : r.invested);
     const periodReturn = r.profit / r.invested * 100;
     const effAnnual = (Math.pow(1 + r.profit / r.invested, 365 / days) - 1) * 100;
-    const dailyProfit = r.profit / days;
+    // Прибуток/день на 1 облігацію — щоб колонка узгоджувалась з ціною per-unit
+    // та ефективною річною (інакше позиції з більшою кількістю облігацій
+    // механічно виглядали б прибутковішими).
+    const dailyProfit = profitPerUnit / days;
 
     return {
       ...r,
@@ -1806,6 +1905,7 @@ function togglePortfolioTypeFields() {
   const isOvdp = type === 'ovdp';
   const isDeposit = type === 'deposit';
   const isInsurance = type === 'insurance';
+  const isCash = type === 'cash';
 
   // ОВДП bond picker — only when type is ovdp and bonds loaded
   const pOvdpSection = document.getElementById('pOvdpSection');
@@ -1817,8 +1917,10 @@ function togglePortfolioTypeFields() {
   document.getElementById('pBondPriceField').style.display = isOvdp ? '' : 'none';
   document.getElementById('pBondCountField').style.display = isOvdp ? '' : 'none';
 
-  // Rate — show for all types
-  document.getElementById('pRate').closest('.field').style.display = '';
+  // Rate and dates — hidden for cash
+  document.getElementById('pRateField').style.display = isCash ? 'none' : '';
+  document.getElementById('pDateStartField').style.display = isCash ? 'none' : '';
+  document.getElementById('pDateEndField').style.display = isCash ? 'none' : '';
 
   // Tax — deposit and other
   document.getElementById('pTaxField').style.display = (isDeposit || type === 'other') ? '' : 'none';
@@ -1872,16 +1974,35 @@ function addPortfolioItem() {
   }
   document.getElementById('pError').style.display = 'none';
 
+  const isCash = type === 'cash';
+  const nowIso = new Date().toISOString();
+  let history;
+  if (isCash) {
+    if (_pendingCashHistory) {
+      history = _pendingCashHistory.history.slice();
+      if (_pendingCashHistory.originalAmount !== invested) {
+        history.push({ amount: invested, date: nowIso, note: 'Редагування' });
+      }
+    } else {
+      history = [{ amount: invested, date: nowIso, note: 'Початковий баланс' }];
+    }
+  }
+  _pendingCashHistory = null;
+
   portfolioItems.push({
     id: Date.now(),
-    name, type, invested, rate: isNaN(rate) ? null : rate,
+    name, type, invested,
+    rate: isCash || isNaN(rate) ? null : rate,
     bondPrice: type === 'ovdp' && !isNaN(bondPrice) && bondPrice > 0 ? bondPrice : null,
     bondCount: type === 'ovdp' && !isNaN(bondCount) && bondCount > 0 ? Math.floor(bondCount) : null,
-    tax: isNaN(tax) ? null : tax,
-    dateStart, dateEnd, bank, notes,
-    indexation: !isNaN(indexation) && indexation > 0 ? indexation : null,
-    compound: isCompound,
-    createdAt: new Date().toISOString()
+    tax: isCash || isNaN(tax) ? null : tax,
+    dateStart: isCash ? '' : dateStart,
+    dateEnd: isCash ? '' : dateEnd,
+    bank, notes,
+    indexation: !isCash && !isNaN(indexation) && indexation > 0 ? indexation : null,
+    compound: !isCash && isCompound,
+    history: isCash ? history : undefined,
+    createdAt: nowIso
   });
 
   renderPortfolio();
@@ -1926,9 +2047,10 @@ function openInvestmentDetail(id) {
   if (!item) return;
 
   const now = new Date();
-  const typeLabels = { ovdp: 'ОВДП', deposit: 'Депозит', compound: 'Складний %', insurance: 'Страхування', other: 'Інше' };
-  const typeColors = { ovdp: 'p-type-ovdp', deposit: 'p-type-deposit', other: 'p-type-other' };
-  const isActive = item.dateEnd ? new Date(item.dateEnd) > now : true;
+  const typeLabels = { ovdp: 'ОВДП', deposit: 'Депозит', compound: 'Складний %', insurance: 'Страхування', cash: 'Готівка', other: 'Інше' };
+  const typeColors = { ovdp: 'p-type-ovdp', deposit: 'p-type-deposit', cash: 'p-type-cash', other: 'p-type-other' };
+  const isCash = item.type === 'cash';
+  const isActive = isCash ? false : (item.dateEnd ? new Date(item.dateEnd) > now : true);
 
   let days = 0, elapsed = 0, progress = 0, expectedProfit = 0, earnedSoFar = 0, dailyGross = 0, dailyNet = 0, daysLeft = 0;
   if (item.dateStart && item.dateEnd) {
@@ -2005,12 +2127,12 @@ function openInvestmentDetail(id) {
       <span class="detail-type-badge ${typeColors[item.type] || ''}">${typeLabels[item.type] || item.type}</span>
       <div class="detail-invested">${formatNum(item.invested)} грн</div>
       ${item.bondPrice ? `<div style="font-size:12px;color:#64748b;margin-top:2px">${formatShort(item.bondPrice)} грн × ${item.bondCount} шт.</div>` : ''}
-      <div class="detail-status" style="color:${isActive ? '#4ade80' : '#64748b'}">${isActive ? '● Активна' : '○ Завершена'}${item.compound ? ' · <span style="color:#a855f7">реінвестування</span>' : ''}</div>
+      ${isCash ? '' : `<div class="detail-status" style="color:${isActive ? '#4ade80' : '#64748b'}">${isActive ? '● Активна' : '○ Завершена'}${item.compound ? ' · <span style="color:#a855f7">реінвестування</span>' : ''}</div>`}
       ${days > 0 ? `<div class="detail-progress"><div class="detail-progress-bar" style="width:${progress.toFixed(1)}%"></div></div>
       <div style="font-size:11px;color:#475569;margin-top:4px">${elapsed} з ${days} днів (${progress.toFixed(0)}%)</div>` : ''}
     </div>
 
-    <div class="detail-grid">
+    ${isCash ? '' : `<div class="detail-grid">
       <div class="detail-metric">
         <div class="detail-metric-label">Зароблено</div>
         <div class="detail-metric-value green">+${formatNum(earnedSoFar)} грн</div>
@@ -2035,9 +2157,9 @@ function openInvestmentDetail(id) {
         <div class="detail-metric-label">Ставка</div>
         <div class="detail-metric-value yellow">${item.rate || '—'}%</div>
       </div>
-    </div>
+    </div>`}
 
-    ${item.compound && item.rate && days > 0 ? (() => {
+    ${!isCash && item.compound && item.rate && days > 0 ? (() => {
       const totalYears = Math.ceil(days / 365.25);
       const r = item.rate / 100;
       const finalBalance = item.invested * Math.pow(1 + r, totalYears);
@@ -2067,9 +2189,9 @@ function openInvestmentDetail(id) {
       ${item.bondPrice ? `<div class="detail-info-row"><span class="detail-info-label">Вартість 1 облігації</span><span class="detail-info-value">${formatNum(item.bondPrice)} грн</span></div>` : ''}
       ${item.bondCount ? `<div class="detail-info-row"><span class="detail-info-label">Кількість облігацій</span><span class="detail-info-value">${item.bondCount} шт.</span></div>` : ''}
       ${item.indexation ? `<div class="detail-info-row"><span class="detail-info-label">Індексація внеску</span><span class="detail-info-value">${item.indexation}% / рік</span></div>` : ''}
-      <div class="detail-info-row"><span class="detail-info-label">Дата початку</span><span class="detail-info-value">${item.dateStart ? formatDate(item.dateStart) : '—'}</span></div>
+      ${isCash ? '' : `<div class="detail-info-row"><span class="detail-info-label">Дата початку</span><span class="detail-info-value">${item.dateStart ? formatDate(item.dateStart) : '—'}</span></div>
       <div class="detail-info-row"><span class="detail-info-label">Дата завершення</span><span class="detail-info-value">${item.dateEnd ? formatDate(item.dateEnd) : '—'}</span></div>
-      <div class="detail-info-row"><span class="detail-info-label">Термін</span><span class="detail-info-value">${days > 0 ? formatTerm(days) : '—'}</span></div>
+      <div class="detail-info-row"><span class="detail-info-label">Термін</span><span class="detail-info-value">${days > 0 ? formatTerm(days) : '—'}</span></div>`}
       ${item.bank ? `<div class="detail-info-row"><span class="detail-info-label">Банк</span><span class="detail-info-value">${esc(item.bank)}</span></div>` : ''}
       ${item.notes ? `<div class="detail-info-row"><span class="detail-info-label">Нотатки</span><span class="detail-info-value">${esc(item.notes)}</span></div>` : ''}
       ${item.createdAt ? `<div class="detail-info-row"><span class="detail-info-label">Створено</span><span class="detail-info-value">${new Date(item.createdAt).toLocaleDateString('uk-UA')}</span></div>` : ''}
@@ -2170,6 +2292,40 @@ function openInvestmentDetail(id) {
       }
     })()}
 
+    ${isCash ? `<div class="a-card">
+      <h3>Оновити баланс</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:1;min-width:140px">
+          <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Нова сума (грн)</label>
+          <input type="text" id="cashUpdateAmount" placeholder="${formatNum(item.invested)}" inputmode="decimal" style="width:100%;padding:10px 12px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;outline:none">
+        </div>
+        <div style="flex:2;min-width:180px">
+          <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Коментар (необовʼязково)</label>
+          <input type="text" id="cashUpdateNote" placeholder="Поповнення / зняття" style="width:100%;padding:10px 12px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;outline:none">
+        </div>
+        <button class="btn-save" onclick="updateCashBalance('${item.id}')" style="max-width:140px;margin-top:0">Додати</button>
+      </div>
+    </div>` : ''}
+
+    ${isCash && item.history && item.history.length > 0 ? (() => {
+      const rev = item.history.slice().reverse();
+      const last = item.history[item.history.length - 1];
+      return `<div class="a-card">
+        <h3>Історія змін</h3>
+        <div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Остання зміна: <strong style="color:#cbd5e1">${new Date(last.date).toLocaleString('uk-UA')}</strong></div>
+        <div style="max-height:400px;overflow-y:auto"><table class="credit-schedule-table" style="width:100%"><thead><tr>
+          <th style="text-align:left">Дата</th><th>Сума</th><th>Δ</th><th style="text-align:left">Коментар</th>
+        </tr></thead><tbody>
+        ${rev.map((h, i) => {
+          const older = rev[i + 1];
+          const diff = older ? h.amount - older.amount : 0;
+          const diffStr = !older ? '—' : (diff > 0 ? '<span style="color:#4ade80">+' + formatNum(diff) + '</span>' : diff < 0 ? '<span style="color:#f87171">' + formatNum(diff) + '</span>' : '0');
+          return '<tr><td>' + new Date(h.date).toLocaleDateString('uk-UA') + '</td><td><strong>' + formatNum(h.amount) + '</strong></td><td>' + diffStr + '</td><td>' + esc(h.note || '') + '</td></tr>';
+        }).join('')}
+        </tbody></table></div>
+      </div>`;
+    })() : ''}
+
     <div class="detail-actions">
       <button class="btn-export" onclick="closeInvestmentDetail(); editPortfolioItem('${item.id}')">✎ Редагувати</button>
       <button class="btn-clear" onclick="if(confirm('Видалити це вкладення?')){deletePortfolioItem('${item.id}'); closeInvestmentDetail();}">✕ Видалити</button>
@@ -2192,9 +2348,32 @@ function deletePortfolioItem(id) {
   savePortfolioToFirestore();
 }
 
+function updateCashBalance(id) {
+  const item = portfolioItems.find(p => String(p.id) === String(id));
+  if (!item || item.type !== 'cash') return;
+  const amountEl = document.getElementById('cashUpdateAmount');
+  const noteEl = document.getElementById('cashUpdateNote');
+  const amt = parseNum(amountEl.value);
+  if (isNaN(amt) || amt < 0) { amountEl.focus(); return; }
+  const note = noteEl.value.trim();
+  if (!item.history || !item.history.length) {
+    item.history = [{ amount: item.invested, date: item.createdAt || new Date().toISOString(), note: 'Початковий баланс' }];
+  }
+  item.history.push({ amount: amt, date: new Date().toISOString(), note });
+  item.invested = amt;
+  savePortfolioToFirestore();
+  openInvestmentDetail(id);
+}
+
+let _pendingCashHistory = null;
+
 function editPortfolioItem(id) {
   const item = portfolioItems.find(p => String(p.id) === String(id));
   if (!item) return;
+
+  _pendingCashHistory = item.type === 'cash'
+    ? { history: (item.history || []).slice(), originalAmount: item.invested }
+    : null;
 
   document.getElementById('pName').value = item.name || '';
   document.getElementById('pType').value = item.type || 'ovdp';
@@ -2248,10 +2427,11 @@ function renderPortfolio() {
   let totalDailyGross = 0, totalDailyNet = 0, totalProfitToEOY = 0;
   const dailyBreakdown = [];
 
-  const typeLabels = { ovdp: 'ОВДП', deposit: 'Депозит', compound: 'Складний %', insurance: 'Страхування', other: 'Інше' };
+  const typeLabels = { ovdp: 'ОВДП', deposit: 'Депозит', compound: 'Складний %', insurance: 'Страхування', cash: 'Готівка', other: 'Інше' };
 
   list.innerHTML = sanitize(portfolioItems.map(p => {
-    const isActive = p.dateEnd ? new Date(p.dateEnd) > now : true;
+    const isCash = p.type === 'cash';
+    const isActive = isCash ? false : (p.dateEnd ? new Date(p.dateEnd) > now : true);
     if (isActive) activeCount++;
     totalInvested += p.invested;
 
@@ -2329,19 +2509,21 @@ function renderPortfolio() {
           <div class="p-item-name">
             ${esc(p.name)}
             <span class="p-item-type p-type-${esc(p.type)}">${esc(typeLabels[p.type] || p.type)}</span>
-            <span class="${isActive ? 'p-status-active' : 'p-status-ended'}" style="font-size:11px">${isActive ? '● Активна' : '○ Завершена'}</span>
+            ${isCash ? '' : '<span class="' + (isActive ? 'p-status-active' : 'p-status-ended') + '" style="font-size:11px">' + (isActive ? '● Активна' : '○ Завершена') + '</span>'}
             ${p.compound ? '<span class="p-item-type p-type-compound" style="font-size:10px">реінвест.</span>' : ''}
           </div>
           ${days > 0 ? '<div class="detail-progress" style="margin:6px 0"><div class="detail-progress-bar" style="width:' + progress.toFixed(1) + '%"></div></div><div style="display:flex;justify-content:space-between;font-size:10px;color:#475569;margin-bottom:4px"><span>' + (isActive ? elapsed + ' з ' + days + ' дн. (' + progress.toFixed(0) + '%)' : 'Завершено') + '</span><span>' + (daysLeft > 0 ? daysLeft + ' дн. залишилось' : '') + '</span></div>' : ''}
-          <div class="p-item-details">
-            <span>Вкладено: <strong>${formatNum(p.invested)} грн</strong></span>
+          <div class="p-item-details p-row">
+            <span>${isCash ? 'Сума' : 'Вкладено'}: <strong>${formatNum(p.invested)} грн</strong></span>
             ${p.bondPrice ? '<span>' + formatShort(p.bondPrice) + ' грн × ' + p.bondCount + ' шт.</span>' : ''}
-            ${p.rate ? '<span>Ставка: <strong>' + p.rate + '%</strong></span>' : ''}
-            ${p.tax ? '<span>Податок: <strong>' + p.tax + '%</strong></span>' : ''}
-            ${days > 0 ? '<span>Строк: <strong>' + days + ' дн.</strong></span>' : ''}
-            ${p.dateStart ? '<span>' + formatDate(p.dateStart) + ' → ' + (p.dateEnd ? formatDate(p.dateEnd) : '...') + '</span>' : ''}
           </div>
-          ${p.bank ? '<div class="p-item-details" style="margin-top:4px"><span>Банк: <strong>' + esc(p.bank) + '</strong></span></div>' : ''}
+          <div class="p-item-details p-row">
+            ${p.rate ? '<span>Ставка: <strong>' + p.rate + '%</strong></span>' : ''}
+            ${days > 0 ? '<span>Строк: <strong>' + days + ' дн.</strong></span>' : ''}
+            ${p.tax ? '<span>Податок: <strong>' + p.tax + '%</strong></span>' : ''}
+          </div>
+          ${p.dateStart ? '<div class="p-item-details p-row"><span>' + formatDate(p.dateStart) + ' → ' + (p.dateEnd ? formatDate(p.dateEnd) : '...') + '</span></div>' : ''}
+          ${p.bank ? '<div class="p-item-details p-row"><span>Банк: <strong>' + esc(p.bank) + '</strong></span></div>' : ''}
           ${p.notes ? '<div class="p-item-notes">' + esc(p.notes) + '</div>' : ''}
         </div>
         <div class="p-item-actions">
@@ -2549,6 +2731,7 @@ function renderPortfolioChart(items) {
       </div>
     </div>`;
 
+  const forecastColor = '#facc15';
   portfolioChartInstance = new Chart(canvas, {
     type: 'line',
     data: {
@@ -2577,7 +2760,7 @@ function renderPortfolioChart(items) {
         {
           label: 'Прогноз',
           data: projectedLine,
-          borderColor: '#facc15',
+          borderColor: forecastColor,
           borderDash: [6, 4],
           tension: 0.3,
           pointRadius: 0,
@@ -3372,13 +3555,20 @@ function renderDreams() {
   const canvas = document.getElementById('dreamsPieChart');
   if (canvas && typeof Chart !== 'undefined') {
     if (dreamsPieInstance) dreamsPieInstance.destroy();
+    const isLight = document.documentElement.getAttribute('data-theme-effective') === 'light';
+    const remainingColor = isLight ? '#cbd5e1' : '#334155';
+    const savedColor = isLight ? '#22c55e' : '#4ade80';
+    const legendColor = isLight ? '#334155' : '#94a3b8';
+    const tickColorX = isLight ? '#64748b' : '#475569';
+    const tickColorY = isLight ? '#1e293b' : '#e2e8f0';
+    const gridColorX = isLight ? '#e2e8f0' : '#1e293b';
     dreamsPieInstance = new Chart(canvas, {
       type: 'bar',
       data: {
         labels: pieLabels,
         datasets: [
-          { label: 'Накопичено', data: dreamItems.map(d => d.saved || 0), backgroundColor: '#4ade80', borderRadius: 4 },
-          { label: 'Залишилось', data: dreamItems.map(d => Math.max(0, d.target - (d.saved || 0))), backgroundColor: '#334155', borderRadius: 4 }
+          { label: 'Накопичено', data: dreamItems.map(d => d.saved || 0), backgroundColor: savedColor, borderRadius: 4 },
+          { label: 'Залишилось', data: dreamItems.map(d => Math.max(0, d.target - (d.saved || 0))), backgroundColor: remainingColor, borderRadius: 4 }
         ]
       },
       options: {
@@ -3386,17 +3576,31 @@ function renderDreams() {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 12 }, padding: 16 } },
+          legend: { position: 'bottom', labels: { color: legendColor, font: { size: 12 }, padding: 16 } },
           tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + formatNum(ctx.raw) + ' грн' } }
         },
         scales: {
-          x: { stacked: true, ticks: { color: '#475569', font: { size: 10 }, callback: v => formatShort(v) }, grid: { color: '#1e293b' } },
-          y: { stacked: true, ticks: { color: '#e2e8f0', font: { size: 12 } }, grid: { display: false } }
+          x: { stacked: true, ticks: { color: tickColorX, font: { size: 10 }, callback: v => formatShort(v) }, grid: { color: gridColorX } },
+          y: { stacked: true, ticks: { color: tickColorY, font: { size: 12 } }, grid: { display: false } }
         }
       }
     });
   }
 }
+
+// Ре-рендеримо dreams chart при зміні теми, щоб backgroundColor + ticks/grid оновилися
+window.addEventListener('themechange', () => {
+  if (typeof dreamItems !== 'undefined' && dreamItems && dreamItems.length > 0) {
+    const dreamsTab = document.getElementById('tabDreams');
+    // re-render тільки якщо юзер на вкладці Мрії (щоб не чіпати приховану)
+    if (dreamsTab && dreamsTab.classList.contains('active')) {
+      try { renderDreams(); } catch(e) {}
+    } else {
+      // якщо вкладка прихована — просто знищимо поточний чарт, наступне відкриття перерендерить
+      try { if (typeof dreamsPieInstance !== 'undefined' && dreamsPieInstance) { dreamsPieInstance.destroy(); dreamsPieInstance = null; } } catch(e) {}
+    }
+  }
+});
 
 async function saveDreamsToFirestore() {
   if (!firebaseReady || !currentUser) {
