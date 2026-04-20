@@ -574,6 +574,63 @@ button:hover { opacity: 0.9; }
 .a-stat .a-stat-value { font-weight: 700; font-size: 15px; }
 .a-stat .green { color: #4ade80; }
 .a-stat .yellow { color: #facc15; }
+
+/* Currency summary blocks (portfolio → currency) */
+.currency-summary {
+  flex: 1 1 260px;
+  min-width: 0;
+  background: rgba(15,23,42,0.5);
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.currency-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #334155;
+}
+.currency-summary-code { font-size: 13px; font-weight: 700; color: #f1f5f9; letter-spacing: 0.3px; }
+.currency-summary-rate { font-size: 12px; color: #94a3b8; }
+.currency-summary-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.currency-summary-cell { min-width: 0; }
+.currency-summary-cell .a-stat-label {
+  color: #64748b;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.currency-summary-cell .a-stat-value {
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.currency-summary-cell .green { color: #4ade80; }
+@media (max-width: 640px) {
+  .currency-summary { padding: 8px 10px; }
+  .currency-summary-cell .a-stat-value { font-size: 13px; }
+  .currency-summary-cell .a-stat-label { font-size: 10px; }
+  .currency-summary-header { margin-bottom: 6px; }
+}
+html[data-theme-effective="light"] .currency-summary {
+  background: rgba(248,250,252,0.6);
+  border-color: #e2e8f0;
+}
+html[data-theme-effective="light"] .currency-summary-header {
+  border-bottom-color: #e2e8f0;
+}
+html[data-theme-effective="light"] .currency-summary-code { color: #0f172a; }
+html[data-theme-effective="light"] .currency-summary-rate { color: #475569; }
+html[data-theme-effective="light"] .currency-summary-cell .a-stat-label { color: #64748b; }
 /* Onboarding */
 /* Profile section titles */
 .profile-section-title {
@@ -2393,4 +2450,18 @@ html[data-theme-effective="light"] h2[style*="color:#f1f5f9"],
 html[data-theme-effective="light"] h2[style*="color: #f1f5f9"] {
   color: #0f172a !important;
 }
+
+
+
+/* Telegram connect spinner */
+.tg-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(59,130,246,0.2);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: tg-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes tg-spin { to { transform: rotate(360deg); } }
 

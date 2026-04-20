@@ -88,7 +88,6 @@ function loadNotifySettings() {
   const emailOn = userProfile.notifyEmail || localStorage.getItem('notifyEmail') === 'true';
   const tgOn = userProfile.notifyTelegram || localStorage.getItem('notifyTelegram') === 'true';
   const botOn = userProfile.useTelegramBot || localStorage.getItem('useTelegramBot') === 'true';
-  const tgChatId = userProfile.telegramChatId || '';
 
   document.getElementById('notifyDays').value = days;
   document.getElementById('notifyEmail').checked = emailOn;
@@ -96,24 +95,112 @@ function loadNotifySettings() {
   document.getElementById('useTelegramBot').checked = botOn;
   document.getElementById('telegramLinkSection').style.display = tgOn ? 'block' : 'none';
 
-  document.getElementById('telegramChatId').value = tgChatId;
-
   const botName = typeof TELEGRAM_BOT_NAME !== 'undefined' ? TELEGRAM_BOT_NAME : 'my_invest_ua_bot';
   const link = document.getElementById('telegramBotLink');
   if (link && currentUser) {
     link.href = 'https://t.me/' + botName + '?start=' + currentUser.uid;
   }
 
-  document.getElementById('btnTestTelegram').style.display = tgChatId ? 'block' : 'none';
+  renderTelegramConnectionUI();
+}
 
+function renderTelegramConnectionUI() {
+  const tgChatId = userProfile.telegramChatId || '';
+  const manualInput = document.getElementById('telegramChatId');
+  if (manualInput) manualInput.value = tgChatId;
+
+  const connected = document.getElementById('tgConnectedBlock');
+  const connect = document.getElementById('tgConnectBlock');
   const statusEl = document.getElementById('telegramStatus');
-  if (statusEl) {
-    if (tgChatId) {
+
+  if (tgChatId) {
+    if (connected) connected.style.display = '';
+    if (connect) connect.style.display = 'none';
+    if (statusEl) {
       statusEl.innerHTML = '<span style="color:#4ade80;font-size:12px">✓ Telegram підключено (Chat ID: ' + esc(tgChatId) + ')</span>';
-    } else {
-      statusEl.innerHTML = '';
     }
+  } else {
+    if (connected) connected.style.display = 'none';
+    if (connect) connect.style.display = '';
+    if (statusEl) statusEl.innerHTML = '';
   }
+}
+
+// ---- One-click Telegram connect ----
+
+let tgListenerUnsubscribe = null;
+let tgConnectTimeoutId = null;
+
+function onTelegramConnectClick() {
+  if (!currentUser || !firebaseReady) return;
+  startTelegramConnectListener();
+}
+
+function startTelegramConnectListener() {
+  stopTelegramConnectListener();
+
+  const waitingBlock = document.getElementById('tgWaitingBlock');
+  if (waitingBlock) waitingBlock.style.display = '';
+
+  // Listen for profile changes in Firestore; bot writes profile.telegramChatId on /start
+  try {
+    tgListenerUnsubscribe = db.collection('users').doc(currentUser.uid).onSnapshot(doc => {
+      const data = doc.data();
+      const chatId = data && data.profile && data.profile.telegramChatId;
+      if (chatId) {
+        onTelegramConnected(chatId);
+      }
+    }, err => {
+      console.warn('Telegram link listener failed:', err);
+    });
+  } catch(e) {
+    console.warn('Telegram link listener setup failed:', e);
+  }
+
+  // Fail-safe timeout: stop waiting after 5 minutes
+  tgConnectTimeoutId = setTimeout(() => {
+    stopTelegramConnectListener();
+    if (waitingBlock) waitingBlock.style.display = 'none';
+    const statusEl = document.getElementById('telegramStatus');
+    if (statusEl) {
+      statusEl.innerHTML = '<span style="color:#f59e0b;font-size:12px">⚠ Не вдалося підтвердити підключення. Спробуйте ще раз або введіть Chat ID вручну.</span>';
+    }
+  }, 5 * 60 * 1000);
+}
+
+function stopTelegramConnectListener() {
+  if (tgListenerUnsubscribe) { try { tgListenerUnsubscribe(); } catch(_) {} tgListenerUnsubscribe = null; }
+  if (tgConnectTimeoutId) { clearTimeout(tgConnectTimeoutId); tgConnectTimeoutId = null; }
+}
+
+function cancelTelegramConnect() {
+  stopTelegramConnectListener();
+  const waitingBlock = document.getElementById('tgWaitingBlock');
+  if (waitingBlock) waitingBlock.style.display = 'none';
+}
+
+function onTelegramConnected(chatId) {
+  stopTelegramConnectListener();
+  userProfile.telegramChatId = chatId;
+  localStorage.setItem('telegramChatId', chatId);
+  const waitingBlock = document.getElementById('tgWaitingBlock');
+  if (waitingBlock) waitingBlock.style.display = 'none';
+  renderTelegramConnectionUI();
+}
+
+async function disconnectTelegram() {
+  if (!confirm('Відключити Telegram-сповіщення? Ви зможете підключитись знову будь-коли.')) return;
+  userProfile.telegramChatId = '';
+  localStorage.removeItem('telegramChatId');
+  if (currentUser && firebaseReady) {
+    try {
+      await db.collection('users').doc(currentUser.uid).set(
+        { profile: { telegramChatId: '' } },
+        { merge: true }
+      );
+    } catch(e) { console.warn('Telegram disconnect save failed:', e); }
+  }
+  renderTelegramConnectionUI();
 }
 
 function saveTelegramChatId() {
@@ -122,10 +209,7 @@ function saveTelegramChatId() {
   userProfile.telegramChatId = chatId;
   localStorage.setItem('telegramChatId', chatId);
   if (currentUser) saveProfileToFirestore();
-
-  document.getElementById('btnTestTelegram').style.display = 'block';
-  const statusEl = document.getElementById('telegramStatus');
-  statusEl.innerHTML = '<span style="color:#4ade80;font-size:12px">✓ Telegram підключено (Chat ID: ' + esc(chatId) + ')</span>';
+  renderTelegramConnectionUI();
 }
 
 async function sendTestTelegram() {

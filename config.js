@@ -14,3 +14,6 @@ const TELEGRAM_BOT_TOKEN = '';
 const TELEGRAM_BOT_NAME = 'my_invest_ua_bot';
 const NOTIFY_API_BASE = 'https://darkblue-toad-531724.hostingersite.com/api';
 const NOTIFY_API_KEY = '807a1b9017c607904c02539185516d3a6eebec7c3ac327906ede593f662a76f3';
+
+// Emails that bypass login/new-user Telegram notifications
+const ADMIN_EMAILS = ['ad@pinpools.com'];

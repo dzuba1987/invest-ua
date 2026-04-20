@@ -192,6 +192,18 @@ async function hashPin(pin) {
 
 // ============ TAB SWITCHING ============
 function switchMainTab(tab, btn) {
+  // Guard: block leaving a tab while a form has unsaved edits
+  if (typeof FormDrafts !== 'undefined') {
+    const currentActive = document.querySelector('.main-tab.active');
+    const currentTab = currentActive ? currentActive.textContent.trim().toLowerCase() : '';
+    // Check only forms visible on the tab we are leaving
+    const visible = dirtyFormsOnActiveTab();
+    for (const id of visible) {
+      if (!FormDrafts.confirmDiscard(id, 'У формі є незбережені зміни. Перейти на іншу вкладку без збереження?')) {
+        return;
+      }
+    }
+  }
   document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
@@ -202,6 +214,26 @@ function switchMainTab(tab, btn) {
   if (tab === 'currencies') loadCurrenciesPage();
   if (tab === 'dreams') updateDreamsUI();
   if (tab === 'profile') { updateProfileUI(); renderDashboardCurrencySettings(); }
+}
+
+// Returns draft IDs whose DOM form is currently visible (on the active tab and not hidden).
+function dirtyFormsOnActiveTab() {
+  if (typeof FormDrafts === 'undefined') return [];
+  const activePanel = document.querySelector('.tab-panel.active');
+  if (!activePanel) return [];
+  const out = [];
+  const check = (draftId, anchorId, requireVisible) => {
+    const el = document.getElementById(anchorId);
+    if (!el || !activePanel.contains(el)) return;
+    if (requireVisible && el.offsetParent === null) return;
+    if (FormDrafts.isDirty(draftId)) out.push(draftId);
+  };
+  check('portfolio.form', 'portfolioFormCard', true);
+  check('dream.form', 'dreamFormCard', true);
+  check('profile', 'profileContent', false);
+  check('calc', 'invested', false);
+  check('credit', 'creditAmount', true);
+  return out;
 }
 
 
@@ -829,6 +861,8 @@ function saveRecord() {
 
   savedRecords.push(record);
   renderSaved();
+
+  if (typeof FormDrafts !== 'undefined') FormDrafts.clear('calc');
 
   const msg = document.getElementById('successMsg');
   msg.textContent = '✓ Запис збережено!';
@@ -1875,18 +1909,36 @@ function findAndRenderReinvest() {
 // ================================================================
 
 let portfolioItems = [];
+let _editingPortfolioId = null;
 
 function togglePortfolioForm(forceOpen) {
   const card = document.getElementById('portfolioFormCard');
   const toggleBtn = document.getElementById('btnTogglePortfolioForm');
   const isHidden = card.style.display === 'none';
   const shouldOpen = forceOpen !== undefined ? forceOpen : isHidden;
+
+  // Closing — guard unsaved edits
+  if (!shouldOpen && typeof FormDrafts !== 'undefined' && FormDrafts.isDirty('portfolio.form')) {
+    if (!FormDrafts.confirmDiscard('portfolio.form', 'У формі вкладення є незбережені зміни. Закрити без збереження?')) {
+      return;
+    }
+  }
+
   if (shouldOpen) {
     card.style.display = 'block';
     toggleBtn.textContent = '− ' + (t('portfolio.cancel') || 'Скасувати');
     toggleBtn.classList.remove('btn-save');
     toggleBtn.classList.add('btn-export');
     togglePortfolioTypeFields();
+    // Offer to restore an earlier unsaved draft (but only when opening a fresh "new" form).
+    if (typeof FormDrafts !== 'undefined' && FormDrafts.hasDraft('portfolio.form') && !FormDrafts.isDirty('portfolio.form')) {
+      if (confirm('Знайдено незбережену чернетку. Відновити?')) {
+        FormDrafts.restore('portfolio.form');
+        togglePortfolioTypeFields();
+      } else {
+        FormDrafts.clear('portfolio.form');
+      }
+    }
   } else {
     card.style.display = 'none';
     toggleBtn.textContent = '+ ' + (t('portfolio.addNew') || 'Новий запис');
@@ -1897,6 +1949,8 @@ function togglePortfolioForm(forceOpen) {
     addBtn.textContent = t('portfolio.add') || 'Додати до портфеля';
     addBtn.classList.remove('btn-export');
     addBtn.classList.add('btn-save');
+    _editingPortfolioId = null;
+    _pendingCashHistory = null;
   }
 }
 
@@ -1989,8 +2043,7 @@ function addPortfolioItem() {
   }
   _pendingCashHistory = null;
 
-  portfolioItems.push({
-    id: Date.now(),
+  const payload = {
     name, type, invested,
     rate: isCash || isNaN(rate) ? null : rate,
     bondPrice: type === 'ovdp' && !isNaN(bondPrice) && bondPrice > 0 ? bondPrice : null,
@@ -2001,9 +2054,18 @@ function addPortfolioItem() {
     bank, notes,
     indexation: !isCash && !isNaN(indexation) && indexation > 0 ? indexation : null,
     compound: !isCash && isCompound,
-    history: isCash ? history : undefined,
-    createdAt: nowIso
-  });
+    history: isCash ? history : undefined
+  };
+
+  if (_editingPortfolioId !== null) {
+    const idx = portfolioItems.findIndex(p => String(p.id) === String(_editingPortfolioId));
+    if (idx !== -1) {
+      portfolioItems[idx] = { ...portfolioItems[idx], ...payload };
+    }
+    _editingPortfolioId = null;
+  } else {
+    portfolioItems.push({ id: Date.now(), ...payload, createdAt: nowIso });
+  }
 
   renderPortfolio();
   savePortfolioToFirestore();
@@ -2029,6 +2091,9 @@ function addPortfolioItem() {
   document.getElementById('pDateStart').value = now.toISOString().split('T')[0];
   const f = new Date(now); f.setMonth(f.getMonth() + 3);
   document.getElementById('pDateEnd').value = f.toISOString().split('T')[0];
+
+  // Clear draft — data is now persisted in portfolio
+  if (typeof FormDrafts !== 'undefined') FormDrafts.clear('portfolio.form');
 
   // Collapse form after adding (also resets button)
   togglePortfolioForm(false);
@@ -2394,10 +2459,8 @@ function editPortfolioItem(id) {
   document.getElementById('pCompound').checked = !!item.compound;
   togglePortfolioCompound();
 
-  // Remove old item
-  portfolioItems = portfolioItems.filter(p => String(p.id) !== String(id));
-  renderPortfolio();
-  savePortfolioToFirestore();
+  // Mark which item is being edited; it stays in the list until the user saves.
+  _editingPortfolioId = id;
 
   // Change button text
   const btn = document.getElementById('btnAddPortfolio');
@@ -2407,6 +2470,9 @@ function editPortfolioItem(id) {
 
   // Open form and scroll to it
   togglePortfolioForm(true);
+  // Mark just-filled values as clean baseline so the form isn't flagged dirty
+  // until the user actually edits something. Clears any stale "new" draft too.
+  if (typeof FormDrafts !== 'undefined') FormDrafts.setBaseline('portfolio.form');
   document.getElementById('pName').focus();
   document.getElementById('pName').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
@@ -2855,17 +2921,25 @@ async function loadCurrencyRates(totalInvested, totalExpectedProfit, totalProfit
       if (!rate) return;
       const sym = getCurrencySymbol(cc);
       html += `
-        <div class="a-stat">
-          <div class="a-stat-label">Вкладено в ${cc} (курс ${sym}${rate.toFixed(2)})</div>
-          <div class="a-stat-value">${sym}${formatNum(totalInvested / rate)}</div>
-        </div>
-        <div class="a-stat">
-          <div class="a-stat-label">Очікуваний дохід за весь строк (${cc})</div>
-          <div class="a-stat-value green">+${sym}${formatNum(totalExpectedProfit / rate)}</div>
-        </div>
-        <div class="a-stat">
-          <div class="a-stat-label">Очікуваний дохід до кінця ${eoyYear} (${cc})</div>
-          <div class="a-stat-value green">+${sym}${formatNum((totalProfitToEOY || 0) / rate)}</div>
+        <div class="currency-summary">
+          <div class="currency-summary-header">
+            <span class="currency-summary-code">${cc}</span>
+            <span class="currency-summary-rate">${rate.toFixed(2)} ₴</span>
+          </div>
+          <div class="currency-summary-row">
+            <div class="currency-summary-cell">
+              <div class="a-stat-label">Вкладено</div>
+              <div class="a-stat-value">${sym}${formatNum(totalInvested / rate)}</div>
+            </div>
+            <div class="currency-summary-cell">
+              <div class="a-stat-label">За строк</div>
+              <div class="a-stat-value green">+${sym}${formatNum(totalExpectedProfit / rate)}</div>
+            </div>
+            <div class="currency-summary-cell">
+              <div class="a-stat-label">До ${eoyYear}</div>
+              <div class="a-stat-value green">+${sym}${formatNum((totalProfitToEOY || 0) / rate)}</div>
+            </div>
+          </div>
         </div>`;
     });
     if (!html) {
@@ -3172,6 +3246,7 @@ async function verifyPin() {
 // ==================== DREAMS ====================================
 
 let dreamItems = [];
+let _editingDreamId = null;
 let dreamsPieInstance = null;
 
 function updateDreamsUI() {
@@ -3218,6 +3293,13 @@ function toggleDreamForm(forceOpen) {
   const btn = document.getElementById('btnToggleDreamForm');
   const isHidden = card.style.display === 'none';
   const shouldOpen = forceOpen !== undefined ? forceOpen : isHidden;
+
+  if (!shouldOpen && typeof FormDrafts !== 'undefined' && FormDrafts.isDirty('dream.form')) {
+    if (!FormDrafts.confirmDiscard('dream.form', 'У формі мрії є незбережені зміни. Закрити без збереження?')) {
+      return;
+    }
+  }
+
   if (shouldOpen) {
     card.style.display = 'block';
     btn.textContent = '− Скасувати';
@@ -3226,6 +3308,13 @@ function toggleDreamForm(forceOpen) {
     dreamMonthlyManual = false;
     if (!document.getElementById('dreamDateStart').value) {
       document.getElementById('dreamDateStart').value = new Date().toISOString().split('T')[0];
+    }
+    if (typeof FormDrafts !== 'undefined' && FormDrafts.hasDraft('dream.form') && !FormDrafts.isDirty('dream.form')) {
+      if (confirm('Знайдено незбережену чернетку мрії. Відновити?')) {
+        FormDrafts.restore('dream.form');
+      } else {
+        FormDrafts.clear('dream.form');
+      }
     }
   } else {
     card.style.display = 'none';
@@ -3236,6 +3325,7 @@ function toggleDreamForm(forceOpen) {
     addBtn.textContent = 'Додати мрію';
     addBtn.classList.remove('btn-export');
     addBtn.classList.add('btn-save');
+    _editingDreamId = null;
   }
 }
 
@@ -3256,11 +3346,17 @@ function addDream() {
   }
   document.getElementById('dreamError').style.display = 'none';
 
-  dreamItems.push({
-    id: Date.now(), name, target, saved, monthly,
-    dateStart, dateEnd, notes,
-    createdAt: new Date().toISOString()
-  });
+  const payload = { name, target, saved, monthly, dateStart, dateEnd, notes };
+
+  if (_editingDreamId !== null) {
+    const idx = dreamItems.findIndex(d => String(d.id) === String(_editingDreamId));
+    if (idx !== -1) {
+      dreamItems[idx] = { ...dreamItems[idx], ...payload };
+    }
+    _editingDreamId = null;
+  } else {
+    dreamItems.push({ id: Date.now(), ...payload, createdAt: new Date().toISOString() });
+  }
 
   renderDreams();
   saveDreamsToFirestore();
@@ -3271,6 +3367,7 @@ function addDream() {
   document.getElementById('dreamSaved').value = '';
   document.getElementById('dreamMonthly').value = '';
   document.getElementById('dreamNotes').value = '';
+  if (typeof FormDrafts !== 'undefined') FormDrafts.clear('dream.form');
   toggleDreamForm(false);
 
   const msg = document.getElementById('dreamSuccess');
@@ -3463,15 +3560,14 @@ function editDream(id) {
   document.getElementById('dreamDateEnd').value = item.dateEnd || '';
   document.getElementById('dreamNotes').value = item.notes || '';
 
-  dreamItems = dreamItems.filter(d => String(d.id) !== String(id));
-  renderDreams();
-  saveDreamsToFirestore();
+  _editingDreamId = id;
 
   const btn = document.getElementById('btnAddDream');
   btn.textContent = 'Зберегти зміни';
   btn.classList.remove('btn-save');
   btn.classList.add('btn-export');
   toggleDreamForm(true);
+  if (typeof FormDrafts !== 'undefined') FormDrafts.setBaseline('dream.form');
 }
 
 function renderDreams() {
@@ -3825,6 +3921,32 @@ loadFromStorage();
 
 // Initialize calculator type-dependent field visibility
 if (document.getElementById('calcType')) toggleCalcTypeFields();
+
+// ---- Form draft registration ----
+// Register every form once. FormDrafts will auto-persist user input and
+// protect against losing unsaved edits when the user switches tabs, closes
+// the form, or reloads the page.
+if (typeof FormDrafts !== 'undefined') {
+  FormDrafts.register('portfolio.form', [
+    'pName', 'pType', 'pBondPrice', 'pBondCount', 'pInvested', 'pRate',
+    'pIndex', 'pDateStart', 'pDateEnd', 'pTax', 'pBank', 'pNotes', 'pCompound'
+  ]);
+  FormDrafts.register('dream.form', [
+    'dreamName', 'dreamTarget', 'dreamSaved', 'dreamMonthly',
+    'dreamDateStart', 'dreamDateEnd', 'dreamNotes'
+  ]);
+  FormDrafts.register('profile', [
+    'profileDisplayName', 'profileContactEmail', 'profilePhone'
+  ]);
+  FormDrafts.register('calc', [
+    'calcType', 'bondName', 'bondPrice', 'bondCount', 'invested', 'annualRateInput',
+    'dateStart', 'dateEnd', 'received', 'diffAmount', 'bonusPercent',
+    'compoundCheck', 'compoundRate', 'compoundTax', 'compoundYears', 'compoundIndex'
+  ]);
+  FormDrafts.register('credit', [
+    'creditAmount', 'creditRate', 'creditMonths', 'creditDown'
+  ]);
+}
 
 // Restore last active tab
 (function() {

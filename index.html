@@ -905,27 +905,41 @@
             <p class="notify-channel-desc" data-i18n="notify.telegramDesc">Нагадування про вкладення у Telegram</p>
             <div id="telegramLinkSection" style="display:none">
               <div id="telegramStatus"></div>
-              <div class="tg-steps">
-                <div class="tg-step">
-                  <span class="tg-step-num">1</span>
-                  <span data-i18n="notify.step1">Відкрийте бота та натисніть Start</span>
-                </div>
-                <a id="telegramBotLink" class="btn-save" style="display:inline-block;text-align:center;text-decoration:none;max-width:260px" href="#" target="_blank" data-i18n="notify.telegramConnect">Відкрити Telegram бота</a>
-                <div class="tg-step" style="margin-top:14px">
-                  <span class="tg-step-num">2</span>
-                  <span data-i18n="notify.step2">Вставте Chat ID який показав бот</span>
-                </div>
-                <div style="display:flex;gap:8px;margin-top:4px">
-                  <input type="text" id="telegramChatId" placeholder="123456789" inputmode="numeric" style="flex:1;max-width:180px">
-                  <button class="btn-save" onclick="saveTelegramChatId()" style="width:auto;padding:10px 16px;margin:0" data-i18n="notify.saveChatId">Зберегти</button>
-                </div>
-                <p class="field-hint" style="margin-top:4px">Chat ID зберігається у вашому профілі та використовується виключно для відправки сповіщень через бота</p>
-                <div class="tg-step" style="margin-top:14px">
-                  <span class="tg-step-num">3</span>
-                  <span data-i18n="notify.step3">Перевірте що все працює</span>
-                </div>
-                <button class="btn-clear" id="btnTestTelegram" onclick="sendTestTelegram()" style="max-width:260px;display:none" data-i18n="notify.testTelegram">Надіслати тестове повідомлення</button>
+
+              <!-- Connected state -->
+              <div id="tgConnectedBlock" style="display:none">
+                <p class="field-hint" style="margin-bottom:10px" data-i18n="notify.tgConnectedHint">Сповіщення надходитимуть у Telegram про завершення термінів вкладень.</p>
+                <button class="btn-clear" id="btnTestTelegram" onclick="sendTestTelegram()" style="max-width:260px" data-i18n="notify.testTelegram">Надіслати тестове повідомлення</button>
+                <button class="btn-clear" onclick="disconnectTelegram()" style="max-width:260px;margin-top:8px;border-color:#64748b;color:#94a3b8" data-i18n="notify.tgDisconnect">Відключити Telegram</button>
                 <p class="success-msg" id="telegramTestResult" style="text-align:left"></p>
+              </div>
+
+              <!-- Connect button -->
+              <div id="tgConnectBlock">
+                <p class="field-hint" style="margin-bottom:10px" data-i18n="notify.tgConnectHint">Натисніть кнопку — відкриється бот у Telegram. Там натисніть Start — підключення відбудеться автоматично.</p>
+                <a id="telegramBotLink" class="btn-save" style="display:inline-block;text-align:center;text-decoration:none;max-width:260px" href="#" target="_blank" onclick="onTelegramConnectClick()" data-i18n="notify.telegramConnect">🔗 Підключити Telegram</a>
+
+                <div id="tgWaitingBlock" style="display:none;margin-top:14px;padding:12px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:10px">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div class="tg-spinner"></div>
+                    <div>
+                      <div style="font-size:13px;color:#f1f5f9;font-weight:600" data-i18n="notify.tgWaiting">Очікуємо підтвердження у Telegram…</div>
+                      <div class="field-hint" style="margin-top:2px" data-i18n="notify.tgWaitingHint">Натисніть Start у боті — підключення станеться протягом 10 секунд.</div>
+                    </div>
+                  </div>
+                  <button class="btn-clear" onclick="cancelTelegramConnect()" style="margin-top:10px;max-width:180px;padding:6px 12px;font-size:12px" data-i18n="notify.tgCancel">Скасувати</button>
+                </div>
+
+                <details style="margin-top:14px">
+                  <summary style="font-size:12px;color:#64748b;cursor:pointer" data-i18n="notify.tgManualToggle">Ввести Chat ID вручну</summary>
+                  <div style="margin-top:8px">
+                    <div style="display:flex;gap:8px">
+                      <input type="text" id="telegramChatId" placeholder="123456789" inputmode="numeric" style="flex:1;max-width:180px">
+                      <button class="btn-save" onclick="saveTelegramChatId()" style="width:auto;padding:10px 16px;margin:0" data-i18n="notify.saveChatId">Зберегти</button>
+                    </div>
+                    <p class="field-hint" style="margin-top:4px" data-i18n="notify.tgManualHint">Якщо автопідключення не спрацювало, відкрийте бот вручну, скопіюйте Chat ID з повідомлення і вставте сюди.</p>
+                  </div>
+                </details>
               </div>
             </div>
           </div>
@@ -1028,9 +1042,10 @@
 
 <script src="i18n.js"></script>
 <script src="config.js"></script>
-<script src="app.js"></script>
+<script src="modules/form-drafts.js"></script>
 <script src="modules/firebase.js"></script>
 <script src="modules/telegram.js"></script>
+<script src="app.js"></script>
 
 </body>
 </html>

@@ -221,8 +221,32 @@
       </div>
     </div>
 
-    <!-- Email newsletter -->
+    <!-- Changelog -->
     <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:24px">
+      <h3 style="font-size:15px;color:#f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:20px">📝</span> Список змін (що нового)
+      </h3>
+      <p style="font-size:12px;color:#64748b;margin-bottom:12px">Додайте короткий опис покращення. Потім можна зібрати в одну розсилку і надіслати всім користувачам.</p>
+      <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:10px">
+        <input type="text" id="clogTitle" class="search-input" style="margin:0" placeholder="Заголовок зміни (напр. «Додано Мрії»)">
+        <textarea id="clogBody" style="width:100%;min-height:80px;padding:10px 12px;border:1px solid #334155;border-radius:10px;background:#1e293b;color:#f1f5f9;font-size:14px;font-family:inherit;outline:none;resize:vertical;line-height:1.5" placeholder="Короткий опис — що саме покращили"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn-sm" id="clogAddBtn" onclick="saveChangelogEntry()" style="padding:10px 20px;background:#22c55e">+ Додати</button>
+        <button class="btn-sm" id="clogCancelBtn" onclick="cancelChangelogEdit()" style="padding:10px 20px;display:none">Скасувати</button>
+        <span style="color:#334155">│</span>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8">
+          Зібрати з останніх
+          <input type="number" id="clogRecentN" value="5" min="1" max="20" style="width:56px;padding:6px 8px;border:1px solid #334155;border-radius:6px;background:#1e293b;color:#f1f5f9;font-size:13px">
+        </label>
+        <button class="btn-sm" onclick="fillNewsletterFromRecent()" style="padding:10px 20px">→ У розсилку</button>
+      </div>
+      <p id="clogStatus" style="font-size:12px;margin-top:8px;display:none"></p>
+      <div id="clogList" style="margin-top:14px;display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
+    <!-- Email newsletter -->
+    <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:24px" id="newsletterSection">
       <h3 style="font-size:15px;color:#f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px">
         <span style="font-size:20px">📧</span> Розсилка користувачам
       </h3>
@@ -331,6 +355,7 @@
     loadTelegramConfig();
     loadFeedback();
     loadMinfinBonds();
+    loadChangelog();
   });
 
   async function loadUsers() {
@@ -659,6 +684,155 @@
     status.textContent = '✓ Надіслано: ' + sent + (errors > 0 ? ', помилок: ' + errors : '');
     status.style.color = errors > 0 ? '#facc15' : '#4ade80';
     setTimeout(() => { status.style.display = 'none'; }, 10000);
+  }
+
+  // ---- Changelog ----
+  let changelogItems = [];
+  let editingChangelogId = null;
+
+  async function loadChangelog() {
+    try {
+      const snapshot = await db.collection('changelog').orderBy('createdAt', 'desc').limit(50).get();
+      changelogItems = [];
+      snapshot.forEach(doc => changelogItems.push({ id: doc.id, ...doc.data() }));
+      renderChangelog();
+    } catch(e) {
+      console.error('Load changelog failed:', e);
+    }
+  }
+
+  function renderChangelog() {
+    const list = document.getElementById('clogList');
+    if (!changelogItems.length) {
+      list.innerHTML = '<p style="color:#475569;font-size:13px;padding:8px 0">Поки немає записів</p>';
+      return;
+    }
+    list.innerHTML = changelogItems.map(c => {
+      const date = c.createdAt ? new Date(c.createdAt).toLocaleDateString('uk-UA') : '—';
+      const title = (c.title || '').replace(/[<>&]/g, s => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[s]));
+      const body = (c.body || '').replace(/[<>&]/g, s => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[s]));
+      return `
+        <div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">
+            <div style="font-size:14px;font-weight:600;color:#f1f5f9">${title}</div>
+            <div style="font-size:11px;color:#64748b;flex-shrink:0">${date}</div>
+          </div>
+          <div style="font-size:13px;color:#94a3b8;line-height:1.5;white-space:pre-wrap">${body}</div>
+          <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn-sm" onclick="fillNewsletterFromEntry('${c.id}')" style="padding:6px 12px;font-size:12px">→ У розсилку</button>
+            <button class="btn-sm" onclick="editChangelogEntry('${c.id}')" style="padding:6px 12px;font-size:12px">Редагувати</button>
+            <button class="btn-sm danger" onclick="deleteChangelogEntry('${c.id}')" style="padding:6px 12px;font-size:12px">Видалити</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function saveChangelogEntry() {
+    const title = document.getElementById('clogTitle').value.trim();
+    const body = document.getElementById('clogBody').value.trim();
+    const status = document.getElementById('clogStatus');
+
+    if (!title || !body) {
+      status.textContent = 'Введіть заголовок і опис';
+      status.style.color = '#f87171';
+      status.style.display = 'block';
+      return;
+    }
+
+    try {
+      if (editingChangelogId) {
+        await db.collection('changelog').doc(editingChangelogId).update({
+          title, body, updatedAt: new Date().toISOString(), updatedBy: currentUser.email
+        });
+        status.textContent = '✓ Оновлено';
+      } else {
+        await db.collection('changelog').add({
+          title, body,
+          createdAt: new Date().toISOString(),
+          createdBy: currentUser.email
+        });
+        status.textContent = '✓ Додано';
+      }
+      status.style.color = '#4ade80';
+      status.style.display = 'block';
+      cancelChangelogEdit();
+      loadChangelog();
+      setTimeout(() => { status.style.display = 'none'; }, 3000);
+    } catch(e) {
+      status.textContent = 'Помилка: ' + e.message;
+      status.style.color = '#f87171';
+      status.style.display = 'block';
+    }
+  }
+
+  function editChangelogEntry(id) {
+    const item = changelogItems.find(c => c.id === id);
+    if (!item) return;
+    editingChangelogId = id;
+    document.getElementById('clogTitle').value = item.title || '';
+    document.getElementById('clogBody').value = item.body || '';
+    document.getElementById('clogAddBtn').textContent = '💾 Зберегти';
+    document.getElementById('clogCancelBtn').style.display = '';
+    document.getElementById('clogTitle').focus();
+    document.getElementById('clogTitle').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function cancelChangelogEdit() {
+    editingChangelogId = null;
+    document.getElementById('clogTitle').value = '';
+    document.getElementById('clogBody').value = '';
+    document.getElementById('clogAddBtn').textContent = '+ Додати';
+    document.getElementById('clogCancelBtn').style.display = 'none';
+  }
+
+  async function deleteChangelogEntry(id) {
+    if (!confirm('Видалити цей запис?')) return;
+    try {
+      await db.collection('changelog').doc(id).delete();
+      loadChangelog();
+    } catch(e) {
+      alert('Помилка: ' + e.message);
+    }
+  }
+
+  function formatChangelogAsHtml(items) {
+    const esc = s => (s || '').replace(/[<>&]/g, x => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[x]));
+    const intro = '<p>Вітаємо! В Invest UA з\'явились нові можливості:</p>';
+    const list = items.map(c => {
+      const body = esc(c.body).replace(/\n/g, '<br>');
+      return `<li style="margin-bottom:10px"><strong>${esc(c.title)}</strong><br>${body}</li>`;
+    }).join('');
+    return intro + '<ul style="padding-left:20px;line-height:1.6">' + list + '</ul>' +
+      '<p style="margin-top:12px">Дякуємо, що користуєтесь Invest UA!</p>';
+  }
+
+  function scrollToNewsletter() {
+    const el = document.getElementById('newsletterSection');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function fillNewsletterFromEntry(id) {
+    const item = changelogItems.find(c => c.id === id);
+    if (!item) return;
+    document.getElementById('emailSubject').value = 'Invest UA — ' + item.title;
+    document.getElementById('emailBody').value = formatChangelogAsHtml([item]);
+    scrollToNewsletter();
+  }
+
+  function fillNewsletterFromRecent() {
+    const n = Math.max(1, Math.min(20, parseInt(document.getElementById('clogRecentN').value) || 5));
+    const items = changelogItems.slice(0, n);
+    const status = document.getElementById('clogStatus');
+    if (!items.length) {
+      status.textContent = 'Немає записів для збору';
+      status.style.color = '#f87171';
+      status.style.display = 'block';
+      return;
+    }
+    document.getElementById('emailSubject').value = 'Invest UA — оновлення';
+    document.getElementById('emailBody').value = formatChangelogAsHtml(items);
+    scrollToNewsletter();
   }
 
   // ---- Feedback ----

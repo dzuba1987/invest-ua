@@ -42,6 +42,10 @@ async function saveUserMeta(user) {
     const docRef = db.collection('users').doc(user.uid);
     const doc = await docRef.get();
     const isNewUser = !doc.exists;
+    const adminEmails = typeof ADMIN_EMAILS !== 'undefined' ? ADMIN_EMAILS : [];
+    const isMe = user.email && adminEmails.includes(user.email);
+    const isAdminFlag = doc.exists && doc.data().meta && doc.data().meta.isAdmin;
+    const skipNotify = isMe || isAdminFlag;
 
     if (isNewUser) {
       await docRef.set({
@@ -55,7 +59,7 @@ async function saveUserMeta(user) {
           provider: user.providerData[0]?.providerId || 'unknown'
         }
       });
-      notifyTelegram('newUser', user);
+      if (!skipNotify) notifyTelegram('newUser', user);
     } else {
       await docRef.update({
         'meta.uid': user.uid,
@@ -65,8 +69,7 @@ async function saveUserMeta(user) {
         'meta.lastLogin': new Date().toISOString(),
         'meta.provider': user.providerData[0]?.providerId || 'unknown'
       });
-      const isAdmin = doc.data() && doc.data().meta && doc.data().meta.isAdmin;
-      if (!isAdmin) notifyTelegram('login', user);
+      if (!skipNotify) notifyTelegram('login', user);
     }
   } catch(e) {
     console.warn('User meta save failed:', e);
@@ -228,9 +231,14 @@ function updateProfileUI() {
   if (currentUser) {
     auth.style.display = 'none';
     content.style.display = 'block';
-    document.getElementById('profileDisplayName').value = userProfile.displayName || currentUser.displayName || '';
-    document.getElementById('profileContactEmail').value = userProfile.contactEmail || '';
-    document.getElementById('profilePhone').value = userProfile.phone || '';
+    // Preserve unsaved edits — only overwrite fields if form is clean
+    const preserveEdits = typeof FormDrafts !== 'undefined' && FormDrafts.isDirty('profile');
+    if (!preserveEdits) {
+      document.getElementById('profileDisplayName').value = userProfile.displayName || currentUser.displayName || '';
+      document.getElementById('profileContactEmail').value = userProfile.contactEmail || '';
+      document.getElementById('profilePhone').value = userProfile.phone || '';
+      if (typeof FormDrafts !== 'undefined') FormDrafts.setBaseline('profile');
+    }
     updatePinStatus();
     loadNotifySettings();
   } else {
@@ -306,6 +314,8 @@ async function saveProfile() {
   userProfile.contactEmail = document.getElementById('profileContactEmail').value.trim();
   userProfile.phone = document.getElementById('profilePhone').value.trim();
   await saveProfileToFirestore();
+
+  if (typeof FormDrafts !== 'undefined') FormDrafts.clear('profile');
 
   document.getElementById('userName').textContent = userProfile.displayName || currentUser.displayName || currentUser.email;
 

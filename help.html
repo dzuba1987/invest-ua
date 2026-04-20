@@ -46,6 +46,10 @@
             <div class="feature-desc">Курси НБУ та готівковий курс (чорний ринок) в реальному часі</div>
           </div>
           <div class="feature">
+            <div class="feature-title">Мрії</div>
+            <div class="feature-desc">Фінансові цілі з автопрогнозом дати та щомісячного внеску</div>
+          </div>
+          <div class="feature">
             <div class="feature-title">Telegram-бот</div>
             <div class="feature-desc">Баланс, список вкладень, курси валют та сповіщення прямо в Telegram</div>
           </div>
@@ -78,6 +82,8 @@
         <p>Натисніть на будь-яке вкладення — відкриється детальна сторінка з прогрес-баром (минулі/залишилось днів, %), зарахованим доходом, ставкою, оподаткуванням. Для вкладень до 2 років показується <strong>щомісячна</strong> таблиця нарахувань, довших — щорічна; для страхування — графік внесків з індексацією.</p>
         <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Сповіщення</h3>
         <p>Банери на дашборді попереджають коли термін вкладення закінчується. Налаштовується в Профілі (за скільки днів нагадувати).</p>
+        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Автозбереження чернеток</h3>
+        <p>Якщо ви почали заповнювати форму (портфель, мрію, калькулятор, профіль) і вирішили перейти на іншу вкладку, закрити форму або перезавантажити сторінку — додаток попередить: «У формі є незбережені зміни». При повторному відкритті форми буде запитано, чи відновити чернетку.</p>
       </div>
 
       <div class="section">
@@ -156,7 +162,18 @@
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-green">7</span> Сповіщення та Telegram-бот</h2>
+        <h2><span class="icon icon-yellow">7</span> Мрії</h2>
+        <p>Окрема вкладка для фінансових цілей — квартира, авто, подорож тощо. Потрібен вхід через Google (дані синхронізуються між пристроями).</p>
+        <div class="step"><div class="step-num">1</div><div class="step-text">Натисніть <strong>«+ Нова мрія»</strong>, введіть назву та бажану суму.</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">Вкажіть <strong>скільки вже накопичено</strong> та дату, до якої хочете зібрати.</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">Щомісячний внесок <strong>розраховується автоматично</strong>, але його можна задати вручну.</div></div>
+        <p style="margin-top:12px"><strong>Дашборд:</strong> загальний прогрес (% зібраного від загальної суми всіх мрій) та кругова діаграма з розподілом по цілях.</p>
+        <p><strong>Деталі мрії:</strong> клік на картку — прогрес-бар, залишок, темп накопичення, прогноз дати завершення на основі щомісячних внесків.</p>
+        <div class="tip">Якщо вкажете дату завершення, додаток підкаже, чи встигаєте при поточному темпі, і запропонує скоригувати внесок.</div>
+      </div>
+
+      <div class="section">
+        <h2><span class="icon icon-green">8</span> Сповіщення та Telegram-бот</h2>
         <p>В Профілі → Сповіщення можна обрати канали:</p>
         <ul style="font-size:13px;color:#94a3b8;margin:8px 0 12px 20px">
           <li><strong>Email</strong> — листи на пошту Google акаунту</li>
@@ -169,23 +186,24 @@
         <p><code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#60a5fa">/expiring</code> — що завершується скоро</p>
         <p><code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#60a5fa">/rates</code> — курси НБУ + чорний ринок</p>
         <p><code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#60a5fa">/help</code> — список команд</p>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Підключення</h3>
-        <p>Профіль → Сповіщення → увімкнути потрібні канали → для Telegram: відкрити бота → вставити Chat ID → зберегти.</p>
+        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Підключення Telegram (в один клік)</h3>
+        <p>Профіль → Сповіщення → увімкніть <strong>Telegram-сповіщення</strong> → натисніть <strong>«🔗 Підключити Telegram»</strong> → у Telegram натисніть <strong>Start</strong>. Ваш акаунт прив'яжеться автоматично протягом 10 секунд — копіювати Chat ID не потрібно.</p>
+        <p class="tip">Якщо автопідключення не спрацювало, у блоці є <em>«Ввести Chat ID вручну»</em> — відкриваєте бот, копіюєте Chat ID з повідомлення, вставляєте і зберігаєте.</p>
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-purple">8</span> Імпорт та експорт</h2>
+        <h2><span class="icon icon-purple">9</span> Імпорт та експорт</h2>
         <p><strong>Імпорт з Excel:</strong> натисніть «Імпорт з Excel» у калькуляторі.</p>
         <p><strong>Експорт у Excel:</strong> натисніть «Експорт у Excel» під таблицею історії.</p>
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-blue">9</span> Глобальний пошук</h2>
-        <p>Поле пошуку зверху сторінки шукає по всьому додатку: вкладення портфеля, історія розрахунків, валюти та навігація по розділах.</p>
+        <h2><span class="icon icon-blue">10</span> Глобальний пошук</h2>
+        <p>Поле пошуку зверху сторінки шукає по всьому додатку: вкладення портфеля, історія розрахунків, валюти, мрії та навігація по розділах.</p>
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-green">10</span> Встановлення та синхронізація</h2>
+        <h2><span class="icon icon-green">11</span> Встановлення та синхронізація</h2>
         <p><strong>Хмарна синхронізація:</strong> увійдіть через Google — дані доступні з будь-якого пристрою.</p>
         <p><strong>Android/Chrome:</strong> меню → «Встановити додаток».</p>
         <p><strong>iPhone/Safari:</strong> «Поділитися» → «На початковий екран».</p>
@@ -194,7 +212,7 @@
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-purple">11</span> Безпека</h2>
+        <h2><span class="icon icon-purple">12</span> Безпека</h2>
         <p><strong>Content Security Policy (CSP)</strong> — обмежує джерела скриптів, стилів та з'єднань тільки до довірених доменів.</p>
         <p><strong>PIN-код</strong> — зберігається як хеш SHA-256, не у відкритому вигляді.</p>
         <p><strong>XSS-захист</strong> — всі дані користувача екрануються перед вставкою в DOM.</p>
@@ -203,7 +221,7 @@
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-blue">12</span> Дані та конфіденційність</h2>
+        <h2><span class="icon icon-blue">13</span> Дані та конфіденційність</h2>
         <p><strong>Що зберігається:</strong> профіль (ім'я, email, телефон), портфель вкладень, історія розрахунків, налаштування.</p>
         <p><strong>Де:</strong> локально (IndexedDB) та у хмарі (Firebase Firestore) при вході через Google.</p>
         <p><strong>Що НЕ зберігається:</strong> паролі, платіжні дані, IP-адреси.</p>
@@ -237,6 +255,10 @@
             <div class="feature-desc">NBU official rates and cash rates (black market) in real time</div>
           </div>
           <div class="feature">
+            <div class="feature-title">Dreams</div>
+            <div class="feature-desc">Financial goals with auto-projected completion date and monthly contribution</div>
+          </div>
+          <div class="feature">
             <div class="feature-title">Telegram bot</div>
             <div class="feature-desc">Balance, portfolio list, exchange rates and notifications in Telegram</div>
           </div>
@@ -259,6 +281,7 @@
         </ul>
         <p><strong>Dashboard:</strong> total value, earned so far, daily income, active entries count. Tap any entry for a detailed view with a progress bar (elapsed/remaining days, %), earnings and tax info. For entries ≤2 years — a monthly accrual table; longer — yearly; insurance — premium schedule with indexation.</p>
         <p><strong>Alerts:</strong> banners warn when an entry is about to expire. Configure in Profile (days before reminder).</p>
+        <p><strong>Unsaved edits protection:</strong> if you start filling a form (portfolio, dream, calculator, profile) and switch tab, close the form or reload — the app warns about unsaved changes and offers to restore the draft next time you open the form.</p>
       </div>
 
       <div class="section">
@@ -300,33 +323,41 @@
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-green">7</span> Telegram bot</h2>
-        <p>Bot <strong>@my_invest_ua_bot</strong> — /balance, /portfolio, /expiring, /rates, /help</p>
-        <p><strong>Setup:</strong> Profile → Notifications → enable Telegram → open bot → paste Chat ID → save.</p>
+        <h2><span class="icon icon-yellow">7</span> Dreams</h2>
+        <p>A dedicated tab for financial goals — apartment, car, travel, etc. Requires Google sign-in (goals sync across devices).</p>
+        <p><strong>Create a goal:</strong> tap "+ New dream", enter name, target amount, how much you've already saved, and a target date. Monthly contribution is auto-computed but can be edited.</p>
+        <p><strong>Dashboard:</strong> overall progress (% of total across all dreams) and a pie chart splitting goals by weight.</p>
+        <p><strong>Detail view:</strong> click a dream card to see progress bar, remaining amount, current pace, and the projected completion date based on monthly contributions.</p>
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-purple">8</span> Import & Export</h2>
+        <h2><span class="icon icon-green">8</span> Telegram bot</h2>
+        <p>Bot <strong>@my_invest_ua_bot</strong> — /balance, /portfolio, /expiring, /rates, /help</p>
+        <p><strong>Setup (one-click):</strong> Profile → Notifications → enable <strong>Telegram</strong> → tap <strong>"🔗 Connect Telegram"</strong> → press <strong>Start</strong> in the bot. Your account links automatically within 10 seconds — no Chat ID copy needed. Manual Chat ID entry is still available as a fallback.</p>
+      </div>
+
+      <div class="section">
+        <h2><span class="icon icon-purple">9</span> Import & Export</h2>
         <p><strong>Import:</strong> "Import from Excel" in Calculator. <strong>Export:</strong> "Export to Excel" below history. <strong>Data export:</strong> Profile → "Export my data" (JSON).</p>
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-blue">9</span> Global search</h2>
-        <p>Search bar at the top — portfolio, history, currencies, navigation.</p>
+        <h2><span class="icon icon-blue">10</span> Global search</h2>
+        <p>Search bar at the top — portfolio, history, currencies, dreams, navigation.</p>
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-green">10</span> Installation & sync</h2>
+        <h2><span class="icon icon-green">11</span> Installation & sync</h2>
         <p>Sign in with Google to sync. Install as native app from browser menu. Works offline.</p>
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-purple">11</span> Security</h2>
+        <h2><span class="icon icon-purple">12</span> Security</h2>
         <p>CSP headers, PIN stored as SHA-256 hash, XSS sanitization, Firebase Security Rules, bot token server-side only.</p>
       </div>
 
       <div class="section">
-        <h2><span class="icon icon-blue">12</span> Data & Privacy</h2>
+        <h2><span class="icon icon-blue">13</span> Data & Privacy</h2>
         <p>Profile → Data & Privacy: see what's stored, export all data (JSON), or delete everything permanently.</p>
       </div>
     </div>
