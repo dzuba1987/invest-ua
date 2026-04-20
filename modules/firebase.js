@@ -42,8 +42,10 @@ async function saveUserMeta(user) {
     const docRef = db.collection('users').doc(user.uid);
     const doc = await docRef.get();
     const isNewUser = !doc.exists;
-    const adminEmails = typeof ADMIN_EMAILS !== 'undefined' ? ADMIN_EMAILS : [];
-    const isMe = user.email && adminEmails.includes(user.email);
+    const adminEmails = (typeof ADMIN_EMAILS !== 'undefined' ? ADMIN_EMAILS : [])
+      .map(e => (e || '').trim().toLowerCase());
+    const userEmail = (user.email || '').trim().toLowerCase();
+    const isMe = userEmail && adminEmails.includes(userEmail);
     const isAdminFlag = doc.exists && doc.data().meta && doc.data().meta.isAdmin;
     const skipNotify = isMe || isAdminFlag;
 
