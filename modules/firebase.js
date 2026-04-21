@@ -204,9 +204,11 @@ async function loadFromFirestore() {
 // preventing data loss if the user edits before the load finishes.
 let portfolioLoaded = false;
 
-// Firestore rejects documents with `undefined` field values, so strip them.
+// Firestore rejects documents with `undefined` field values (even inside
+// arrays), so strip/normalize them. Object keys with undefined are dropped;
+// array elements that are undefined become null (to preserve indices).
 function stripUndefined(obj) {
-  if (Array.isArray(obj)) return obj.map(stripUndefined);
+  if (Array.isArray(obj)) return obj.map(v => v === undefined ? null : stripUndefined(v));
   if (obj && typeof obj === 'object') {
     const out = {};
     for (const [k, v] of Object.entries(obj)) {
