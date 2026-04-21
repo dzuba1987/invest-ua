@@ -107,9 +107,12 @@ function updateAuthUI() {
     saveBtn.style.display = 'none';
     importBtn.style.display = 'none';
   }
-  updatePortfolioUI();
-  updateProfileUI();
-  checkAnalyticsReady();
+  // These live in app.js which is loaded after this script.
+  // Firebase's onAuthStateChanged can fire before app.js finishes parsing
+  // on the first auth bootstrap, so guard each call.
+  if (typeof updatePortfolioUI === 'function') updatePortfolioUI();
+  if (typeof updateProfileUI === 'function') updateProfileUI();
+  if (typeof checkAnalyticsReady === 'function') checkAnalyticsReady();
   if (typeof updateCreditCalcVisibility === 'function') updateCreditCalcVisibility();
   if (typeof updateDreamsUI === 'function') updateDreamsUI();
 }
