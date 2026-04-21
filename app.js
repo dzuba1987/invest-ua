@@ -202,6 +202,10 @@ function switchMainTab(tab, btn) {
       if (!FormDrafts.confirmDiscard(id, 'У формі є незбережені зміни. Перейти на іншу вкладку без збереження?')) {
         return;
       }
+      // Discard confirmed — close the form so stale edit state (e.g. _editingDreamId)
+      // cannot accidentally overwrite the original record on the next save.
+      if (id === 'dream.form' && typeof toggleDreamForm === 'function') toggleDreamForm(false);
+      if (id === 'portfolio.form' && typeof togglePortfolioForm === 'function') togglePortfolioForm(false);
     }
   }
   document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
@@ -3249,6 +3253,53 @@ let dreamItems = [];
 let _editingDreamId = null;
 let dreamsPieInstance = null;
 
+// ---- Dream currency helpers ----
+const DREAM_CUR_LABEL = { UAH: 'грн', USD: '$', EUR: '€' };
+function dreamCurOf(d) { return (d && d.currency) || 'UAH'; }
+function dreamCurUnitLabel(cc) { return DREAM_CUR_LABEL[cc] || cc; }
+function dreamToUah(amount, cc) {
+  if (!cc || cc === 'UAH') return amount;
+  if (!cachedRates || !cachedRates[cc]) return null;
+  return amount * cachedRates[cc];
+}
+function dreamUsdEquiv(amount, cc) {
+  if (!cc || cc === 'UAH' || cc === 'USD') return null;
+  if (!cachedRates || !cachedRates.USD || !cachedRates[cc]) return null;
+  return amount * cachedRates[cc] / cachedRates.USD;
+}
+function fmtDreamAmount(amount, cc) {
+  const amt = amount || 0;
+  if (!cc || cc === 'UAH') return formatNum(amt) + ' грн';
+  const prefix = cc === 'USD' ? '$' : (cc === 'EUR' ? '€' : '');
+  let str = (prefix ? prefix + formatNum(amt) : formatNum(amt) + ' ' + cc);
+  const eq = dreamUsdEquiv(amt, cc);
+  if (eq !== null) str += ' <span class="dream-equiv">≈ $' + formatNum(eq) + '</span>';
+  return str;
+}
+async function ensureRates() {
+  if (cachedRates && Date.now() - ratesCacheTime < 3600000) return cachedRates;
+  try {
+    const res = await fetch('https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json');
+    const data = await res.json();
+    cachedRatesArray = data;
+    cachedRates = {};
+    data.forEach(r => { cachedRates[r.cc] = r.rate; });
+    cachedRates._date = data[0]?.exchangedate || '';
+    ratesCacheTime = Date.now();
+  } catch(e) { console.warn('Rates fetch failed:', e); }
+  return cachedRates;
+}
+function onDreamCurrencyChange() {
+  const sel = document.getElementById('dreamCurrency');
+  if (!sel) return;
+  const cc = sel.value || 'UAH';
+  const label = cc === 'UAH' ? '(грн)' : '(' + dreamCurUnitLabel(cc) + ')';
+  ['dreamTargetCurLabel', 'dreamSavedCurLabel', 'dreamMonthlyCurLabel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = label;
+  });
+}
+
 function updateDreamsUI() {
   const auth = document.getElementById('dreamsAuth');
   const content = document.getElementById('dreamsContent');
@@ -3258,6 +3309,8 @@ function updateDreamsUI() {
     auth.style.display = 'none';
     content.style.display = 'block';
     renderDreams();
+    // Load rates in background so USD equivalents appear after first paint
+    ensureRates().then(r => { if (r) renderDreams(); });
   } else {
     auth.style.display = 'block';
     content.style.display = 'none';
@@ -3316,6 +3369,7 @@ function toggleDreamForm(forceOpen) {
         FormDrafts.clear('dream.form');
       }
     }
+    onDreamCurrencyChange();
   } else {
     card.style.display = 'none';
     btn.textContent = '+ Нова мрія';
@@ -3337,6 +3391,7 @@ function addDream() {
   const dateStart = document.getElementById('dreamDateStart').value;
   const dateEnd = document.getElementById('dreamDateEnd').value;
   const notes = document.getElementById('dreamNotes').value.trim();
+  const currency = (document.getElementById('dreamCurrency').value || 'UAH').toUpperCase();
 
   if (!name || isNaN(target) || target <= 0) {
     const err = document.getElementById('dreamError');
@@ -3346,7 +3401,7 @@ function addDream() {
   }
   document.getElementById('dreamError').style.display = 'none';
 
-  const payload = { name, target, saved, monthly, dateStart, dateEnd, notes };
+  const payload = { name, target, saved, monthly, dateStart, dateEnd, notes, currency };
 
   if (_editingDreamId !== null) {
     const idx = dreamItems.findIndex(d => String(d.id) === String(_editingDreamId));
@@ -3367,6 +3422,8 @@ function addDream() {
   document.getElementById('dreamSaved').value = '';
   document.getElementById('dreamMonthly').value = '';
   document.getElementById('dreamNotes').value = '';
+  document.getElementById('dreamCurrency').value = 'UAH';
+  onDreamCurrencyChange();
   if (typeof FormDrafts !== 'undefined') FormDrafts.clear('dream.form');
   toggleDreamForm(false);
 
@@ -3421,6 +3478,7 @@ function openDreamDetail(id) {
   if (!d) return;
 
   const now = new Date();
+  const cc = dreamCurOf(d);
   const progress = d.target > 0 ? Math.min(100, ((d.saved || 0) / d.target) * 100) : 0;
   const remaining = Math.max(0, d.target - (d.saved || 0));
   const netMonthly = d.monthly || 0;
@@ -3440,7 +3498,7 @@ function openDreamDetail(id) {
     depositsHtml = '<div class="a-card"><h3>Історія внесків</h3>' +
       '<div style="max-height:300px;overflow-y:auto"><table class="credit-schedule-table"><thead><tr>' +
       '<th style="text-align:left">Дата</th><th>Сума</th></tr></thead><tbody>' +
-      d.deposits.map(dep => '<tr><td>' + new Date(dep.date).toLocaleDateString('uk-UA') + '</td><td style="color:#4ade80">+' + formatNum(dep.amount) + ' грн</td></tr>').join('') +
+      d.deposits.map(dep => '<tr><td>' + new Date(dep.date).toLocaleDateString('uk-UA') + '</td><td style="color:#4ade80">+' + fmtDreamAmount(dep.amount, cc) + '</td></tr>').join('') +
       '</tbody></table></div></div>';
   }
 
@@ -3453,7 +3511,7 @@ function openDreamDetail(id) {
     <div class="dash-hero">
       <div class="dash-hero-label">${esc(d.name)}</div>
       <div class="dash-hero-value">${progress.toFixed(0)}%</div>
-      <div style="font-size:13px;color:#94a3b8;margin-top:4px">${formatNum(d.saved || 0)} з ${formatNum(d.target)} грн</div>
+      <div style="font-size:13px;color:#94a3b8;margin-top:4px">${fmtDreamAmount(d.saved || 0, cc)} з ${fmtDreamAmount(d.target, cc)}</div>
       <div class="detail-progress" style="margin-top:10px;width:100%"><div class="detail-progress-bar" style="width:${progress.toFixed(1)}%"></div></div>
       <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap">
         <button class="btn-save" onclick="depositDreamFromDetail('${d.id}')" style="width:auto;padding:8px 16px;margin:0">+ Внести кошти</button>
@@ -3469,13 +3527,13 @@ function openDreamDetail(id) {
     <div class="detail-grid">
       <div class="detail-metric">
         <div class="detail-metric-label">Накопичено</div>
-        <div class="detail-metric-value green">${formatNum(d.saved || 0)} грн</div>
+        <div class="detail-metric-value green">${fmtDreamAmount(d.saved || 0, cc)}</div>
       </div>
       <div class="detail-metric">
         <div class="detail-metric-label">Залишилось</div>
-        <div class="detail-metric-value" style="color:#f87171">${formatNum(remaining)} грн</div>
+        <div class="detail-metric-value" style="color:#f87171">${fmtDreamAmount(remaining, cc)}</div>
       </div>
-      ${d.monthly ? '<div class="detail-metric"><div class="detail-metric-label">Внесок / міс</div><div class="detail-metric-value">' + formatNum(d.monthly) + ' грн</div></div>' : ''}
+      ${d.monthly ? '<div class="detail-metric"><div class="detail-metric-label">Внесок / міс</div><div class="detail-metric-value">' + fmtDreamAmount(d.monthly, cc) + '</div></div>' : ''}
       ${monthsLeft ? '<div class="detail-metric"><div class="detail-metric-label">До цілі</div><div class="detail-metric-value">≈ ' + monthsLeft + ' міс.</div></div>' : ''}
     </div>
 
@@ -3514,7 +3572,11 @@ function openDreamDetail(id) {
         plugins: {
           legend: { display: false },
           tooltip: {
-            callbacks: { label: ctx => ctx.label + ': ' + formatNum(ctx.raw) + ' грн' }
+            callbacks: { label: ctx => {
+              const unit = cc === 'UAH' ? 'грн' : (cc === 'USD' ? '$' : cc === 'EUR' ? '€' : cc);
+              const val = formatNum(ctx.raw);
+              return ctx.label + ': ' + (cc === 'UAH' ? val + ' грн' : (unit === '$' || unit === '€' ? unit + val : val + ' ' + unit));
+            } }
           }
         }
       }
@@ -3559,6 +3621,8 @@ function editDream(id) {
   document.getElementById('dreamDateStart').value = item.dateStart || '';
   document.getElementById('dreamDateEnd').value = item.dateEnd || '';
   document.getElementById('dreamNotes').value = item.notes || '';
+  document.getElementById('dreamCurrency').value = dreamCurOf(item);
+  onDreamCurrencyChange();
 
   _editingDreamId = id;
 
@@ -3581,16 +3645,19 @@ function renderDreams() {
   }
 
   const now = new Date();
-  let totalTarget = 0, totalSaved = 0;
+  let totalTargetUah = 0, totalSavedUah = 0;
   const pieLabels = [], pieData = [], pieColors = [];
   const colors = ['#3b82f6', '#4ade80', '#f59e0b', '#a855f7', '#f472b6', '#60a5fa', '#facc15', '#34d399'];
 
   list.innerHTML = sanitize(dreamItems.map((d, i) => {
     const target = d.target || 0;
     const saved = d.saved || 0;
+    const cc = dreamCurOf(d);
     const progress = target > 0 ? Math.min(100, (saved / target) * 100) : 0;
-    totalTarget += target;
-    totalSaved += saved;
+    const targetUah = dreamToUah(target, cc);
+    const savedUah = dreamToUah(saved, cc);
+    if (targetUah !== null) totalTargetUah += targetUah;
+    if (savedUah !== null) totalSavedUah += savedUah;
 
     // Months to goal
     const netMonthly = d.monthly || 0;
@@ -3609,7 +3676,7 @@ function renderDreams() {
     }
 
     pieLabels.push(d.name);
-    pieData.push(d.target);
+    pieData.push(targetUah !== null ? targetUah : target);
     pieColors.push(colors[i % colors.length]);
 
     return `<div class="p-item" style="flex-wrap:wrap;cursor:pointer" onclick="if(!event.target.closest('.btn-delete')&&!event.target.closest('#dreamDeposit-${d.id}')&&!event.target.closest('input'))openDreamDetail('${d.id}')">
@@ -3617,8 +3684,8 @@ function renderDreams() {
         <div class="p-item-name">${esc(d.name)}</div>
         <div class="detail-progress" style="margin:8px 0"><div class="detail-progress-bar" style="width:${progress.toFixed(1)}%"></div></div>
         <div class="p-item-details">
-          <span>${formatNum(saved)} з ${formatNum(target)} грн (${progress.toFixed(0)}%)</span>
-          ${d.monthly ? '<span>Внесок: ' + formatNum(d.monthly) + '/міс</span>' : ''}
+          <span>${fmtDreamAmount(saved, cc)} з ${fmtDreamAmount(target, cc)} (${progress.toFixed(0)}%)</span>
+          ${d.monthly ? '<span>Внесок: ' + fmtDreamAmount(d.monthly, cc) + '/міс</span>' : ''}
           ${monthsLeft ? '<span>≈ ' + monthsLeft + ' міс. до цілі</span>' : ''}
           ${deadlineInfo ? '<span>' + deadlineInfo + '</span>' : ''}
           ${d.deposits && d.deposits.length ? '<span>Внесків: ' + d.deposits.length + '</span>' : ''}
@@ -3632,7 +3699,7 @@ function renderDreams() {
       </div>
       <div id="dreamDeposit-${d.id}" style="display:none;width:100%;margin-top:8px;padding-top:8px;border-top:1px solid #1e293b">
         <div style="display:flex;gap:8px;align-items:center">
-          <input type="text" id="dreamDepositAmount-${d.id}" placeholder="Сума внеску" inputmode="decimal" style="flex:1;padding:8px 10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;outline:none">
+          <input type="text" id="dreamDepositAmount-${d.id}" placeholder="Сума внеску (${dreamCurUnitLabel(cc)})" inputmode="decimal" style="flex:1;padding:8px 10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;outline:none">
           <button class="btn-save" onclick="addDreamDeposit('${d.id}')" style="width:auto;padding:8px 16px;margin:0;white-space:nowrap">Внести</button>
           <button class="btn-clear" onclick="document.getElementById('dreamDeposit-${d.id}').style.display='none'" style="width:auto;padding:8px 12px;margin:0">✕</button>
         </div>
@@ -3640,14 +3707,17 @@ function renderDreams() {
     </div>`;
   }).join(''));
 
-  // Dashboard
+  // Dashboard — aggregate in UAH (mixed currencies can't sum directly)
   dashboard.style.display = 'block';
-  const totalProgress = totalTarget > 0 ? (totalSaved / totalTarget * 100) : 0;
+  const totalProgress = totalTargetUah > 0 ? (totalSavedUah / totalTargetUah * 100) : 0;
   document.getElementById('dreamsTotalProgress').textContent = totalProgress.toFixed(0) + '%';
-  document.getElementById('dreamsTotalSummary').textContent =
-    formatNum(totalSaved) + ' з ' + formatNum(totalTarget) + ' грн';
+  const usdRate = cachedRates && cachedRates.USD;
+  document.getElementById('dreamsTotalSummary').innerHTML = sanitize(
+    formatNum(totalSavedUah) + ' грн' + (usdRate ? '<span class="dream-equiv"> ≈ $' + formatNum(totalSavedUah / usdRate) + '</span>' : '') +
+    ' з ' + formatNum(totalTargetUah) + ' грн' + (usdRate ? '<span class="dream-equiv"> ≈ $' + formatNum(totalTargetUah / usdRate) + '</span>' : '')
+  );
 
-  // Bar chart: saved vs remaining per dream
+  // Bar chart: saved vs remaining per dream — in UAH (for comparability)
   const canvas = document.getElementById('dreamsPieChart');
   if (canvas && typeof Chart !== 'undefined') {
     if (dreamsPieInstance) dreamsPieInstance.destroy();
@@ -3658,13 +3728,23 @@ function renderDreams() {
     const tickColorX = isLight ? '#64748b' : '#475569';
     const tickColorY = isLight ? '#1e293b' : '#e2e8f0';
     const gridColorX = isLight ? '#e2e8f0' : '#1e293b';
+    const savedData = dreamItems.map(d => {
+      const cc = dreamCurOf(d); const v = dreamToUah(d.saved || 0, cc);
+      return v !== null ? v : (d.saved || 0);
+    });
+    const remainData = dreamItems.map(d => {
+      const cc = dreamCurOf(d);
+      const rem = Math.max(0, (d.target || 0) - (d.saved || 0));
+      const v = dreamToUah(rem, cc);
+      return v !== null ? v : rem;
+    });
     dreamsPieInstance = new Chart(canvas, {
       type: 'bar',
       data: {
         labels: pieLabels,
         datasets: [
-          { label: 'Накопичено', data: dreamItems.map(d => d.saved || 0), backgroundColor: savedColor, borderRadius: 4 },
-          { label: 'Залишилось', data: dreamItems.map(d => Math.max(0, d.target - (d.saved || 0))), backgroundColor: remainingColor, borderRadius: 4 }
+          { label: 'Накопичено', data: savedData, backgroundColor: savedColor, borderRadius: 4 },
+          { label: 'Залишилось', data: remainData, backgroundColor: remainingColor, borderRadius: 4 }
         ]
       },
       options: {
@@ -3673,7 +3753,16 @@ function renderDreams() {
         maintainAspectRatio: false,
         plugins: {
           legend: { position: 'bottom', labels: { color: legendColor, font: { size: 12 }, padding: 16 } },
-          tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + formatNum(ctx.raw) + ' грн' } }
+          tooltip: { callbacks: { label: ctx => {
+            const d = dreamItems[ctx.dataIndex];
+            const cc = dreamCurOf(d);
+            const nativeVal = ctx.dataset.label === 'Накопичено'
+              ? (d.saved || 0)
+              : Math.max(0, (d.target || 0) - (d.saved || 0));
+            let lbl = ctx.dataset.label + ': ' + formatNum(ctx.raw) + ' грн';
+            if (cc !== 'UAH') lbl += ' (' + (cc === 'USD' ? '$' : cc === 'EUR' ? '€' : cc + ' ') + formatNum(nativeVal) + ')';
+            return lbl;
+          } } }
         },
         scales: {
           x: { stacked: true, ticks: { color: tickColorX, font: { size: 10 }, callback: v => formatShort(v) }, grid: { color: gridColorX } },
@@ -3933,7 +4022,7 @@ if (typeof FormDrafts !== 'undefined') {
   ]);
   FormDrafts.register('dream.form', [
     'dreamName', 'dreamTarget', 'dreamSaved', 'dreamMonthly',
-    'dreamDateStart', 'dreamDateEnd', 'dreamNotes'
+    'dreamDateStart', 'dreamDateEnd', 'dreamNotes', 'dreamCurrency'
   ]);
   FormDrafts.register('profile', [
     'profileDisplayName', 'profileContactEmail', 'profilePhone'

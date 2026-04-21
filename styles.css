@@ -1026,6 +1026,10 @@ html[data-theme-effective="light"] .currency-summary-cell .a-stat-label { color:
 /* Dreams chart */
 .dreams-chart-wrap { position: relative; height: 250px; margin-bottom: 12px; }
 
+/* Dream currency equivalent (USD shown beside native amount) */
+.dream-equiv { color: #64748b; font-size: 12px; margin-left: 4px; font-weight: 400; }
+html[data-theme-effective="light"] .dream-equiv { color: #94a3b8; }
+
 /* Chart summary */
 .chart-summary { padding: 10px 0; }
 .chart-summary-date { font-size: 12px; color: #64748b; margin-bottom: 8px; }
@@ -2413,6 +2417,7 @@ html[data-theme-effective="light"] .calc-disclaimer strong {
 html[data-theme-effective="light"] #calcType,
 html[data-theme-effective="light"] #compoundYears,
 html[data-theme-effective="light"] #pType,
+html[data-theme-effective="light"] #dreamCurrency,
 html[data-theme-effective="light"] #chartYearFilter,
 html[data-theme-effective="light"] #notifyDays,
 html[data-theme-effective="light"] #feedbackText {

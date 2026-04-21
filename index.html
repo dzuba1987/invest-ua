@@ -730,15 +730,23 @@
             <input type="text" id="dreamName" placeholder="Квартира, авто, подорож...">
           </div>
           <div class="field">
-            <label>Бажана сума (грн)</label>
+            <label>Валюта</label>
+            <select id="dreamCurrency" onchange="onDreamCurrencyChange()" style="width:100%;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none">
+              <option value="UAH">UAH (₴)</option>
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Бажана сума <span id="dreamTargetCurLabel" style="color:#64748b;font-weight:400">(грн)</span></label>
             <input type="text" id="dreamTarget" placeholder="500 000" inputmode="decimal">
           </div>
           <div class="field">
-            <label>Вже накопичено (грн)</label>
+            <label>Вже накопичено <span id="dreamSavedCurLabel" style="color:#64748b;font-weight:400">(грн)</span></label>
             <input type="text" id="dreamSaved" placeholder="50 000" inputmode="decimal">
           </div>
           <div class="field">
-            <label>Бажаний щомісячний внесок (грн)</label>
+            <label>Бажаний щомісячний внесок <span id="dreamMonthlyCurLabel" style="color:#64748b;font-weight:400">(грн)</span></label>
             <input type="text" id="dreamMonthly" placeholder="10 000" inputmode="decimal">
             <p class="field-hint">Розраховується автоматично, але можна змінити</p>
           </div>
