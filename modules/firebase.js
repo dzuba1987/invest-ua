@@ -21,11 +21,17 @@ function initFirebase() {
       currentUser = user;
       updateAuthUI();
       if (user) {
+        // Reset load flags — a fresh session must re-load before destructive saves.
+        portfolioLoaded = false;
+        if (typeof dreamsLoaded !== 'undefined') dreamsLoaded = false;
         saveUserMeta(user);
         loadFromFirestore();
         loadPortfolioFromFirestore();
         if (typeof loadDreamsFromFirestore === 'function') loadDreamsFromFirestore();
         loadProfileFromFirestore();
+      } else {
+        portfolioLoaded = false;
+        if (typeof dreamsLoaded !== 'undefined') dreamsLoaded = false;
       }
       checkMaintenance();
       // Load ОВДП bonds for calculator select (available to all, even without auth)
@@ -190,19 +196,26 @@ async function loadFromFirestore() {
 
 // ---- Portfolio CRUD ----
 
+// Once the initial Firestore load completes, this is set true.
+// Saves done *before* the load are write-only (never delete remote docs),
+// preventing data loss if the user edits before the load finishes.
+let portfolioLoaded = false;
+
 async function savePortfolioToFirestore() {
   if (!firebaseReady || !currentUser) return;
   try {
     const ref = db.collection('users').doc(currentUser.uid).collection('portfolio');
-    const existing = await ref.get();
-    const deletePromises = [];
-    existing.forEach(doc => deletePromises.push(doc.ref.delete()));
-    await Promise.all(deletePromises);
+    const localIds = new Set(portfolioItems.map(p => String(p.id)));
+    const ops = [];
 
-    const writePromises = portfolioItems.map(p =>
-      ref.doc(String(p.id)).set(p)
-    );
-    await Promise.all(writePromises);
+    if (portfolioLoaded) {
+      const existing = await ref.get();
+      existing.forEach(doc => {
+        if (!localIds.has(doc.id)) ops.push(doc.ref.delete());
+      });
+    }
+    portfolioItems.forEach(p => ops.push(ref.doc(String(p.id)).set(p)));
+    if (ops.length) await Promise.all(ops);
   } catch(e) {
     console.warn('Portfolio save failed:', e);
   }
@@ -213,11 +226,14 @@ async function loadPortfolioFromFirestore() {
   try {
     const ref = db.collection('users').doc(currentUser.uid).collection('portfolio');
     const snapshot = await ref.get();
-    if (!snapshot.empty) {
-      portfolioItems = [];
-      snapshot.forEach(doc => portfolioItems.push(doc.data()));
-      renderPortfolio();
-    }
+    const remote = [];
+    snapshot.forEach(doc => remote.push(doc.data()));
+    const remoteIds = new Set(remote.map(p => String(p.id)));
+    const localOnly = portfolioItems.filter(p => !remoteIds.has(String(p.id)));
+    portfolioItems = [...remote, ...localOnly];
+    portfolioLoaded = true;
+    renderPortfolio();
+    if (localOnly.length) savePortfolioToFirestore();
   } catch(e) {
     console.warn('Portfolio load failed:', e);
   }

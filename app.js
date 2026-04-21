@@ -3787,6 +3787,11 @@ window.addEventListener('themechange', () => {
   }
 });
 
+// Once the initial Firestore load completes, this is set true.
+// Saves done *before* the load are write-only (never delete remote docs),
+// so dreams added locally before load + remote dreams both survive.
+let dreamsLoaded = false;
+
 async function saveDreamsToFirestore() {
   if (!firebaseReady || !currentUser) {
     console.warn('Dreams save skipped: no auth');
@@ -3795,18 +3800,20 @@ async function saveDreamsToFirestore() {
   try {
     const uid = currentUser.uid;
     const ref = db.collection('users').doc(uid).collection('dreams');
+    const localIds = new Set(dreamItems.map(d => String(d.id)));
+    const ops = [];
 
-    // Delete existing docs
-    const existing = await ref.get();
-    const delPromises = [];
-    existing.forEach(doc => delPromises.push(doc.ref.delete()));
-    if (delPromises.length) await Promise.all(delPromises);
-
-    // Write new docs
-    const writePromises = dreamItems.map(d => ref.doc(String(d.id)).set(d));
-    if (writePromises.length) await Promise.all(writePromises);
-
-    console.log('Dreams saved:', dreamItems.length);
+    // Only delete remote docs when we've confirmed the load succeeded.
+    // Otherwise a premature save (while load is in flight) would wipe remote data.
+    if (dreamsLoaded) {
+      const existing = await ref.get();
+      existing.forEach(doc => {
+        if (!localIds.has(doc.id)) ops.push(doc.ref.delete());
+      });
+    }
+    dreamItems.forEach(d => ops.push(ref.doc(String(d.id)).set(d)));
+    if (ops.length) await Promise.all(ops);
+    console.log('Dreams saved:', dreamItems.length, dreamsLoaded ? '(sync)' : '(write-only)');
   } catch(e) {
     console.error('Dreams save failed:', e.code, e.message);
   }
@@ -3817,11 +3824,16 @@ async function loadDreamsFromFirestore() {
   try {
     const ref = db.collection('users').doc(currentUser.uid).collection('dreams');
     const snapshot = await ref.get();
-    if (!snapshot.empty) {
-      dreamItems = [];
-      snapshot.forEach(doc => dreamItems.push(doc.data()));
-      renderDreams();
-    }
+    const remote = [];
+    snapshot.forEach(doc => remote.push(doc.data()));
+    // Merge: if user added items locally while load was in flight, keep them.
+    const remoteIds = new Set(remote.map(d => String(d.id)));
+    const localOnly = dreamItems.filter(d => !remoteIds.has(String(d.id)));
+    dreamItems = [...remote, ...localOnly];
+    dreamsLoaded = true;
+    renderDreams();
+    // Persist any local-only additions that predated the load.
+    if (localOnly.length) saveDreamsToFirestore();
   } catch(e) { console.warn('Dreams load failed:', e); }
 }
 
