@@ -593,6 +593,12 @@
           <div class="field" id="pRateField">
             <label data-i18n="portfolio.rate">Річна ставка (%)</label>
             <input type="text" id="pRate" placeholder="15" inputmode="decimal">
+            <p class="field-hint" id="pRealRateDisplay" style="display:none;color:#94a3b8"></p>
+          </div>
+          <div class="field" id="pReceivedAtMaturityField" style="display:none">
+            <label>Отримаю при погашенні (грн)</label>
+            <input type="text" id="pReceivedAtMaturity" placeholder="530 000" inputmode="decimal">
+            <p class="field-hint">Точна сума, яку ви отримаєте — як показує банк / Дія. Якщо задано — очікуваний прибуток = ця сума − вкладено (ставка ігнорується в розрахунках).</p>
           </div>
           <div class="field" id="pIndexField" style="display:none">
             <label data-i18n="portfolio.indexation">Індексація внеску (%/рік)</label>

@@ -352,18 +352,64 @@ document.getElementById('bondName').addEventListener('input', () => calculate())
 // ============ PORTFOLIO BOND FIELDS REACTIVE ============
 // Only one direction: price × count → invested (with Diia commission factor).
 // Price is not back-computed from invested/count to avoid overwriting a value
-// the user entered manually.
+// the user entered manually. When an ОВДП bond is selected via the picker,
+// we also auto-fill "receive at maturity" from bond metadata × count.
+//
+// When "receive at maturity" is filled, compute the implied effective annual
+// yield and show it next to the user-entered rate, so the difference is visible.
+// We do NOT overwrite pRate — that stays whatever the user entered (or what the
+// picker pre-filled from the bond's nominal-based YTM).
+function _updateRealRateDisplay() {
+  const display = document.getElementById('pRealRateDisplay');
+  if (!display) return;
+  const received = parseNum(document.getElementById('pReceivedAtMaturity').value);
+  const invested = parseNum(document.getElementById('pInvested').value);
+  const dateStartVal = document.getElementById('pDateStart').value;
+  const dateEndVal = document.getElementById('pDateEnd').value;
+  if (isNaN(received) || received <= 0 || isNaN(invested) || invested <= 0 || !dateStartVal || !dateEndVal) {
+    display.style.display = 'none';
+    display.textContent = '';
+    return;
+  }
+  const days = Math.round((new Date(dateEndVal) - new Date(dateStartVal)) / 86400000);
+  if (days <= 0) { display.style.display = 'none'; return; }
+  const realRate = (received - invested) / invested * (365 / days) * 100;
+  const enteredRate = parseNum(document.getElementById('pRate').value);
+  const diff = !isNaN(enteredRate) ? enteredRate - realRate : 0;
+  const diffPart = !isNaN(enteredRate) && Math.abs(diff) > 0.05
+    ? ` <span style="color:#f59e0b">(введено ${enteredRate.toFixed(2)}% — різниця ${diff > 0 ? '+' : ''}${diff.toFixed(2)}%)</span>`
+    : '';
+  display.innerHTML = `Реальна ставка: <strong style="color:#4ade80">${realRate.toFixed(2)}%</strong>${diffPart}`;
+  display.style.display = '';
+}
+['pReceivedAtMaturity', 'pInvested', 'pDateStart', 'pDateEnd', 'pRate'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener('input', _updateRealRateDisplay);
+    el.addEventListener('change', _updateRealRateDisplay);
+  }
+});
 ['pBondPrice', 'pBondCount'].forEach(id => {
   document.getElementById(id).addEventListener('input', () => {
     const price = parseNum(document.getElementById('pBondPrice').value);
     const count = parseNum(document.getElementById('pBondCount').value);
+    const priceEl = document.getElementById('pBondPrice');
+    const bond = priceEl && priceEl._ovdpBond;
+    const dateStartVal = document.getElementById('pDateStart')?.value || '';
+    const hasCommission = !!bond && typeof applyDiiaCommission === 'function' && applyDiiaCommission(dateStartVal);
+
     if (!isNaN(price) && !isNaN(count) && price > 0 && count > 0) {
-      const priceEl = document.getElementById('pBondPrice');
-      const isOvdp = priceEl && priceEl._ovdpBond;
-      const dateStartVal = document.getElementById('pDateStart')?.value || '';
-      const hasCommission = isOvdp && typeof applyDiiaCommission === 'function' && applyDiiaCommission(dateStartVal);
       const totalCost = hasCommission ? price * count * (1 + DIIA_COMMISSION_RATE) : price * count;
       document.getElementById('pInvested').value = formatNum(totalCost);
+    }
+
+    // Auto-fill "receive at maturity" for ОВДП picker-selected bonds.
+    if (bond && !isNaN(count) && count > 0) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const remaining = (bond.couponDates || []).filter(d => d > todayStr).length;
+      const perBond = 1000 + remaining * (bond.couponAmount || 0);
+      document.getElementById('pReceivedAtMaturity').value = formatNum(perBond * count);
+      _updateRealRateDisplay();
     }
   });
 });
@@ -1477,6 +1523,12 @@ function onPortfolioBondPriceInputOvdp() {
 
   if (effectiveYield > -50 && effectiveYield < 200) {
     document.getElementById('pRate').value = effectiveYield.toFixed(2);
+    // Prefill "receive at maturity" (total across all bonds) — user can override.
+    const countRaw = document.getElementById('pBondCount').value;
+    const count = parseNum(countRaw);
+    if (!isNaN(count) && count > 0) {
+      document.getElementById('pReceivedAtMaturity').value = formatNum(receivedAtMaturity * count);
+    }
 
     const infoEl = document.getElementById('pOvdpBondInfo');
     const existingCalc = infoEl.querySelector('.minfin-calc-yield');
@@ -1975,6 +2027,8 @@ function togglePortfolioTypeFields() {
   // Bond fields — only ОВДП
   document.getElementById('pBondPriceField').style.display = isOvdp ? '' : 'none';
   document.getElementById('pBondCountField').style.display = isOvdp ? '' : 'none';
+  const rcvField = document.getElementById('pReceivedAtMaturityField');
+  if (rcvField) rcvField.style.display = isOvdp ? '' : 'none';
 
   // Rate and dates — hidden for cash
   document.getElementById('pRateField').style.display = isCash ? 'none' : '';
@@ -2022,6 +2076,7 @@ function addPortfolioItem() {
   const bank = document.getElementById('pBank').value.trim();
   const notes = document.getElementById('pNotes').value.trim();
   const indexation = parseNum(document.getElementById('pIndex').value);
+  const receivedAtMaturity = parseNum(document.getElementById('pReceivedAtMaturity').value);
 
   const isCompound = document.getElementById('pCompound').checked;
 
@@ -2059,6 +2114,7 @@ function addPortfolioItem() {
     bank, notes,
     indexation: !isCash && !isNaN(indexation) && indexation > 0 ? indexation : null,
     compound: !isCash && isCompound,
+    receivedAtMaturity: type === 'ovdp' && !isNaN(receivedAtMaturity) && receivedAtMaturity > 0 ? receivedAtMaturity : null,
     history: isCash ? history : undefined
   };
 
@@ -2083,6 +2139,7 @@ function addPortfolioItem() {
   document.getElementById('pRate').value = '';
   document.getElementById('pTax').value = '';
   document.getElementById('pBank').value = '';
+  document.getElementById('pReceivedAtMaturity').value = '';
 
   document.getElementById('pNotes').value = '';
   document.getElementById('pIndex').value = '';
@@ -2457,6 +2514,8 @@ function editPortfolioItem(id) {
   document.getElementById('pDateEnd').value = item.dateEnd || '';
   document.getElementById('pBank').value = item.bank || '';
   document.getElementById('pNotes').value = item.notes || '';
+  document.getElementById('pReceivedAtMaturity').value = item.receivedAtMaturity ? formatShort(item.receivedAtMaturity) : '';
+  if (typeof _updateRealRateDisplay === 'function') _updateRealRateDisplay();
 
   // Compound fields
   // If saved as compound, set type to compound
@@ -2520,7 +2579,11 @@ function renderPortfolio() {
         const idxPct = (p.indexation || 0) / 100;
         const isIns = p.type === 'insurance';
 
-        if (isIns || p.compound) {
+        // ОВДП with exact "receive at maturity" from bank — bypass rate math entirely.
+        if (p.type === 'ovdp' && p.receivedAtMaturity && p.receivedAtMaturity > 0) {
+          expectedProfit = p.receivedAtMaturity - p.invested;
+          earnedSoFar = expectedProfit * Math.min(elapsed, days) / days;
+        } else if (isIns || p.compound) {
           // Year-by-year simulation
           let bal = 0, totalInt = 0, intAtElapsed = 0;
           let yPayment = p.invested;
@@ -2551,7 +2614,10 @@ function renderPortfolio() {
 
         // Daily earnings (only for active investments)
         if (isActive && new Date(p.dateStart) <= now) {
-          dailyGross = (p.rate || 0) > 0 ? p.invested * (p.rate / 100) / 365.25 : 0;
+          const useReceivedAtMaturity = p.type === 'ovdp' && p.receivedAtMaturity && p.receivedAtMaturity > 0;
+          dailyGross = useReceivedAtMaturity
+            ? (days > 0 ? expectedProfit / days : 0)
+            : ((p.rate || 0) > 0 ? p.invested * (p.rate / 100) / 365.25 : 0);
           const taxRate = p.tax ? p.tax / 100 : 0;
           dailyNet = dailyGross * (1 - taxRate);
           totalDailyGross += dailyGross;
@@ -4065,7 +4131,8 @@ if (document.getElementById('calcType')) toggleCalcTypeFields();
 if (typeof FormDrafts !== 'undefined') {
   FormDrafts.register('portfolio.form', [
     'pName', 'pType', 'pBondPrice', 'pBondCount', 'pInvested', 'pRate',
-    'pIndex', 'pDateStart', 'pDateEnd', 'pTax', 'pBank', 'pNotes', 'pCompound'
+    'pIndex', 'pDateStart', 'pDateEnd', 'pTax', 'pBank', 'pNotes', 'pCompound',
+    'pReceivedAtMaturity'
   ]);
   FormDrafts.register('dream.form', [
     'dreamName', 'dreamTarget', 'dreamSaved', 'dreamMonthly',
