@@ -3869,7 +3869,8 @@ async function saveDreamsToFirestore() {
         if (!localIds.has(doc.id)) ops.push(doc.ref.delete());
       });
     }
-    dreamItems.forEach(d => ops.push(ref.doc(String(d.id)).set(d)));
+    const clean = (typeof stripUndefined === 'function') ? stripUndefined : (x => x);
+    dreamItems.forEach(d => ops.push(ref.doc(String(d.id)).set(clean(d))));
     if (ops.length) await Promise.all(ops);
     console.log('Dreams saved:', dreamItems.length, dreamsLoaded ? '(sync)' : '(write-only)');
   } catch(e) {

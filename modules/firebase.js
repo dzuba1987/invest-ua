@@ -204,6 +204,20 @@ async function loadFromFirestore() {
 // preventing data loss if the user edits before the load finishes.
 let portfolioLoaded = false;
 
+// Firestore rejects documents with `undefined` field values, so strip them.
+function stripUndefined(obj) {
+  if (Array.isArray(obj)) return obj.map(stripUndefined);
+  if (obj && typeof obj === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (v === undefined) continue;
+      out[k] = stripUndefined(v);
+    }
+    return out;
+  }
+  return obj;
+}
+
 async function savePortfolioToFirestore() {
   if (!firebaseReady || !currentUser) return;
   try {
@@ -217,7 +231,7 @@ async function savePortfolioToFirestore() {
         if (!localIds.has(doc.id)) ops.push(doc.ref.delete());
       });
     }
-    portfolioItems.forEach(p => ops.push(ref.doc(String(p.id)).set(p)));
+    portfolioItems.forEach(p => ops.push(ref.doc(String(p.id)).set(stripUndefined(p))));
     if (ops.length) await Promise.all(ops);
   } catch(e) {
     console.warn('Portfolio save failed:', e);
