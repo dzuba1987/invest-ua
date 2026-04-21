@@ -359,6 +359,15 @@ document.getElementById('bondName').addEventListener('input', () => calculate())
 // yield and show it next to the user-entered rate, so the difference is visible.
 // We do NOT overwrite pRate — that stays whatever the user entered (or what the
 // picker pre-filled from the bond's nominal-based YTM).
+// Real annual yield implied by a portfolio item's receivedAtMaturity.
+// Returns null when it can't be computed (no receivedAtMaturity / dates / invested).
+function computeRealRate(item) {
+  if (!item || !item.receivedAtMaturity || !item.invested || !item.dateStart || !item.dateEnd) return null;
+  const days = Math.round((new Date(item.dateEnd) - new Date(item.dateStart)) / 86400000);
+  if (days <= 0) return null;
+  return (item.receivedAtMaturity - item.invested) / item.invested * (365 / days) * 100;
+}
+
 function _updateRealRateDisplay() {
   const display = document.getElementById('pRealRateDisplay');
   if (!display) return;
@@ -2282,7 +2291,7 @@ function openInvestmentDetail(id) {
       </div>
       <div class="detail-metric">
         <div class="detail-metric-label">Ставка</div>
-        <div class="detail-metric-value yellow">${item.rate || '—'}%</div>
+        <div class="detail-metric-value yellow">${item.rate || '—'}%${(() => { const rr = computeRealRate(item); return rr !== null && item.rate && Math.abs(rr - item.rate) > 0.05 ? ' <span style="font-size:12px;color:#94a3b8;font-weight:400">(реал. ' + rr.toFixed(2) + '%)</span>' : ''; })()}</div>
       </div>
     </div>`}
 
@@ -2315,6 +2324,8 @@ function openInvestmentDetail(id) {
       <h3>Деталі</h3>
       ${item.bondPrice ? `<div class="detail-info-row"><span class="detail-info-label">Вартість 1 облігації</span><span class="detail-info-value">${formatNum(item.bondPrice)} грн</span></div>` : ''}
       ${item.bondCount ? `<div class="detail-info-row"><span class="detail-info-label">Кількість облігацій</span><span class="detail-info-value">${item.bondCount} шт.</span></div>` : ''}
+      ${item.receivedAtMaturity ? `<div class="detail-info-row"><span class="detail-info-label">Отримаю при погашенні</span><span class="detail-info-value" style="color:#4ade80">${formatNum(item.receivedAtMaturity)} грн</span></div>` : ''}
+      ${(() => { const rr = computeRealRate(item); return rr !== null ? `<div class="detail-info-row"><span class="detail-info-label">Реальна ставка</span><span class="detail-info-value"><strong style="color:#4ade80">${rr.toFixed(2)}%</strong>${item.rate && Math.abs(rr - item.rate) > 0.05 ? ' <span style="color:#f59e0b;font-size:12px">(введено ' + item.rate + '%)</span>' : ''}</span></div>` : ''; })()}
       ${item.indexation ? `<div class="detail-info-row"><span class="detail-info-label">Індексація внеску</span><span class="detail-info-value">${item.indexation}% / рік</span></div>` : ''}
       ${isCash ? '' : `<div class="detail-info-row"><span class="detail-info-label">Дата початку</span><span class="detail-info-value">${item.dateStart ? formatDate(item.dateStart) : '—'}</span></div>
       <div class="detail-info-row"><span class="detail-info-label">Дата завершення</span><span class="detail-info-value">${item.dateEnd ? formatDate(item.dateEnd) : '—'}</span></div>
@@ -2655,7 +2666,7 @@ function renderPortfolio() {
             ${p.bondPrice ? '<span>' + formatShort(p.bondPrice) + ' грн × ' + p.bondCount + ' шт.</span>' : ''}
           </div>
           <div class="p-item-details p-row">
-            ${p.rate ? '<span>Ставка: <strong>' + p.rate + '%</strong></span>' : ''}
+            ${p.rate ? '<span>Ставка: <strong>' + p.rate + '%</strong>' + (() => { const rr = computeRealRate(p); return rr !== null && Math.abs(rr - p.rate) > 0.05 ? ' <span style="color:#94a3b8;font-weight:400">(реал. ' + rr.toFixed(2) + '%)</span>' : ''; })() + '</span>' : ''}
             ${days > 0 ? '<span>Строк: <strong>' + days + ' дн.</strong></span>' : ''}
             ${p.tax ? '<span>Податок: <strong>' + p.tax + '%</strong></span>' : ''}
           </div>
