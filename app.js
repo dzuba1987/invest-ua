@@ -350,45 +350,21 @@ document.getElementById('bondName').addEventListener('input', () => calculate())
 });
 
 // ============ PORTFOLIO BOND FIELDS REACTIVE ============
-// Bond fields have three mutually-derivable values: price × count ≈ invested.
-// Whichever pair the user fills, the third is auto-computed. The most recently
-// edited field is considered "manual" and is NOT overwritten.
-let _pBondManualField = null; // 'pBondPrice' | 'pBondCount' | 'pInvested' | null
-
-function _pBondCommissionFactor() {
-  const priceEl = document.getElementById('pBondPrice');
-  const isOvdp = priceEl && priceEl._ovdpBond;
-  const dateStartVal = document.getElementById('pDateStart')?.value || '';
-  const hasCommission = isOvdp && typeof applyDiiaCommission === 'function' && applyDiiaCommission(dateStartVal);
-  return hasCommission ? (1 + DIIA_COMMISSION_RATE) : 1;
-}
-
-function _recomputePBondFields() {
-  const price = parseNum(document.getElementById('pBondPrice').value);
-  const count = parseNum(document.getElementById('pBondCount').value);
-  const invested = parseNum(document.getElementById('pInvested').value);
-  const factor = _pBondCommissionFactor();
-
-  // Derive the missing field from the two present ones.
-  // Priority: compute the field that is NOT the most recently edited.
-  const has = { pBondPrice: !isNaN(price) && price > 0, pBondCount: !isNaN(count) && count > 0, pInvested: !isNaN(invested) && invested > 0 };
-
-  if (has.pBondPrice && has.pBondCount && _pBondManualField !== 'pInvested') {
-    document.getElementById('pInvested').value = formatNum(price * count * factor);
-  } else if (has.pInvested && has.pBondCount && _pBondManualField !== 'pBondPrice') {
-    document.getElementById('pBondPrice').value = formatNum(invested / count / factor);
-  } else if (has.pInvested && has.pBondPrice && _pBondManualField !== 'pBondCount') {
-    // Count is usually an integer — round down to whole bonds.
-    document.getElementById('pBondCount').value = String(Math.round(invested / (price * factor)));
-  }
-}
-
-['pBondPrice', 'pBondCount', 'pInvested'].forEach(id => {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.addEventListener('input', () => {
-    _pBondManualField = id;
-    _recomputePBondFields();
+// Only one direction: price × count → invested (with Diia commission factor).
+// Price is not back-computed from invested/count to avoid overwriting a value
+// the user entered manually.
+['pBondPrice', 'pBondCount'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    const price = parseNum(document.getElementById('pBondPrice').value);
+    const count = parseNum(document.getElementById('pBondCount').value);
+    if (!isNaN(price) && !isNaN(count) && price > 0 && count > 0) {
+      const priceEl = document.getElementById('pBondPrice');
+      const isOvdp = priceEl && priceEl._ovdpBond;
+      const dateStartVal = document.getElementById('pDateStart')?.value || '';
+      const hasCommission = isOvdp && typeof applyDiiaCommission === 'function' && applyDiiaCommission(dateStartVal);
+      const totalCost = hasCommission ? price * count * (1 + DIIA_COMMISSION_RATE) : price * count;
+      document.getElementById('pInvested').value = formatNum(totalCost);
+    }
   });
 });
 
