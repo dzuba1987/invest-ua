@@ -3253,6 +3253,33 @@ let dreamItems = [];
 let _editingDreamId = null;
 let dreamsPieInstance = null;
 
+// ---- Dream icons ----
+const DREAM_ICONS = [
+  '🎯', '🏠', '🏡', '🚗', '✈️', '🏖️',
+  '📱', '💻', '📷', '🎮', '🚴', '🏍️',
+  '🎓', '💍', '👶', '💼', '💰', '📚',
+  '🎸', '🛋️', '🎁', '🐶', '⛰️', '🛥️',
+];
+const DEFAULT_DREAM_ICON = '🎯';
+
+function dreamIconOf(d) { return (d && d.icon) || DEFAULT_DREAM_ICON; }
+
+function renderDreamIconPicker() {
+  const container = document.getElementById('dreamIconPicker');
+  if (!container) return;
+  const current = document.getElementById('dreamIcon').value || DEFAULT_DREAM_ICON;
+  container.innerHTML = DREAM_ICONS.map(icon =>
+    `<button type="button" class="dream-icon-btn${icon === current ? ' active' : ''}" data-icon="${icon}" onclick="selectDreamIcon('${icon}')">${icon}</button>`
+  ).join('');
+}
+
+function selectDreamIcon(icon) {
+  document.getElementById('dreamIcon').value = icon;
+  document.querySelectorAll('#dreamIconPicker .dream-icon-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.icon === icon);
+  });
+}
+
 // ---- Dream currency helpers ----
 const DREAM_CUR_LABEL = { UAH: 'грн', USD: '$', EUR: '€' };
 function dreamCurOf(d) { return (d && d.currency) || 'UAH'; }
@@ -3370,6 +3397,7 @@ function toggleDreamForm(forceOpen) {
       }
     }
     onDreamCurrencyChange();
+    renderDreamIconPicker();
   } else {
     card.style.display = 'none';
     btn.textContent = '+ Нова мрія';
@@ -3392,6 +3420,7 @@ function addDream() {
   const dateEnd = document.getElementById('dreamDateEnd').value;
   const notes = document.getElementById('dreamNotes').value.trim();
   const currency = (document.getElementById('dreamCurrency').value || 'UAH').toUpperCase();
+  const icon = document.getElementById('dreamIcon').value || DEFAULT_DREAM_ICON;
 
   if (!name || isNaN(target) || target <= 0) {
     const err = document.getElementById('dreamError');
@@ -3401,7 +3430,7 @@ function addDream() {
   }
   document.getElementById('dreamError').style.display = 'none';
 
-  const payload = { name, target, saved, monthly, dateStart, dateEnd, notes, currency };
+  const payload = { name, target, saved, monthly, dateStart, dateEnd, notes, currency, icon };
 
   if (_editingDreamId !== null) {
     const idx = dreamItems.findIndex(d => String(d.id) === String(_editingDreamId));
@@ -3423,7 +3452,9 @@ function addDream() {
   document.getElementById('dreamMonthly').value = '';
   document.getElementById('dreamNotes').value = '';
   document.getElementById('dreamCurrency').value = 'UAH';
+  document.getElementById('dreamIcon').value = DEFAULT_DREAM_ICON;
   onDreamCurrencyChange();
+  renderDreamIconPicker();
   if (typeof FormDrafts !== 'undefined') FormDrafts.clear('dream.form');
   toggleDreamForm(false);
 
@@ -3509,7 +3540,7 @@ function openDreamDetail(id) {
 
   detail.querySelector('#dreamDetailContent').innerHTML = sanitize(`
     <div class="dash-hero">
-      <div class="dash-hero-label">${esc(d.name)}</div>
+      <div class="dash-hero-label"><span class="dream-icon-hero">${dreamIconOf(d)}</span>${esc(d.name)}</div>
       <div class="dash-hero-value">${progress.toFixed(0)}%</div>
       <div style="font-size:13px;color:#94a3b8;margin-top:4px">${fmtDreamAmount(d.saved || 0, cc)} з ${fmtDreamAmount(d.target, cc)}</div>
       <div class="detail-progress" style="margin-top:10px;width:100%"><div class="detail-progress-bar" style="width:${progress.toFixed(1)}%"></div></div>
@@ -3623,6 +3654,8 @@ function editDream(id) {
   document.getElementById('dreamNotes').value = item.notes || '';
   document.getElementById('dreamCurrency').value = dreamCurOf(item);
   onDreamCurrencyChange();
+  document.getElementById('dreamIcon').value = dreamIconOf(item);
+  renderDreamIconPicker();
 
   _editingDreamId = id;
 
@@ -3681,7 +3714,7 @@ function renderDreams() {
 
     return `<div class="p-item" style="flex-wrap:wrap;cursor:pointer" onclick="if(!event.target.closest('.btn-delete')&&!event.target.closest('#dreamDeposit-${d.id}')&&!event.target.closest('input'))openDreamDetail('${d.id}')">
       <div class="p-item-info" style="width:100%">
-        <div class="p-item-name">${esc(d.name)}</div>
+        <div class="p-item-name"><span class="dream-icon">${dreamIconOf(d)}</span>${esc(d.name)}</div>
         <div class="detail-progress" style="margin:8px 0"><div class="detail-progress-bar" style="width:${progress.toFixed(1)}%"></div></div>
         <div class="p-item-details">
           <span>${fmtDreamAmount(saved, cc)} з ${fmtDreamAmount(target, cc)} (${progress.toFixed(0)}%)</span>
@@ -4034,7 +4067,7 @@ if (typeof FormDrafts !== 'undefined') {
   ]);
   FormDrafts.register('dream.form', [
     'dreamName', 'dreamTarget', 'dreamSaved', 'dreamMonthly',
-    'dreamDateStart', 'dreamDateEnd', 'dreamNotes', 'dreamCurrency'
+    'dreamDateStart', 'dreamDateEnd', 'dreamNotes', 'dreamCurrency', 'dreamIcon'
   ]);
   FormDrafts.register('profile', [
     'profileDisplayName', 'profileContactEmail', 'profilePhone'

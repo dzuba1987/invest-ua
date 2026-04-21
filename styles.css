@@ -1030,6 +1030,30 @@ html[data-theme-effective="light"] .currency-summary-cell .a-stat-label { color:
 .dream-equiv { color: #64748b; font-size: 12px; margin-left: 4px; font-weight: 400; }
 html[data-theme-effective="light"] .dream-equiv { color: #94a3b8; }
 
+/* Dream icon picker */
+.dream-icon-picker { display: flex; flex-wrap: wrap; gap: 6px; }
+.dream-icon-btn {
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  padding: 0;
+  margin: 0;
+}
+.dream-icon-btn:hover { border-color: #475569; background: #1e293b; }
+.dream-icon-btn.active { border-color: #3b82f6; background: #1e3a8a33; }
+html[data-theme-effective="light"] .dream-icon-btn { background: #f8fafc; border-color: #cbd5e1; }
+html[data-theme-effective="light"] .dream-icon-btn:hover { background: #e2e8f0; border-color: #94a3b8; }
+html[data-theme-effective="light"] .dream-icon-btn.active { background: #dbeafe; border-color: #3b82f6; }
+
+/* Dream icon in list and details */
+.dream-icon { font-size: 20px; margin-right: 8px; display: inline-block; }
+.dream-icon-hero { font-size: 32px; margin-right: 8px; display: inline-block; }
+
 /* Chart summary */
 .chart-summary { padding: 10px 0; }
 .chart-summary-date { font-size: 12px; color: #64748b; margin-bottom: 8px; }
