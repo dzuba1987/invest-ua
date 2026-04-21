@@ -2,3 +2,8 @@
 .env
 node_modules/
 test-results/
+.playwright-mcp/
+.agents/
+.claude/
+/dream-*.png
+/ovdp-*.png
