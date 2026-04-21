@@ -1,4 +1,4 @@
-const CACHE_NAME = 'invest-calc-v20';
+const CACHE_NAME = 'invest-calc-v21';
 const ASSETS = [
   './',
   './index.html',
@@ -18,7 +18,14 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
+  // Bypass the browser HTTP cache when pre-caching assets on install,
+  // otherwise a stale file still in the browser's cache gets frozen into
+  // the new SW cache and served forever by the fetch handler's cache fallback.
+  e.waitUntil(caches.open(CACHE_NAME).then(c =>
+    Promise.all(ASSETS.map(a =>
+      fetch(new Request(a, { cache: 'reload' })).then(r => c.put(a, r.clone()))
+    ))
+  ));
   self.skipWaiting();
 });
 
@@ -41,9 +48,10 @@ self.addEventListener('fetch', e => {
     );
     return;
   }
-  // App files — network first, fallback to cache
+  // App files — network first (bypass HTTP cache so a stale response doesn't
+  // get persisted into the SW cache), fallback to cache when offline.
   e.respondWith(
-    fetch(e.request).then(response => {
+    fetch(new Request(e.request.url, { cache: 'no-cache' })).then(response => {
       const clone = response.clone();
       caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
       return response;
