@@ -91,6 +91,7 @@ function updateAuthUI() {
   const info = document.getElementById('userInfo');
   const loginBtn = document.getElementById('btnLogin');
   const logoutBtn = document.getElementById('btnLogout');
+  const profileBtn = document.getElementById('btnProfile');
 
   const saveBtn = document.getElementById('btnSaveRecord');
   const importBtn = document.getElementById('btnImportExcel');
@@ -99,6 +100,7 @@ function updateAuthUI() {
     info.style.display = 'flex';
     loginBtn.style.display = 'none';
     logoutBtn.style.display = 'inline-block';
+    if (profileBtn) profileBtn.style.display = 'inline-block';
     document.getElementById('userAvatar').src = currentUser.photoURL || '';
     document.getElementById('userName').textContent = userProfile.displayName || currentUser.displayName || currentUser.email;
     saveBtn.style.display = '';
@@ -107,6 +109,7 @@ function updateAuthUI() {
     info.style.display = 'none';
     loginBtn.style.display = 'flex';
     logoutBtn.style.display = 'none';
+    if (profileBtn) profileBtn.style.display = 'none';
     saveBtn.style.display = 'none';
     importBtn.style.display = 'none';
   }
@@ -621,41 +624,11 @@ applyThemeDom(savedTheme);
 initFirebase();
 startHeartbeat();
 
-// Check tab visibility: per-user profile overrides global settings
+// Tab visibility control is temporarily disabled — all tabs are shown to everyone.
 async function applyTabVisibility() {
-  if (!firebaseReady || !db) return;
-  try {
-    // Global settings
-    const globalDoc = await db.collection('settings').doc('tabs').get();
-    const global = globalDoc.exists ? globalDoc.data() : {};
-
-    // Per-user settings (from profile)
-    let userTabs = {};
-    if (currentUser) {
-      userTabs = {
-        analytics: userProfile.tabAnalytics,
-        dreams: userProfile.tabDreams
-      };
-    }
-
-    // User setting takes priority, fallback to global
-    const showAnalytics = userTabs.analytics !== undefined ? userTabs.analytics : !!global.analytics;
-    const showDreams = userTabs.dreams !== undefined ? userTabs.dreams : !!global.dreams;
-
-    const analyticsBtn = document.querySelector('.main-tab[onclick*="analytics"]');
-    const dreamsBtn = document.querySelector('.main-tab[onclick*="dreams"]');
-    if (analyticsBtn) analyticsBtn.style.display = showAnalytics ? '' : 'none';
-    if (dreamsBtn) dreamsBtn.style.display = showDreams ? '' : 'none';
-
-    if (!showAnalytics) document.getElementById('panel-analytics').classList.remove('active');
-    if (!showDreams) document.getElementById('panel-dreams').classList.remove('active');
-  } catch(e) {
-    console.warn('Tab visibility check failed:', e.message);
-    // Show all tabs as fallback
-    const analyticsBtn = document.querySelector('.main-tab[onclick*="analytics"]');
-    const dreamsBtn = document.querySelector('.main-tab[onclick*="dreams"]');
-    if (analyticsBtn) analyticsBtn.style.display = '';
-    if (dreamsBtn) dreamsBtn.style.display = '';
-  }
+  const analyticsBtn = document.querySelector('.main-tab[onclick*="analytics"]');
+  const dreamsBtn = document.querySelector('.main-tab[onclick*="dreams"]');
+  if (analyticsBtn) analyticsBtn.style.display = '';
+  if (dreamsBtn) dreamsBtn.style.display = '';
 }
 applyTabVisibility();

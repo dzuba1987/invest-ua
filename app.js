@@ -232,7 +232,7 @@ function switchMainTab(tab, btn) {
   }
   document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn && btn.classList && btn.classList.contains('main-tab')) btn.classList.add('active');
   document.getElementById('panel-' + tab).classList.add('active');
   localStorage.setItem('activeTab', tab);
   if (tab === 'analytics') checkAnalyticsReady();
@@ -4733,8 +4733,8 @@ if (typeof FormDrafts !== 'undefined') {
 // Restore last active tab
 (function() {
   const saved = localStorage.getItem('activeTab');
-  if (saved) {
-    const btn = document.querySelector('.main-tab[onclick*="\'' + saved + '\'"]');
-    if (btn) switchMainTab(saved, btn);
-  }
+  if (!saved) return;
+  const btn = document.querySelector('.main-tab[onclick*="\'' + saved + '\'"]');
+  if (btn) switchMainTab(saved, btn);
+  else if (saved === 'profile') switchMainTab('profile', null);
 })();

@@ -22,61 +22,171 @@
   }
   .admin-header h1 { text-align: left; margin: 0; }
   .admin-stats {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
   }
   .admin-stat {
-    flex: 1;
     background: #0f172a;
     border: 1px solid #334155;
     border-radius: 12px;
-    padding: 16px;
+    padding: 14px 10px;
     text-align: center;
+    min-width: 0;
   }
-  .admin-stat-value { font-size: 28px; font-weight: 700; color: #f1f5f9; }
+  .admin-stat-value { font-size: 26px; font-weight: 700; color: #f1f5f9; line-height: 1.1; }
   .admin-stat-label { font-size: 12px; color: #64748b; margin-top: 4px; }
   .admin-stat-value.green { color: #4ade80; }
   .admin-stat-value.blue { color: #60a5fa; }
   .admin-stat-value.yellow { color: #facc15; }
-  .user-list { display: flex; flex-direction: column; gap: 8px; }
+  .user-list { display: flex; flex-direction: column; gap: 6px; }
   .user-card {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 10px;
     background: #0f172a;
     border: 1px solid #334155;
-    border-radius: 12px;
-    padding: 14px 16px;
+    border-radius: 10px;
+    padding: 10px 12px;
     transition: border-color 0.2s;
   }
   .user-card:hover { border-color: #475569; }
   .user-card img {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     border: 1px solid #334155;
+    flex-shrink: 0;
   }
   .user-card-info { flex: 1; min-width: 0; }
-  .user-card-name { font-size: 14px; font-weight: 600; color: #f1f5f9; }
-  .user-card-email { font-size: 12px; color: #64748b; }
+  .user-card-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #f1f5f9;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    line-height: 1.25;
+  }
+  .user-card-me { color: #64748b; font-size: 11px; font-weight: 400; }
+  .user-card-email {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .user-card-meta {
     display: flex;
-    gap: 16px;
-    font-size: 12px;
-    color: #475569;
-    margin-top: 2px;
+    gap: 4px 12px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+  .user-card-meta > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .user-card-lang {
+    padding: 1px 6px;
+    border: 1px solid #334155;
+    border-radius: 4px;
+    font-size: 10px;
+    letter-spacing: 0.3px;
+  }
+  .user-card-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-end;
+    flex-shrink: 0;
   }
   .user-card-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .admin-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    padding: 6px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 12px;
+  }
+  .admin-tab {
+    flex: 1;
+    min-width: 120px;
+    padding: 10px 14px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .admin-tab:hover { color: #e2e8f0; background: rgba(59,130,246,0.08); }
+  .admin-tab.active { background: #3b82f6; color: #fff; }
+  .admin-panel { display: none; }
+  .admin-panel.active { display: block; }
+  .admin-card {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .admin-card h3 {
+    font-size: 15px;
+    color: #f1f5f9;
+    margin: 0 0 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .admin-card h3 .ico { font-size: 20px; }
+  .admin-card .hint {
+    font-size: 12px;
+    color: #64748b;
+    margin: 0 0 12px 0;
+  }
+  .user-card-toggles {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .user-card-toggles label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: #94a3b8;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .user-card-toggles input[type="checkbox"] { width: 14px; height: 14px; margin: 0; }
+  .user-card-toggle-sep { color: #334155; font-size: 11px; }
   .admin-badge {
     display: inline-block;
-    padding: 2px 8px;
+    padding: 1px 6px;
     border-radius: 4px;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     background: rgba(59,130,246,0.12);
     color: #60a5fa;
-    margin-left: 6px;
+    line-height: 1.4;
   }
   .disabled-badge {
     background: rgba(248,113,113,0.12);
@@ -120,9 +230,42 @@
   }
   .access-denied .icon { font-size: 48px; margin-bottom: 16px; }
   @media (max-width: 768px) {
-    .admin-stats { flex-direction: column; }
-    .user-card { flex-wrap: wrap; }
-    .user-card-actions { width: 100%; justify-content: flex-end; }
+    .admin-header { margin-bottom: 16px; }
+    .admin-header h1 { font-size: 22px; }
+    .admin-stats {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .admin-stat { padding: 10px 6px; border-radius: 10px; }
+    .admin-stat-value { font-size: 22px; }
+    .admin-stat-label { font-size: 11px; margin-top: 2px; }
+    .user-card {
+      flex-wrap: wrap;
+      align-items: flex-start;
+      row-gap: 6px;
+      padding: 10px;
+    }
+    .user-card img { width: 32px; height: 32px; }
+    .user-card-info { flex: 1 1 calc(100% - 42px); }
+    .user-card-meta { gap: 2px 8px; }
+    .user-card-aside {
+      width: 100%;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .user-card-toggles { gap: 10px; }
+    .user-card-actions { justify-content: flex-end; flex-wrap: wrap; margin-left: auto; }
+    .admin-tabs { padding: 4px; gap: 4px; }
+    .admin-tab { min-width: 0; padding: 8px 10px; font-size: 12px; }
+    .admin-card { padding: 12px; }
+  }
+  @media (max-width: 400px) {
+    .admin-stats { grid-template-columns: repeat(2, 1fr); }
+    .admin-tab { flex-basis: calc(50% - 4px); }
   }
 </style>
 </head>
@@ -152,160 +295,160 @@
 
     <div class="admin-stats" id="adminStats"></div>
 
-    <!-- Maintenance mode -->
-    <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:24px">
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-        <input type="checkbox" id="maintenanceMode" onchange="toggleMaintenance()" style="width:18px;height:18px;accent-color:#f59e0b">
-        <div>
-          <div style="font-size:14px;color:#f1f5f9;font-weight:600">Режим обслуговування</div>
-          <div style="font-size:12px;color:#64748b">Інші користувачі бачитимуть повідомлення що сайт на обслуговуванні</div>
+    <!-- Sub-navigation -->
+    <div class="admin-tabs">
+      <button class="admin-tab active" data-panel="users" onclick="switchAdminPanel('users', this)">
+        <span>👥</span> Користувачі
+      </button>
+      <button class="admin-tab" data-panel="system" onclick="switchAdminPanel('system', this)">
+        <span>⚙️</span> Система
+      </button>
+      <button class="admin-tab" data-panel="publish" onclick="switchAdminPanel('publish', this)">
+        <span>📢</span> Публікації
+      </button>
+      <button class="admin-tab" data-panel="ovdp" onclick="switchAdminPanel('ovdp', this)">
+        <span>📊</span> ОВДП
+      </button>
+    </div>
+
+    <!-- ========== PANEL: USERS ========== -->
+    <div class="admin-panel active" id="adminPanel-users">
+      <div class="admin-card">
+        <h3><span class="ico">👥</span> Користувачі</h3>
+        <input type="text" class="search-input" id="searchInput" placeholder="Пошук за ім'ям або email..." oninput="filterUsers()" style="margin-bottom:12px">
+        <div class="user-list" id="userList"></div>
+      </div>
+
+      <div class="admin-card">
+        <h3>
+          <span class="ico">💬</span> Зворотний зв'язок
+          <span id="feedbackCount" style="font-size:12px;color:#64748b;font-weight:400"></span>
+        </h3>
+        <div id="feedbackList"></div>
+      </div>
+    </div>
+
+    <!-- ========== PANEL: SYSTEM ========== -->
+    <div class="admin-panel" id="adminPanel-system">
+      <div class="admin-card">
+        <h3><span class="ico">🛠️</span> Режим обслуговування</h3>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <input type="checkbox" id="maintenanceMode" onchange="toggleMaintenance()" style="width:18px;height:18px;accent-color:#f59e0b">
+          <div>
+            <div style="font-size:14px;color:#f1f5f9;font-weight:600">Увімкнути режим обслуговування</div>
+            <div style="font-size:12px;color:#64748b">Інші користувачі бачитимуть повідомлення що сайт на обслуговуванні</div>
+          </div>
+        </label>
+        <div id="maintenanceFields" style="display:none;margin-top:12px">
+          <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Повідомлення для користувачів</label>
+          <input type="text" id="maintenanceMessage" class="search-input" style="margin:0" placeholder="Сайт оновлюється, зачекайте кілька хвилин..." value="Сайт на обслуговуванні. Ми працюємо над покращенням — скоро повернемось!">
+          <button class="btn-sm" onclick="saveMaintenance()" style="margin-top:8px;padding:8px 16px">Зберегти</button>
         </div>
-      </label>
-      <div id="maintenanceFields" style="display:none;margin-top:12px">
-        <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Повідомлення для користувачів</label>
-        <input type="text" id="maintenanceMessage" class="search-input" style="margin:0" placeholder="Сайт оновлюється, зачекайте кілька хвилин..." value="Сайт на обслуговуванні. Ми працюємо над покращенням — скоро повернемось!">
-        <button class="btn-sm" onclick="saveMaintenance()" style="margin-top:8px;padding:8px 16px">Зберегти</button>
+        <p id="maintenanceStatus" style="font-size:12px;margin-top:6px;display:none"></p>
       </div>
-      <p id="maintenanceStatus" style="font-size:12px;margin-top:6px;display:none"></p>
-    </div>
 
-    <!-- Tab visibility -->
-    <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:24px">
-      <h3 style="font-size:15px;color:#f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px">
-        <span style="font-size:20px">📑</span> Видимість вкладок
-      </h3>
-      <p style="font-size:12px;color:#64748b;margin-bottom:10px">Вимкнені вкладки не відображаються для користувачів</p>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#e2e8f0;cursor:pointer;margin-bottom:6px">
-        <input type="checkbox" id="tabAnalytics" onchange="saveTabVisibility()" style="width:16px;height:16px;accent-color:#3b82f6">
-        Аналітика
-      </label>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#e2e8f0;cursor:pointer">
-        <input type="checkbox" id="tabDreams" onchange="saveTabVisibility()" style="width:16px;height:16px;accent-color:#3b82f6">
-        Мрії
-      </label>
-      <p id="tabVisibilityStatus" style="font-size:12px;margin-top:6px;display:none"></p>
-    </div>
-
-    <!-- Telegram settings -->
-    <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:24px">
-      <h3 style="font-size:15px;color:#f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px">
-        <span style="font-size:20px">🤖</span> Telegram Bot
-      </h3>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">
-        <div style="flex:1;min-width:200px">
-          <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Bot Token</label>
-          <input type="text" id="tgBotToken" class="search-input" style="margin:0" placeholder="123456:ABC-DEF...">
+      <div class="admin-card">
+        <h3><span class="ico">🤖</span> Telegram Bot</h3>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">
+          <div style="flex:1;min-width:200px">
+            <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Bot Token</label>
+            <input type="text" id="tgBotToken" class="search-input" style="margin:0" placeholder="123456:ABC-DEF...">
+          </div>
+          <div style="min-width:150px">
+            <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Chat ID</label>
+            <input type="text" id="tgChatId" class="search-input" style="margin:0" placeholder="-1001234567890">
+          </div>
+          <button class="btn-sm" onclick="saveTelegramConfig()" style="padding:10px 20px;height:fit-content">Зберегти</button>
+          <button class="btn-sm" onclick="testTelegram()" style="padding:10px 20px;height:fit-content">Тест</button>
         </div>
-        <div style="min-width:150px">
-          <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Chat ID</label>
-          <input type="text" id="tgChatId" class="search-input" style="margin:0" placeholder="-1001234567890">
+        <p id="tgStatus" style="font-size:12px;margin-top:8px;display:none"></p>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid #334155">
+          <p class="hint" style="margin-bottom:10px">Сповіщення адміністратору:</p>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#e2e8f0;cursor:pointer;margin-bottom:6px">
+            <input type="checkbox" id="tgNotifyLogin" onchange="saveTelegramConfig()" style="width:16px;height:16px;accent-color:#3b82f6">
+            Повідомляти при кожному логіні
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#e2e8f0;cursor:pointer;margin-bottom:6px">
+            <input type="checkbox" id="tgNotifyNewUser" onchange="saveTelegramConfig()" checked style="width:16px;height:16px;accent-color:#3b82f6">
+            Повідомляти при реєстрації нового користувача
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#e2e8f0;cursor:pointer">
+            <input type="checkbox" id="tgNotifyFeedback" onchange="saveTelegramConfig()" checked style="width:16px;height:16px;accent-color:#3b82f6">
+            Повідомляти про новий відгук (форма зворотного зв'язку)
+          </label>
         </div>
-        <button class="btn-sm" onclick="saveTelegramConfig()" style="padding:10px 20px;height:fit-content">Зберегти</button>
-        <button class="btn-sm" onclick="testTelegram()" style="padding:10px 20px;height:fit-content">Тест</button>
-      </div>
-      <p id="tgStatus" style="font-size:12px;margin-top:8px;display:none"></p>
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid #334155">
-        <p style="font-size:12px;color:#64748b;margin-bottom:10px">Сповіщення адміністратору:</p>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#e2e8f0;cursor:pointer;margin-bottom:6px">
-          <input type="checkbox" id="tgNotifyLogin" onchange="saveTelegramConfig()" style="width:16px;height:16px;accent-color:#3b82f6">
-          Повідомляти при кожному логіні
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#e2e8f0;cursor:pointer;margin-bottom:6px">
-          <input type="checkbox" id="tgNotifyNewUser" onchange="saveTelegramConfig()" checked style="width:16px;height:16px;accent-color:#3b82f6">
-          Повідомляти при реєстрації нового користувача
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#e2e8f0;cursor:pointer">
-          <input type="checkbox" id="tgNotifyFeedback" onchange="saveTelegramConfig()" checked style="width:16px;height:16px;accent-color:#3b82f6">
-          Повідомляти про новий відгук (форма зворотного зв'язку)
-        </label>
       </div>
     </div>
 
-    <!-- Changelog -->
-    <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:24px">
-      <h3 style="font-size:15px;color:#f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px">
-        <span style="font-size:20px">📝</span> Список змін (що нового)
-      </h3>
-      <p style="font-size:12px;color:#64748b;margin-bottom:12px">Додайте короткий опис покращення. Потім можна зібрати в одну розсилку і надіслати всім користувачам.</p>
-      <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:10px">
-        <input type="text" id="clogTitle" class="search-input" style="margin:0" placeholder="Заголовок зміни (напр. «Додано Мрії»)">
-        <textarea id="clogBody" style="width:100%;min-height:80px;padding:10px 12px;border:1px solid #334155;border-radius:10px;background:#1e293b;color:#f1f5f9;font-size:14px;font-family:inherit;outline:none;resize:vertical;line-height:1.5" placeholder="Короткий опис — що саме покращили"></textarea>
+    <!-- ========== PANEL: PUBLISH ========== -->
+    <div class="admin-panel" id="adminPanel-publish">
+      <div class="admin-card">
+        <h3><span class="ico">📝</span> Список змін (що нового)</h3>
+        <p class="hint">Додайте короткий опис покращення. Потім можна зібрати в одну розсилку і надіслати всім користувачам.</p>
+        <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:10px">
+          <input type="text" id="clogTitle" class="search-input" style="margin:0" placeholder="Заголовок зміни (напр. «Додано Мрії»)">
+          <textarea id="clogBody" style="width:100%;min-height:80px;padding:10px 12px;border:1px solid #334155;border-radius:10px;background:#1e293b;color:#f1f5f9;font-size:14px;font-family:inherit;outline:none;resize:vertical;line-height:1.5" placeholder="Короткий опис — що саме покращили"></textarea>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn-sm" id="clogAddBtn" onclick="saveChangelogEntry()" style="padding:10px 20px;background:#22c55e">+ Додати</button>
+          <button class="btn-sm" id="clogCancelBtn" onclick="cancelChangelogEdit()" style="padding:10px 20px;display:none">Скасувати</button>
+          <span style="color:#334155">│</span>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8">
+            Зібрати з останніх
+            <input type="number" id="clogRecentN" value="5" min="1" max="20" style="width:56px;padding:6px 8px;border:1px solid #334155;border-radius:6px;background:#1e293b;color:#f1f5f9;font-size:13px">
+          </label>
+          <button class="btn-sm" onclick="fillNewsletterFromRecent()" style="padding:10px 20px">→ У розсилку</button>
+        </div>
+        <p id="clogStatus" style="font-size:12px;margin-top:8px;display:none"></p>
+        <div id="clogList" style="margin-top:14px;display:flex;flex-direction:column;gap:8px"></div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <button class="btn-sm" id="clogAddBtn" onclick="saveChangelogEntry()" style="padding:10px 20px;background:#22c55e">+ Додати</button>
-        <button class="btn-sm" id="clogCancelBtn" onclick="cancelChangelogEdit()" style="padding:10px 20px;display:none">Скасувати</button>
-        <span style="color:#334155">│</span>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8">
-          Зібрати з останніх
-          <input type="number" id="clogRecentN" value="5" min="1" max="20" style="width:56px;padding:6px 8px;border:1px solid #334155;border-radius:6px;background:#1e293b;color:#f1f5f9;font-size:13px">
-        </label>
-        <button class="btn-sm" onclick="fillNewsletterFromRecent()" style="padding:10px 20px">→ У розсилку</button>
+
+      <div class="admin-card" id="newsletterSection">
+        <h3><span class="ico">📧</span> Розсилка користувачам</h3>
+        <div style="margin-bottom:12px">
+          <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Кому</label>
+          <select id="emailTarget" class="search-input" style="margin:0;width:100%">
+            <option value="all">Всім користувачам</option>
+            <option value="active">Активним за тиждень</option>
+            <option value="telegram">З підключеним Telegram</option>
+          </select>
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Тема листа</label>
+          <input type="text" id="emailSubject" class="search-input" style="margin:0" placeholder="Invest UA — нові можливості" value="Invest UA — оновлення">
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Текст повідомлення (HTML)</label>
+          <textarea id="emailBody" style="width:100%;min-height:200px;padding:12px;border:1px solid #334155;border-radius:10px;background:#1e293b;color:#f1f5f9;font-size:14px;font-family:inherit;outline:none;resize:vertical;line-height:1.6" placeholder="Вітаємо! В Invest UA з'явились нові можливості..."></textarea>
+        </div>
+        <div style="margin-bottom:10px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#e2e8f0;cursor:pointer">
+            <input type="checkbox" id="emailAlsoTelegram" checked style="width:16px;height:16px;accent-color:#3b82f6">
+            Також надіслати в Telegram
+          </label>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-sm" onclick="previewEmail()" style="padding:10px 20px">Попередній перегляд</button>
+          <button class="btn-sm" onclick="sendNewsletter()" style="padding:10px 20px;background:#22c55e">Надіслати</button>
+        </div>
+        <div id="emailPreview" style="display:none;margin-top:12px;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px"></div>
+        <p id="emailStatus" style="font-size:12px;margin-top:8px;display:none"></p>
       </div>
-      <p id="clogStatus" style="font-size:12px;margin-top:8px;display:none"></p>
-      <div id="clogList" style="margin-top:14px;display:flex;flex-direction:column;gap:8px"></div>
     </div>
 
-    <!-- Email newsletter -->
-    <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:24px" id="newsletterSection">
-      <h3 style="font-size:15px;color:#f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px">
-        <span style="font-size:20px">📧</span> Розсилка користувачам
-      </h3>
-      <div style="margin-bottom:12px">
-        <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Кому</label>
-        <select id="emailTarget" class="search-input" style="margin:0;width:100%">
-          <option value="all">Всім користувачам</option>
-          <option value="active">Активним за тиждень</option>
-          <option value="telegram">З підключеним Telegram</option>
-        </select>
+    <!-- ========== PANEL: OVDP ========== -->
+    <div class="admin-panel" id="adminPanel-ovdp">
+      <div class="admin-card">
+        <h3><span class="ico">📊</span> ОВДП — облігації Дія</h3>
+        <p class="hint">Завантажте файл Мінфіну (.xlsx) — система зматчить ISIN з назвами Дії та збереже список для калькулятора</p>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <button class="btn-sm" onclick="document.getElementById('minfinFile').click()" style="padding:10px 20px;border-style:dashed">📎 Завантажити файл Мінфіну</button>
+          <input type="file" id="minfinFile" accept=".xlsx,.xls" style="display:none" onchange="importMinfinAdmin(event)">
+          <span id="minfinCount" style="font-size:13px;color:#4ade80;display:none"></span>
+        </div>
+        <div id="minfinPreview" style="display:none;margin-top:14px;max-height:300px;overflow-y:auto"></div>
+        <p id="minfinStatus" style="font-size:12px;margin-top:8px;display:none"></p>
       </div>
-      <div style="margin-bottom:12px">
-        <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Тема листа</label>
-        <input type="text" id="emailSubject" class="search-input" style="margin:0" placeholder="Invest UA — нові можливості" value="Invest UA — оновлення">
-      </div>
-      <div style="margin-bottom:12px">
-        <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Текст повідомлення (HTML)</label>
-        <textarea id="emailBody" style="width:100%;min-height:200px;padding:12px;border:1px solid #334155;border-radius:10px;background:#1e293b;color:#f1f5f9;font-size:14px;font-family:inherit;outline:none;resize:vertical;line-height:1.6" placeholder="Вітаємо! В Invest UA з'явились нові можливості..."></textarea>
-      </div>
-      <div style="margin-bottom:10px">
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#e2e8f0;cursor:pointer">
-          <input type="checkbox" id="emailAlsoTelegram" checked style="width:16px;height:16px;accent-color:#3b82f6">
-          Також надіслати в Telegram
-        </label>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn-sm" onclick="previewEmail()" style="padding:10px 20px">Попередній перегляд</button>
-        <button class="btn-sm" onclick="sendNewsletter()" style="padding:10px 20px;background:#22c55e">Надіслати</button>
-      </div>
-      <div id="emailPreview" style="display:none;margin-top:12px;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px"></div>
-      <p id="emailStatus" style="font-size:12px;margin-top:8px;display:none"></p>
-    </div>
-
-    <!-- ОВДП Bonds management -->
-    <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:24px">
-      <h3 style="font-size:15px;color:#f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px">
-        <span style="font-size:20px">📊</span> ОВДП — облігації Дія
-      </h3>
-      <p style="font-size:12px;color:#64748b;margin-bottom:12px">Завантажте файл Мінфіну (.xlsx) — система зматчить ISIN з назвами Дії та збереже список для калькулятора</p>
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-        <button class="btn-sm" onclick="document.getElementById('minfinFile').click()" style="padding:10px 20px;border-style:dashed">📎 Завантажити файл Мінфіну</button>
-        <input type="file" id="minfinFile" accept=".xlsx,.xls" style="display:none" onchange="importMinfinAdmin(event)">
-        <span id="minfinCount" style="font-size:13px;color:#4ade80;display:none"></span>
-      </div>
-      <div id="minfinPreview" style="display:none;margin-top:14px;max-height:300px;overflow-y:auto"></div>
-      <p id="minfinStatus" style="font-size:12px;margin-top:8px;display:none"></p>
-    </div>
-
-    <input type="text" class="search-input" id="searchInput" placeholder="Пошук за ім'ям або email..." oninput="filterUsers()">
-
-    <div class="user-list" id="userList"></div>
-
-    <!-- Feedback section -->
-    <div style="margin-top:24px">
-      <h3 style="font-size:15px;color:#f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px">
-        <span style="font-size:20px">💬</span> Зворотний зв'язок
-        <span id="feedbackCount" style="font-size:12px;color:#64748b;font-weight:400"></span>
-      </h3>
-      <div id="feedbackList"></div>
     </div>
   </div>
 </div>
@@ -316,6 +459,23 @@
 
   firebase.initializeApp(FIREBASE_CONFIG);
   db = firebase.firestore();
+
+  function switchAdminPanel(key, btn) {
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    const panel = document.getElementById('adminPanel-' + key);
+    if (panel) panel.classList.add('active');
+    try { localStorage.setItem('adminActivePanel', key); } catch(e) {}
+  }
+
+  function restoreAdminPanel() {
+    let saved = null;
+    try { saved = localStorage.getItem('adminActivePanel'); } catch(e) {}
+    if (!saved) return;
+    const btn = document.querySelector('.admin-tab[data-panel="' + saved + '"]');
+    if (btn) switchAdminPanel(saved, btn);
+  }
 
   function adminApiFetch(path, data) {
     const apiBase = typeof NOTIFY_API_BASE !== 'undefined' ? NOTIFY_API_BASE : '';
@@ -349,9 +509,9 @@
     }
 
     document.getElementById('adminContent').style.display = 'block';
+    restoreAdminPanel();
     loadUsers();
     loadMaintenance();
-    loadTabVisibility();
     loadTelegramConfig();
     loadFeedback();
     loadMinfinBonds();
@@ -419,60 +579,55 @@
     }
 
     document.getElementById('userList').innerHTML = users.map(u => {
-      const lastLogin = u.lastLogin ? new Date(u.lastLogin).toLocaleString('uk-UA') : '—';
+      const lastLogin = u.lastLogin ? new Date(u.lastLogin).toLocaleString('uk-UA', {
+        day: '2-digit', month: '2-digit', year: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+      }) : '—';
       const isMe = u.uid === currentUser.uid;
       const disabled = u.disabled;
       const isOnline = u.lastSeen && (Date.now() - new Date(u.lastSeen).getTime()) < 3 * 60 * 1000;
 
+      const hasActions = !isMe;
       return `
         <div class="user-card" id="user-${u.id}">
           <img src="${u.photoURL || ''}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'">
           <div class="user-card-info">
             <div class="user-card-name">
-              ${u.profile?.displayName || u.displayName || 'Без імені'}
+              <span class="user-card-name-text">${u.profile?.displayName || u.displayName || 'Без імені'}</span>
               ${isOnline ? '<span class="admin-badge" style="background:rgba(74,222,128,0.15);color:#4ade80">Online</span>' : ''}
               ${u.isAdmin ? '<span class="admin-badge">Admin</span>' : ''}
               ${disabled ? '<span class="admin-badge disabled-badge">Заблоковано</span>' : ''}
-              ${isMe ? '<span style="color:#64748b;font-size:11px;margin-left:4px">(ви)</span>' : ''}
+              ${isMe ? '<span class="user-card-me">(ви)</span>' : ''}
             </div>
             <div class="user-card-email">${u.email || '—'}</div>
             <div class="user-card-meta">
-              <span>Останній вхід: ${lastLogin}</span>
-              <span>${u.provider || ''}</span>
-              ${u.profile?.phone ? '<span>' + u.profile.phone + '</span>' : ''}
-              ${u.profile?.language ? '<span>' + u.profile.language.toUpperCase() + '</span>' : ''}
+              <span title="Останній вхід">🕐 ${lastLogin}</span>
+              ${u.profile?.phone ? '<span>📞 ' + u.profile.phone + '</span>' : ''}
+              ${u.profile?.language ? '<span class="user-card-lang">' + u.profile.language.toUpperCase() + '</span>' : ''}
               ${u.profile?.notifyTelegram && u.profile?.telegramChatId ? '<span class="admin-badge" style="background:rgba(59,130,246,0.12);color:#60a5fa">TG ✓</span>' : ''}
               ${u.profile?.notifyTelegram && !u.profile?.telegramChatId ? '<span class="admin-badge" style="background:rgba(250,204,21,0.12);color:#facc15">TG (без ID)</span>' : ''}
             </div>
           </div>
-          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
-            <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8;cursor:pointer">
-              <input type="checkbox" ${u.profile?.notifyTelegram ? 'checked' : ''} onchange="toggleUserNotify('${u.id}','notifyTelegram',this.checked)" style="width:14px;height:14px;accent-color:#3b82f6">
-              TG
-            </label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8;cursor:pointer">
-              <input type="checkbox" ${u.profile?.notifyEmail ? 'checked' : ''} onchange="toggleUserNotify('${u.id}','notifyEmail',this.checked)" style="width:14px;height:14px;accent-color:#3b82f6">
-              Email
-            </label>
-            <span style="color:#334155;font-size:11px">│</span>
-            <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8;cursor:pointer">
-              <input type="checkbox" ${u.profile?.tabAnalytics ? 'checked' : ''} onchange="toggleUserNotify('${u.id}','tabAnalytics',this.checked)" style="width:14px;height:14px;accent-color:#f59e0b">
-              Аналітика
-            </label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8;cursor:pointer">
-              <input type="checkbox" ${u.profile?.tabDreams ? 'checked' : ''} onchange="toggleUserNotify('${u.id}','tabDreams',this.checked)" style="width:14px;height:14px;accent-color:#f59e0b">
-              Мрії
-            </label>
-          </div>
-          <div class="user-card-actions">
-            ${!isMe ? (u.isAdmin
-              ? '<button class="btn-sm danger" onclick="toggleAdmin(\'' + u.id + '\', false)">Зняти admin</button>'
-              : '<button class="btn-sm" onclick="toggleAdmin(\'' + u.id + '\', true)">Зробити admin</button>'
-            ) : ''}
-            ${!isMe ? (disabled
-              ? '<button class="btn-sm success" onclick="toggleDisabled(\'' + u.id + '\', false)">Розблокувати</button>'
-              : '<button class="btn-sm danger" onclick="toggleDisabled(\'' + u.id + '\', true)">Заблокувати</button>'
-            ) : ''}
+          <div class="user-card-aside">
+            <div class="user-card-toggles">
+              <label>
+                <input type="checkbox" ${u.profile?.notifyTelegram ? 'checked' : ''} onchange="toggleUserNotify('${u.id}','notifyTelegram',this.checked)" style="accent-color:#3b82f6">
+                TG
+              </label>
+              <label>
+                <input type="checkbox" ${u.profile?.notifyEmail ? 'checked' : ''} onchange="toggleUserNotify('${u.id}','notifyEmail',this.checked)" style="accent-color:#3b82f6">
+                Email
+              </label>
+            </div>
+            ${hasActions ? `
+            <div class="user-card-actions">
+              ${u.isAdmin
+                ? '<button class="btn-sm danger" onclick="toggleAdmin(\'' + u.id + '\', false)">Зняти admin</button>'
+                : '<button class="btn-sm" onclick="toggleAdmin(\'' + u.id + '\', true)">Зробити admin</button>'}
+              ${disabled
+                ? '<button class="btn-sm success" onclick="toggleDisabled(\'' + u.id + '\', false)">Розблокувати</button>'
+                : '<button class="btn-sm danger" onclick="toggleDisabled(\'' + u.id + '\', true)">Заблокувати</button>'}
+            </div>` : ''}
           </div>
         </div>
       `;
@@ -808,6 +963,11 @@
   }
 
   function scrollToNewsletter() {
+    const publishPanel = document.getElementById('adminPanel-publish');
+    if (publishPanel && !publishPanel.classList.contains('active')) {
+      const tabBtn = document.querySelector('.admin-tab[data-panel="publish"]');
+      switchAdminPanel('publish', tabBtn);
+    }
     const el = document.getElementById('newsletterSection');
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -1055,33 +1215,6 @@
   }
 
   // ---- Tab visibility ----
-  async function loadTabVisibility() {
-    try {
-      const doc = await db.collection('settings').doc('tabs').get();
-      if (doc.exists) {
-        const d = doc.data();
-        document.getElementById('tabAnalytics').checked = !!d.analytics;
-        document.getElementById('tabDreams').checked = !!d.dreams;
-      }
-    } catch(e) { /* ignore */ }
-  }
-
-  async function saveTabVisibility() {
-    const analytics = document.getElementById('tabAnalytics').checked;
-    const dreams = document.getElementById('tabDreams').checked;
-    const status = document.getElementById('tabVisibilityStatus');
-    try {
-      await db.collection('settings').doc('tabs').set({ analytics, dreams });
-      status.textContent = '✓ Збережено';
-      status.style.color = '#4ade80';
-      status.style.display = 'block';
-      setTimeout(() => { status.style.display = 'none'; }, 3000);
-    } catch(e) {
-      status.textContent = 'Помилка: ' + e.message;
-      status.style.color = '#f87171';
-      status.style.display = 'block';
-    }
-  }
 </script>
 
 </body>
