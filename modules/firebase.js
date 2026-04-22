@@ -24,14 +24,17 @@ function initFirebase() {
         // Reset load flags — a fresh session must re-load before destructive saves.
         portfolioLoaded = false;
         if (typeof dreamsLoaded !== 'undefined') dreamsLoaded = false;
+        if (typeof savingsLoaded !== 'undefined') savingsLoaded = false;
         saveUserMeta(user);
         loadFromFirestore();
         loadPortfolioFromFirestore();
         if (typeof loadDreamsFromFirestore === 'function') loadDreamsFromFirestore();
+        if (typeof loadSavingsFromFirestore === 'function') loadSavingsFromFirestore();
         loadProfileFromFirestore();
       } else {
         portfolioLoaded = false;
         if (typeof dreamsLoaded !== 'undefined') dreamsLoaded = false;
+        if (typeof savingsLoaded !== 'undefined') savingsLoaded = false;
       }
       checkMaintenance();
       // Load ОВДП bonds for calculator select (available to all, even without auth)
@@ -115,6 +118,7 @@ function updateAuthUI() {
   if (typeof checkAnalyticsReady === 'function') checkAnalyticsReady();
   if (typeof updateCreditCalcVisibility === 'function') updateCreditCalcVisibility();
   if (typeof updateDreamsUI === 'function') updateDreamsUI();
+  if (typeof updateSavingsUI === 'function') updateSavingsUI();
 }
 
 function googleLogin() {

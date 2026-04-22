@@ -206,6 +206,7 @@ function switchMainTab(tab, btn) {
       // cannot accidentally overwrite the original record on the next save.
       if (id === 'dream.form' && typeof toggleDreamForm === 'function') toggleDreamForm(false);
       if (id === 'portfolio.form' && typeof togglePortfolioForm === 'function') togglePortfolioForm(false);
+      if (id === 'saving.form' && typeof toggleSavingsForm === 'function') toggleSavingsForm(false);
     }
   }
   document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
@@ -217,6 +218,7 @@ function switchMainTab(tab, btn) {
   if (tab === 'portfolio') updatePortfolioUI();
   if (tab === 'currencies') loadCurrenciesPage();
   if (tab === 'dreams') updateDreamsUI();
+  if (tab === 'savings') updateSavingsUI();
   if (tab === 'profile') { updateProfileUI(); renderDashboardCurrencySettings(); }
 }
 
@@ -234,6 +236,7 @@ function dirtyFormsOnActiveTab() {
   };
   check('portfolio.form', 'portfolioFormCard', true);
   check('dream.form', 'dreamFormCard', true);
+  check('saving.form', 'savingsFormCard', true);
   check('profile', 'profileContent', false);
   check('calc', 'invested', false);
   check('credit', 'creditAmount', true);
@@ -4106,6 +4109,236 @@ async function loadDreamsFromFirestore() {
   } catch(e) { console.warn('Dreams load failed:', e); }
 }
 
+// ==================== SAVINGS ====================================
+// ================================================================
+// Idle money that isn't invested and doesn't earn a return — cash stashes,
+// safe deposit boxes, just-sitting-there money. Separate from the portfolio
+// because its nature is different: no dates, no rate, no maturity.
+
+let savingItems = [];
+let savingsLoaded = false;
+let _editingSavingId = null;
+
+function updateSavingsUI() {
+  const auth = document.getElementById('savingsAuth');
+  const content = document.getElementById('savingsContent');
+  if (typeof currentUser === 'undefined') return;
+  if (currentUser) {
+    auth.style.display = 'none';
+    content.style.display = 'block';
+    renderSavings();
+    ensureRates().then(r => { if (r) renderSavings(); });
+  } else {
+    auth.style.display = 'block';
+    content.style.display = 'none';
+  }
+}
+
+function onSavingCurrencyChange() {
+  const sel = document.getElementById('savingCurrency');
+  if (!sel) return;
+  const cc = sel.value || 'UAH';
+  const label = document.getElementById('savingAmountCurLabel');
+  if (label) label.textContent = cc === 'UAH' ? '(грн)' : (cc === 'USD' ? '($)' : cc === 'EUR' ? '(€)' : '(' + cc + ')');
+}
+
+function toggleSavingsForm(forceOpen) {
+  const card = document.getElementById('savingsFormCard');
+  const btn = document.getElementById('btnToggleSavingsForm');
+  const isHidden = card.style.display === 'none';
+  const shouldOpen = forceOpen !== undefined ? forceOpen : isHidden;
+
+  if (!shouldOpen && typeof FormDrafts !== 'undefined' && FormDrafts.isDirty('saving.form')) {
+    if (!FormDrafts.confirmDiscard('saving.form', 'У формі заощадження є незбережені зміни. Закрити без збереження?')) return;
+  }
+
+  if (shouldOpen) {
+    card.style.display = 'block';
+    btn.textContent = '− Скасувати';
+    btn.classList.remove('btn-save');
+    btn.classList.add('btn-export');
+    if (typeof FormDrafts !== 'undefined' && FormDrafts.hasDraft('saving.form') && !FormDrafts.isDirty('saving.form')) {
+      if (confirm('Знайдено незбережену чернетку заощадження. Відновити?')) FormDrafts.restore('saving.form');
+      else FormDrafts.clear('saving.form');
+    }
+    onSavingCurrencyChange();
+  } else {
+    card.style.display = 'none';
+    btn.textContent = '+ Нове заощадження';
+    btn.classList.remove('btn-export');
+    btn.classList.add('btn-save');
+    const addBtn = document.getElementById('btnAddSaving');
+    addBtn.textContent = 'Додати';
+    addBtn.classList.remove('btn-export');
+    addBtn.classList.add('btn-save');
+    _editingSavingId = null;
+  }
+}
+
+function addSaving() {
+  const name = document.getElementById('savingName').value.trim();
+  const amount = parseNum(document.getElementById('savingAmount').value);
+  const currency = (document.getElementById('savingCurrency').value || 'UAH').toUpperCase();
+  const notes = document.getElementById('savingNotes').value.trim();
+
+  if (!name || isNaN(amount) || amount <= 0) {
+    const err = document.getElementById('savingError');
+    err.textContent = 'Вкажіть назву та суму';
+    err.style.display = 'block';
+    return;
+  }
+  document.getElementById('savingError').style.display = 'none';
+
+  const payload = { name, amount, currency, notes };
+
+  if (_editingSavingId !== null) {
+    const idx = savingItems.findIndex(s => String(s.id) === String(_editingSavingId));
+    if (idx !== -1) savingItems[idx] = { ...savingItems[idx], ...payload };
+    _editingSavingId = null;
+  } else {
+    savingItems.push({ id: Date.now(), ...payload, createdAt: new Date().toISOString() });
+  }
+
+  renderSavings();
+  saveSavingsToFirestore();
+
+  document.getElementById('savingName').value = '';
+  document.getElementById('savingAmount').value = '';
+  document.getElementById('savingNotes').value = '';
+  document.getElementById('savingCurrency').value = 'UAH';
+  onSavingCurrencyChange();
+  if (typeof FormDrafts !== 'undefined') FormDrafts.clear('saving.form');
+  toggleSavingsForm(false);
+
+  const msg = document.getElementById('savingSuccess');
+  msg.textContent = '✓ Збережено!';
+  msg.style.display = 'block';
+  msg.style.animation = 'none'; msg.offsetHeight; msg.style.animation = 'fadeOut 3s forwards';
+  setTimeout(() => { msg.style.display = 'none'; }, 3000);
+}
+
+function editSaving(id) {
+  const item = savingItems.find(s => String(s.id) === String(id));
+  if (!item) return;
+  document.getElementById('savingName').value = item.name || '';
+  document.getElementById('savingAmount').value = item.amount ? formatShort(item.amount) : '';
+  document.getElementById('savingCurrency').value = item.currency || 'UAH';
+  document.getElementById('savingNotes').value = item.notes || '';
+  onSavingCurrencyChange();
+  _editingSavingId = id;
+  const btn = document.getElementById('btnAddSaving');
+  btn.textContent = 'Зберегти зміни';
+  btn.classList.remove('btn-save');
+  btn.classList.add('btn-export');
+  toggleSavingsForm(true);
+  if (typeof FormDrafts !== 'undefined') FormDrafts.setBaseline('saving.form');
+}
+
+function deleteSaving(id) {
+  if (!confirm('Видалити це заощадження?')) return;
+  savingItems = savingItems.filter(s => String(s.id) !== String(id));
+  renderSavings();
+  saveSavingsToFirestore();
+}
+
+function _savingCurSymbol(cc) {
+  return cc === 'USD' ? '$' : cc === 'EUR' ? '€' : cc === 'UAH' ? '₴' : cc;
+}
+function _savingFmtAmount(amount, cc) {
+  if (!cc || cc === 'UAH') return formatNum(amount) + ' грн';
+  const sym = cc === 'USD' ? '$' : cc === 'EUR' ? '€' : cc + ' ';
+  return (sym === '$' || sym === '€') ? sym + formatNum(amount) : formatNum(amount) + ' ' + cc;
+}
+
+function renderSavings() {
+  const list = document.getElementById('savingsList');
+  const dashboard = document.getElementById('savingsDashboard');
+
+  if (!savingItems.length) {
+    list.innerHTML = '<div class="a-empty">Ще немає заощаджень. Додайте перше вище 💰</div>';
+    dashboard.style.display = 'none';
+    return;
+  }
+
+  // Aggregate per-currency and total-in-UAH
+  const byCurrency = {};
+  let totalUah = 0;
+  savingItems.forEach(s => {
+    const cc = (s.currency || 'UAH').toUpperCase();
+    byCurrency[cc] = (byCurrency[cc] || 0) + (s.amount || 0);
+    if (cc === 'UAH') totalUah += s.amount || 0;
+    else if (typeof cachedRates !== 'undefined' && cachedRates && cachedRates[cc]) totalUah += (s.amount || 0) * cachedRates[cc];
+  });
+
+  list.innerHTML = sanitize(savingItems.map(s => {
+    const cc = (s.currency || 'UAH').toUpperCase();
+    const usdEq = (cc !== 'UAH' && cc !== 'USD' && typeof cachedRates !== 'undefined' && cachedRates && cachedRates.USD && cachedRates[cc])
+      ? ' <span style="color:#64748b;font-size:12px">≈ $' + formatNum(s.amount * cachedRates[cc] / cachedRates.USD) + '</span>'
+      : '';
+    const uahEq = (cc !== 'UAH' && typeof cachedRates !== 'undefined' && cachedRates && cachedRates[cc])
+      ? ' <span style="color:#64748b;font-size:12px">≈ ' + formatNum(s.amount * cachedRates[cc]) + ' грн</span>'
+      : '';
+    return `
+      <div class="p-item" style="flex-wrap:wrap">
+        <div class="p-item-info" style="width:100%">
+          <div class="p-item-name">${esc(s.name)} <span class="p-item-type p-type-cash">${esc(cc)}</span></div>
+          <div class="p-item-details p-row">
+            <span><strong>${_savingFmtAmount(s.amount, cc)}</strong>${uahEq}${usdEq}</span>
+          </div>
+          ${s.notes ? '<div class="p-item-notes">' + esc(s.notes) + '</div>' : ''}
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn-delete" onclick="editSaving('${s.id}')" style="color:#60a5fa">✎</button>
+            <button class="btn-delete" onclick="deleteSaving('${s.id}')">✕</button>
+          </div>
+        </div>
+      </div>`;
+  }).join(''));
+
+  dashboard.style.display = 'block';
+  document.getElementById('savingsTotalMain').textContent = formatNum(totalUah) + ' грн';
+  const usdEquiv = (typeof cachedRates !== 'undefined' && cachedRates && cachedRates.USD)
+    ? '≈ $' + formatNum(totalUah / cachedRates.USD) : '';
+  document.getElementById('savingsTotalEquiv').textContent = usdEquiv;
+  const byCurHtml = Object.entries(byCurrency).map(([cc, amt]) => `
+    <div class="a-stat" style="flex:1;min-width:120px">
+      <div class="a-stat-label">${esc(cc)}</div>
+      <div class="a-stat-value">${_savingFmtAmount(amt, cc)}</div>
+    </div>`).join('');
+  document.getElementById('savingsByCurrency').innerHTML = sanitize(byCurHtml);
+}
+
+async function saveSavingsToFirestore() {
+  if (!firebaseReady || !currentUser) return;
+  try {
+    const ref = db.collection('users').doc(currentUser.uid).collection('savings');
+    const localIds = new Set(savingItems.map(s => String(s.id)));
+    const ops = [];
+    if (savingsLoaded) {
+      const existing = await ref.get();
+      existing.forEach(doc => { if (!localIds.has(doc.id)) ops.push(doc.ref.delete()); });
+    }
+    const clean = (typeof stripUndefined === 'function') ? stripUndefined : (x => x);
+    savingItems.forEach(s => ops.push(ref.doc(String(s.id)).set(clean(s))));
+    if (ops.length) await Promise.all(ops);
+  } catch(e) { console.warn('Savings save failed:', e); }
+}
+
+async function loadSavingsFromFirestore() {
+  if (!firebaseReady || !currentUser) return;
+  try {
+    const ref = db.collection('users').doc(currentUser.uid).collection('savings');
+    const snap = await ref.get();
+    const remote = [];
+    snap.forEach(doc => remote.push(doc.data()));
+    const remoteIds = new Set(remote.map(s => String(s.id)));
+    const localOnly = savingItems.filter(s => !remoteIds.has(String(s.id)));
+    savingItems = [...remote, ...localOnly];
+    savingsLoaded = true;
+    renderSavings();
+    if (localOnly.length) saveSavingsToFirestore();
+  } catch(e) { console.warn('Savings load failed:', e); }
+}
+
 // ==================== CREDIT CALCULATOR =========================
 // ================================================================
 
@@ -4305,6 +4538,9 @@ if (typeof FormDrafts !== 'undefined') {
   FormDrafts.register('dream.form', [
     'dreamName', 'dreamTarget', 'dreamSaved', 'dreamMonthly',
     'dreamDateStart', 'dreamDateEnd', 'dreamNotes', 'dreamCurrency', 'dreamIcon'
+  ]);
+  FormDrafts.register('saving.form', [
+    'savingName', 'savingAmount', 'savingCurrency', 'savingNotes'
   ]);
   FormDrafts.register('profile', [
     'profileDisplayName', 'profileContactEmail', 'profilePhone'

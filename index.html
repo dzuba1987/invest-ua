@@ -98,6 +98,7 @@
     <button class="main-tab" onclick="switchMainTab('analytics', this)" data-i18n="tab.analytics">Аналітика</button>
     <button class="main-tab" onclick="switchMainTab('currencies', this)" data-i18n="tab.currencies">Валюти</button>
     <button class="main-tab" onclick="switchMainTab('dreams', this)" data-i18n="tab.dreams">Мрії</button>
+    <button class="main-tab" onclick="switchMainTab('savings', this)" data-i18n="tab.savings">Заощадження</button>
     <button class="main-tab" onclick="switchMainTab('profile', this)" data-i18n="tab.profile">Профіль</button>
   </div>
 
@@ -806,6 +807,59 @@
     <div id="dreamDetail" style="display:none">
       <button class="btn-clear" onclick="closeDreamDetail()" style="margin-bottom:12px;width:auto;padding:8px 16px">← Назад до мрій</button>
       <div id="dreamDetailContent"></div>
+    </div>
+  </div>
+
+  <!-- ====== TAB: SAVINGS ====== -->
+  <div class="tab-panel" id="panel-savings">
+    <div id="savingsAuth" class="a-empty" style="display:none">
+      <div style="font-size:40px;margin-bottom:16px">💰</div>
+      <p style="color:#94a3b8;font-size:15px;margin-bottom:8px">Увійдіть щоб відстежувати свої заощадження</p>
+      <button class="btn-save" onclick="googleLogin()" style="width:auto;padding:10px 20px;margin-top:12px">Увійти через Google</button>
+    </div>
+
+    <div id="savingsContent" style="display:none">
+      <button class="btn-save" id="btnToggleSavingsForm" onclick="toggleSavingsForm()" style="width:100%;margin-bottom:16px">+ Нове заощадження</button>
+
+      <div class="a-card" id="savingsFormCard" style="display:none">
+        <h3>Заощадження</h3>
+        <div class="form-grid" style="margin-bottom:16px">
+          <div class="field field-full">
+            <label>Назва</label>
+            <input type="text" id="savingName" placeholder="Під матрацом, банківський сейф, готівка Mono…">
+          </div>
+          <div class="field">
+            <label>Валюта</label>
+            <select id="savingCurrency" onchange="onSavingCurrencyChange()" style="width:100%;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none">
+              <option value="UAH">UAH (₴)</option>
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Сума <span id="savingAmountCurLabel" style="color:#64748b;font-weight:400">(грн)</span></label>
+            <input type="text" id="savingAmount" placeholder="10 000" inputmode="decimal">
+          </div>
+          <div class="field field-full">
+            <label>Нотатки</label>
+            <input type="text" id="savingNotes" placeholder="Де лежать, додаткова інформація">
+          </div>
+        </div>
+        <button class="btn-save" id="btnAddSaving" onclick="addSaving()">Додати</button>
+        <p class="error" id="savingError"></p>
+      </div>
+      <p class="success-msg" id="savingSuccess"></p>
+
+      <div id="savingsDashboard" style="display:none">
+        <div class="dash-hero">
+          <div class="dash-hero-label">Усього заощаджень</div>
+          <div class="dash-hero-value" id="savingsTotalMain">0 грн</div>
+          <div style="font-size:13px;color:#94a3b8;margin-top:4px" id="savingsTotalEquiv"></div>
+        </div>
+        <div id="savingsByCurrency" style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"></div>
+      </div>
+
+      <div id="savingsList"></div>
     </div>
   </div>
 
