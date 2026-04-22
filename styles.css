@@ -1028,6 +1028,40 @@ html[data-theme-effective="light"] .currency-summary-cell .a-stat-label { color:
 /* Dreams chart */
 .dreams-chart-wrap { position: relative; height: 250px; margin-bottom: 12px; }
 
+/* Updates tab — red dot badge on the tab button when new entries exist */
+.tab-badge {
+  display: inline-block;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 2px 6px;
+  min-width: 14px;
+  line-height: 1;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* Updates cards */
+.update-card {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  transition: border-color 0.15s;
+}
+.update-card.is-new { border-color: #3b82f6; box-shadow: 0 0 0 1px rgba(59,130,246,0.25); }
+.update-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+.update-card-title { font-size: 15px; font-weight: 600; color: #f1f5f9; flex: 1; }
+.update-card-meta { font-size: 11px; color: #64748b; white-space: nowrap; flex-shrink: 0; }
+.update-new-tag { background: rgba(59,130,246,0.15); color: #60a5fa; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin-right: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.update-card-body { font-size: 13px; color: #94a3b8; line-height: 1.6; white-space: pre-wrap; }
+html[data-theme-effective="light"] .update-card { background: #ffffff; border-color: #e2e8f0; }
+html[data-theme-effective="light"] .update-card-title { color: #0f172a; }
+html[data-theme-effective="light"] .update-card-body { color: #475569; }
+
 /* Dream currency equivalent (USD shown beside native amount) */
 .dream-equiv { color: #64748b; font-size: 12px; margin-left: 4px; font-weight: 400; }
 html[data-theme-effective="light"] .dream-equiv { color: #94a3b8; }
@@ -1173,6 +1207,14 @@ html[data-theme-effective="light"] .dream-icon-btn.active { background: #dbeafe;
 .p-type-insurance { background: rgba(244,114,182,0.12); color: #f472b6; }
 .p-type-cash { background: rgba(148,163,184,0.15); color: #cbd5e1; }
 .p-type-other { background: rgba(250,204,21,0.12); color: #facc15; }
+/* Light-theme overrides — the dark-mode foreground colors wash out on white,
+   especially the neutral p-type-cash used for currency badges (EUR/USD). */
+html[data-theme-effective="light"] .p-type-ovdp { background: rgba(37,99,235,0.14); color: #1d4ed8; }
+html[data-theme-effective="light"] .p-type-deposit { background: rgba(22,163,74,0.14); color: #15803d; }
+html[data-theme-effective="light"] .p-type-compound { background: rgba(147,51,234,0.14); color: #7e22ce; }
+html[data-theme-effective="light"] .p-type-insurance { background: rgba(219,39,119,0.14); color: #be185d; }
+html[data-theme-effective="light"] .p-type-cash { background: rgba(71,85,105,0.14); color: #334155; }
+html[data-theme-effective="light"] .p-type-other { background: rgba(202,138,4,0.14); color: #a16207; }
 .p-item-details {
   display: flex;
   gap: 20px;

@@ -119,6 +119,8 @@ function updateAuthUI() {
   if (typeof updateCreditCalcVisibility === 'function') updateCreditCalcVisibility();
   if (typeof updateDreamsUI === 'function') updateDreamsUI();
   if (typeof updateSavingsUI === 'function') updateSavingsUI();
+  // Poll changelog so the tab badge is up-to-date before the user opens it.
+  if (typeof loadChangelog === 'function') loadChangelog();
 }
 
 function googleLogin() {

@@ -240,6 +240,7 @@ function switchMainTab(tab, btn) {
   if (tab === 'currencies') loadCurrenciesPage();
   if (tab === 'dreams') updateDreamsUI();
   if (tab === 'savings') updateSavingsUI();
+  if (tab === 'updates') updateUpdatesUI();
   if (tab === 'profile') { updateProfileUI(); renderDashboardCurrencySettings(); }
 }
 
@@ -4149,6 +4150,91 @@ async function loadDreamsFromFirestore() {
     // Persist any local-only additions that predated the load.
     if (localOnly.length) saveDreamsToFirestore();
   } catch(e) { console.warn('Dreams load failed:', e); }
+}
+
+// ==================== UPDATES (changelog feed) ===================
+// ================================================================
+// Admin-published release notes from the `changelog` Firestore collection.
+// Anyone can read (open rule); the app tracks the latest entry's timestamp
+// the user has seen in localStorage and shows a red badge on the tab for
+// every newer entry.
+
+let changelogEntries = [];
+let _changelogLoadedOnce = false;
+
+function _updatesLastSeen() {
+  const v = parseInt(localStorage.getItem('updatesLastSeen') || '0', 10);
+  return isNaN(v) ? 0 : v;
+}
+function _markUpdatesSeen() {
+  const latest = changelogEntries.length ? new Date(changelogEntries[0].createdAt).getTime() : Date.now();
+  localStorage.setItem('updatesLastSeen', String(latest));
+  refreshUpdatesBadge();
+}
+
+function refreshUpdatesBadge() {
+  const badge = document.getElementById('updatesBadge');
+  if (!badge) return;
+  const since = _updatesLastSeen();
+  const unseen = changelogEntries.filter(e => new Date(e.createdAt).getTime() > since).length;
+  if (unseen > 0) {
+    badge.textContent = unseen > 9 ? '9+' : String(unseen);
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+    badge.textContent = '';
+  }
+}
+
+async function loadChangelog(force) {
+  if (!firebaseReady || !db) return;
+  if (_changelogLoadedOnce && !force) return;
+  try {
+    const snapshot = await db.collection('changelog').orderBy('createdAt', 'desc').limit(50).get();
+    changelogEntries = [];
+    snapshot.forEach(doc => changelogEntries.push({ id: doc.id, ...doc.data() }));
+    _changelogLoadedOnce = true;
+    renderUpdates();
+    refreshUpdatesBadge();
+  } catch(e) { console.warn('Changelog load failed:', e); }
+}
+
+function renderUpdates() {
+  const list = document.getElementById('updatesList');
+  if (!list) return;
+  if (!changelogEntries.length) {
+    list.innerHTML = '<div class="a-empty">Поки немає оновлень. Заходьте пізніше 🌱</div>';
+    const last = document.getElementById('updatesLastViewed');
+    if (last) last.textContent = '';
+    return;
+  }
+  const sinceTs = _updatesLastSeen();
+  list.innerHTML = sanitize(changelogEntries.map(e => {
+    const ts = e.createdAt ? new Date(e.createdAt).getTime() : 0;
+    const isNew = ts > sinceTs;
+    const dateStr = e.createdAt ? new Date(e.createdAt).toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
+    return `<div class="update-card${isNew ? ' is-new' : ''}">
+      <div class="update-card-header">
+        <div class="update-card-title">${isNew ? '<span class="update-new-tag">нове</span>' : ''}${esc(e.title || '')}</div>
+        <div class="update-card-meta">${esc(dateStr)}</div>
+      </div>
+      <div class="update-card-body">${esc(e.body || '')}</div>
+    </div>`;
+  }).join(''));
+
+  const last = document.getElementById('updatesLastViewed');
+  if (last) {
+    const latest = changelogEntries[0].createdAt ? new Date(changelogEntries[0].createdAt) : null;
+    last.textContent = latest ? 'Останнє оновлення: ' + latest.toLocaleDateString('uk-UA', { day: '2-digit', month: 'long', year: 'numeric' }) : '';
+  }
+}
+
+function updateUpdatesUI() {
+  loadChangelog().then(() => {
+    renderUpdates();
+    // Mark everything as seen after render so the badge clears.
+    _markUpdatesSeen();
+  });
 }
 
 // ==================== SAVINGS ====================================
