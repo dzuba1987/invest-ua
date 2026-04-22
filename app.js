@@ -3589,6 +3589,15 @@ function addDream() {
 
 function deleteDream(id) {
   dreamItems = dreamItems.filter(d => String(d.id) !== String(id));
+  // Unlink any savings that were earmarked for this dream — they become "вільні"
+  // (don't delete the savings themselves, the money still exists).
+  if (typeof savingItems !== 'undefined' && Array.isArray(savingItems)) {
+    let anyUnlinked = false;
+    savingItems.forEach(s => {
+      if (String(s.dreamId) === String(id)) { s.dreamId = null; anyUnlinked = true; }
+    });
+    if (anyUnlinked && typeof saveSavingsToFirestore === 'function') saveSavingsToFirestore();
+  }
   renderDreams();
   saveDreamsToFirestore();
 }
@@ -3808,6 +3817,18 @@ function openDreamDetail(id) {
       ${deadlineInfo ? '<div class="detail-info-row"><span class="detail-info-label">Залишилось часу</span><span class="detail-info-value">' + deadlineInfo + '</span></div>' : ''}
       ${d.deposits ? '<div class="detail-info-row"><span class="detail-info-label">Внесків</span><span class="detail-info-value">' + d.deposits.length + '</span></div>' : ''}
       ${d.notes ? '<div class="detail-info-row"><span class="detail-info-label">Нотатки</span><span class="detail-info-value">' + esc(d.notes) + '</span></div>' : ''}
+      ${(() => {
+        if (typeof savingItems === 'undefined' || !savingItems.length) return '';
+        const linked = savingItems.filter(s => String(s.dreamId) === String(d.id));
+        if (!linked.length) return '';
+        let uahSum = 0;
+        linked.forEach(s => {
+          const cc = (s.currency || 'UAH').toUpperCase();
+          if (cc === 'UAH') uahSum += s.amount || 0;
+          else if (typeof cachedRates !== 'undefined' && cachedRates && cachedRates[cc]) uahSum += (s.amount || 0) * cachedRates[cc];
+        });
+        return '<div class="detail-info-row"><span class="detail-info-label">Закріплено в заощадженнях</span><span class="detail-info-value" style="color:#93c5fd">' + linked.length + ' запис(и) · ' + formatNum(uahSum) + ' грн</span></div>';
+      })()}
     </div>
 
     ${depositsHtml}
@@ -4142,6 +4163,18 @@ function onSavingCurrencyChange() {
   if (label) label.textContent = cc === 'UAH' ? '(грн)' : (cc === 'USD' ? '($)' : cc === 'EUR' ? '(€)' : '(' + cc + ')');
 }
 
+// Populate the "закріплено за мрією" dropdown with current dreams.
+function _populateSavingDreamSelect(currentValue) {
+  const sel = document.getElementById('savingDreamId');
+  if (!sel) return;
+  const dreams = (typeof dreamItems !== 'undefined' && Array.isArray(dreamItems)) ? dreamItems : [];
+  const opts = ['<option value="">— Вільні (не закріплені)</option>'].concat(
+    dreams.map(d => '<option value="' + esc(String(d.id)) + '">' + (d.icon || '🎯') + ' ' + esc(d.name) + '</option>')
+  );
+  sel.innerHTML = opts.join('');
+  if (currentValue != null) sel.value = String(currentValue);
+}
+
 function toggleSavingsForm(forceOpen) {
   const card = document.getElementById('savingsFormCard');
   const btn = document.getElementById('btnToggleSavingsForm');
@@ -4157,6 +4190,7 @@ function toggleSavingsForm(forceOpen) {
     btn.textContent = '− Скасувати';
     btn.classList.remove('btn-save');
     btn.classList.add('btn-export');
+    _populateSavingDreamSelect();
     if (typeof FormDrafts !== 'undefined' && FormDrafts.hasDraft('saving.form') && !FormDrafts.isDirty('saving.form')) {
       if (confirm('Знайдено незбережену чернетку заощадження. Відновити?')) FormDrafts.restore('saving.form');
       else FormDrafts.clear('saving.form');
@@ -4180,6 +4214,8 @@ function addSaving() {
   const amount = parseNum(document.getElementById('savingAmount').value);
   const currency = (document.getElementById('savingCurrency').value || 'UAH').toUpperCase();
   const notes = document.getElementById('savingNotes').value.trim();
+  const dreamIdRaw = document.getElementById('savingDreamId').value;
+  const dreamId = dreamIdRaw ? dreamIdRaw : null;
 
   if (!name || isNaN(amount) || amount <= 0) {
     const err = document.getElementById('savingError');
@@ -4189,7 +4225,7 @@ function addSaving() {
   }
   document.getElementById('savingError').style.display = 'none';
 
-  const payload = { name, amount, currency, notes };
+  const payload = { name, amount, currency, notes, dreamId };
 
   if (_editingSavingId !== null) {
     const idx = savingItems.findIndex(s => String(s.id) === String(_editingSavingId));
@@ -4206,6 +4242,7 @@ function addSaving() {
   document.getElementById('savingAmount').value = '';
   document.getElementById('savingNotes').value = '';
   document.getElementById('savingCurrency').value = 'UAH';
+  document.getElementById('savingDreamId').value = '';
   onSavingCurrencyChange();
   if (typeof FormDrafts !== 'undefined') FormDrafts.clear('saving.form');
   toggleSavingsForm(false);
@@ -4224,6 +4261,7 @@ function editSaving(id) {
   document.getElementById('savingAmount').value = item.amount ? formatShort(item.amount) : '';
   document.getElementById('savingCurrency').value = item.currency || 'UAH';
   document.getElementById('savingNotes').value = item.notes || '';
+  _populateSavingDreamSelect(item.dreamId);
   onSavingCurrencyChange();
   _editingSavingId = id;
   const btn = document.getElementById('btnAddSaving');
@@ -4260,14 +4298,29 @@ function renderSavings() {
     return;
   }
 
-  // Aggregate per-currency and total-in-UAH
+  // Aggregate: per-currency totals, total-in-UAH, and free vs per-dream allocation in UAH
   const byCurrency = {};
   let totalUah = 0;
+  let freeUah = 0;
+  const byDreamUah = {}; // dreamId → UAH sum
+  const dreamsById = {};
+  (typeof dreamItems !== 'undefined' ? dreamItems : []).forEach(d => { dreamsById[String(d.id)] = d; });
+
+  const toUah = (amount, cc) => {
+    if (cc === 'UAH') return amount;
+    if (typeof cachedRates !== 'undefined' && cachedRates && cachedRates[cc]) return amount * cachedRates[cc];
+    return null;
+  };
+
   savingItems.forEach(s => {
     const cc = (s.currency || 'UAH').toUpperCase();
     byCurrency[cc] = (byCurrency[cc] || 0) + (s.amount || 0);
-    if (cc === 'UAH') totalUah += s.amount || 0;
-    else if (typeof cachedRates !== 'undefined' && cachedRates && cachedRates[cc]) totalUah += (s.amount || 0) * cachedRates[cc];
+    const uah = toUah(s.amount || 0, cc);
+    if (uah != null) {
+      totalUah += uah;
+      if (s.dreamId && dreamsById[String(s.dreamId)]) byDreamUah[s.dreamId] = (byDreamUah[s.dreamId] || 0) + uah;
+      else freeUah += uah;
+    }
   });
 
   list.innerHTML = sanitize(savingItems.map(s => {
@@ -4278,10 +4331,14 @@ function renderSavings() {
     const uahEq = (cc !== 'UAH' && typeof cachedRates !== 'undefined' && cachedRates && cachedRates[cc])
       ? ' <span style="color:#64748b;font-size:12px">≈ ' + formatNum(s.amount * cachedRates[cc]) + ' грн</span>'
       : '';
+    const linkedDream = s.dreamId ? dreamsById[String(s.dreamId)] : null;
+    const dreamBadge = linkedDream
+      ? '<span class="p-item-type" style="background:#1e3a8a33;color:#93c5fd">' + (linkedDream.icon || '🎯') + ' ' + esc(linkedDream.name) + '</span>'
+      : '<span class="p-item-type" style="background:#064e3b33;color:#6ee7b7">🆓 Вільні</span>';
     return `
       <div class="p-item" style="flex-wrap:wrap">
         <div class="p-item-info" style="width:100%">
-          <div class="p-item-name">${esc(s.name)} <span class="p-item-type p-type-cash">${esc(cc)}</span></div>
+          <div class="p-item-name">${esc(s.name)} <span class="p-item-type p-type-cash">${esc(cc)}</span> ${dreamBadge}</div>
           <div class="p-item-details p-row">
             <span><strong>${_savingFmtAmount(s.amount, cc)}</strong>${uahEq}${usdEq}</span>
           </div>
@@ -4299,12 +4356,23 @@ function renderSavings() {
   const usdEquiv = (typeof cachedRates !== 'undefined' && cachedRates && cachedRates.USD)
     ? '≈ $' + formatNum(totalUah / cachedRates.USD) : '';
   document.getElementById('savingsTotalEquiv').textContent = usdEquiv;
+
+  // By-currency + allocation (free vs per-dream) cards.
+  const allocHtml = (() => {
+    const parts = [];
+    parts.push('<div class="a-stat" style="flex:1;min-width:140px"><div class="a-stat-label">🆓 Вільні</div><div class="a-stat-value" style="color:#4ade80">' + formatNum(freeUah) + ' грн</div></div>');
+    Object.entries(byDreamUah).forEach(([did, sum]) => {
+      const d = dreamsById[did];
+      parts.push('<div class="a-stat" style="flex:1;min-width:140px"><div class="a-stat-label">' + (d.icon || '🎯') + ' ' + esc(d.name) + '</div><div class="a-stat-value" style="color:#93c5fd">' + formatNum(sum) + ' грн</div></div>');
+    });
+    return parts.join('');
+  })();
   const byCurHtml = Object.entries(byCurrency).map(([cc, amt]) => `
     <div class="a-stat" style="flex:1;min-width:120px">
       <div class="a-stat-label">${esc(cc)}</div>
       <div class="a-stat-value">${_savingFmtAmount(amt, cc)}</div>
     </div>`).join('');
-  document.getElementById('savingsByCurrency').innerHTML = sanitize(byCurHtml);
+  document.getElementById('savingsByCurrency').innerHTML = sanitize(allocHtml + byCurHtml);
 }
 
 async function saveSavingsToFirestore() {
@@ -4540,7 +4608,7 @@ if (typeof FormDrafts !== 'undefined') {
     'dreamDateStart', 'dreamDateEnd', 'dreamNotes', 'dreamCurrency', 'dreamIcon'
   ]);
   FormDrafts.register('saving.form', [
-    'savingName', 'savingAmount', 'savingCurrency', 'savingNotes'
+    'savingName', 'savingAmount', 'savingCurrency', 'savingNotes', 'savingDreamId'
   ]);
   FormDrafts.register('profile', [
     'profileDisplayName', 'profileContactEmail', 'profilePhone'
