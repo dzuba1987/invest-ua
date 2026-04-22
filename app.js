@@ -3601,6 +3601,82 @@ function showDreamDeposit(id) {
   }
 }
 
+// Inline edit of a deposit row in the deposits history table.
+function editDreamDeposit(dreamId, idx) {
+  const d = dreamItems.find(x => String(x.id) === String(dreamId));
+  if (!d || !d.deposits || !d.deposits[idx]) return;
+  const dep = d.deposits[idx];
+  const cc = dreamCurOf(d);
+  const row = document.getElementById('depRow-' + dreamId + '-' + idx);
+  if (!row) return;
+  const dateVal = dep.date ? new Date(dep.date).toISOString().split('T')[0] : '';
+  const showCc = dep.originalCurrency || cc;
+  const showAmount = dep.originalCurrency ? dep.originalAmount : dep.amount;
+  const opt = (v, label) => '<option value="' + v + '"' + (v === showCc ? ' selected' : '') + '>' + label + '</option>';
+  row.innerHTML = sanitize(
+    '<td colspan="3">' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">' +
+    '<input type="date" id="depEditDate-' + dreamId + '-' + idx + '" value="' + dateVal + '" style="padding:6px;border:1px solid #334155;border-radius:6px;background:#0f172a;color:#f1f5f9;font-size:13px">' +
+    '<select id="depEditCur-' + dreamId + '-' + idx + '" style="padding:6px;border:1px solid #334155;border-radius:6px;background:#0f172a;color:#f1f5f9;font-size:13px">' +
+      opt('UAH', 'UAH (₴)') + opt('USD', 'USD ($)') + opt('EUR', 'EUR (€)') +
+    '</select>' +
+    '<input type="text" id="depEditAmount-' + dreamId + '-' + idx + '" value="' + formatShort(showAmount) + '" inputmode="decimal" style="flex:1;min-width:80px;padding:6px 8px;border:1px solid #334155;border-radius:6px;background:#0f172a;color:#f1f5f9;font-size:13px">' +
+    '<button class="btn-save" onclick="saveDreamDepositEdit(\'' + dreamId + '\',' + idx + ')" style="width:auto;padding:6px 10px;margin:0;font-size:13px">✓</button>' +
+    '<button class="btn-clear" onclick="openDreamDetail(\'' + dreamId + '\')" style="width:auto;padding:6px 10px;margin:0;font-size:13px">✕</button>' +
+    '</div>' +
+    '</td>'
+  );
+  const amtInput = document.getElementById('depEditAmount-' + dreamId + '-' + idx);
+  if (amtInput) amtInput.addEventListener('input', () => formatInput(amtInput));
+}
+
+function saveDreamDepositEdit(dreamId, idx) {
+  const d = dreamItems.find(x => String(x.id) === String(dreamId));
+  if (!d || !d.deposits || !d.deposits[idx]) return;
+  const dep = d.deposits[idx];
+  const cc = dreamCurOf(d);
+  const newDate = document.getElementById('depEditDate-' + dreamId + '-' + idx).value;
+  const newCc = document.getElementById('depEditCur-' + dreamId + '-' + idx).value || cc;
+  const rawAmount = parseNum(document.getElementById('depEditAmount-' + dreamId + '-' + idx).value);
+  if (isNaN(rawAmount) || rawAmount <= 0) { alert('Некоректна сума'); return; }
+  if (!newDate) { alert('Вкажіть дату'); return; }
+
+  // Convert to dream's currency if needed.
+  let convertedAmount = rawAmount;
+  if (newCc !== cc) {
+    if (!cachedRates) { alert('Курси валют ще завантажуються, спробуйте за кілька секунд.'); return; }
+    const toUah = newCc === 'UAH' ? rawAmount : (cachedRates[newCc] ? rawAmount * cachedRates[newCc] : null);
+    if (toUah === null) { alert('Немає курсу для ' + newCc); return; }
+    const fromUahRate = cc === 'UAH' ? 1 : cachedRates[cc];
+    if (!fromUahRate) { alert('Немає курсу для ' + cc); return; }
+    convertedAmount = toUah / fromUahRate;
+  }
+
+  // Adjust saved: replace old amount with new.
+  d.saved = Math.max(0, (d.saved || 0) - dep.amount + convertedAmount);
+  d.deposits[idx] = {
+    amount: convertedAmount,
+    date: new Date(newDate).toISOString(),
+    ...(newCc !== cc ? { originalAmount: rawAmount, originalCurrency: newCc } : {}),
+  };
+
+  renderDreams();
+  saveDreamsToFirestore();
+  openDreamDetail(dreamId);
+}
+
+function deleteDreamDeposit(dreamId, idx) {
+  const d = dreamItems.find(x => String(x.id) === String(dreamId));
+  if (!d || !d.deposits || !d.deposits[idx]) return;
+  if (!confirm('Видалити цей внесок?')) return;
+  const dep = d.deposits[idx];
+  d.saved = Math.max(0, (d.saved || 0) - (dep.amount || 0));
+  d.deposits.splice(idx, 1);
+  renderDreams();
+  saveDreamsToFirestore();
+  openDreamDetail(dreamId);
+}
+
 function addDreamDeposit(id) {
   const input = document.getElementById('dreamDepositAmount-' + id);
   const rawAmount = parseNum(input.value);
@@ -3664,18 +3740,25 @@ function openDreamDetail(id) {
     else deadlineInfo = daysLeft + ' дн. (' + Math.ceil(daysLeft / 30) + ' міс.)';
   }
 
-  // Deposits history
+  // Deposits history with per-row edit/delete controls
   let depositsHtml = '';
   if (d.deposits && d.deposits.length) {
     depositsHtml = '<div class="a-card"><h3>Історія внесків</h3>' +
-      '<div style="max-height:300px;overflow-y:auto"><table class="credit-schedule-table"><thead><tr>' +
-      '<th style="text-align:left">Дата</th><th>Сума</th></tr></thead><tbody>' +
-      d.deposits.map(dep => {
+      '<div style="max-height:360px;overflow-y:auto"><table class="credit-schedule-table"><thead><tr>' +
+      '<th style="text-align:left">Дата</th><th>Сума</th><th style="width:80px"></th></tr></thead><tbody>' +
+      d.deposits.map((dep, idx) => {
         const mainAmount = fmtDreamAmount(dep.amount, cc);
         const origLabel = dep.originalCurrency && dep.originalCurrency !== cc
           ? ' <span style="color:#94a3b8;font-size:11px;font-weight:400">(внесено ' + (dep.originalCurrency === 'UAH' ? formatNum(dep.originalAmount) + ' грн' : (dep.originalCurrency === 'USD' ? '$' : dep.originalCurrency === 'EUR' ? '€' : dep.originalCurrency + ' ') + formatNum(dep.originalAmount)) + ')</span>'
           : '';
-        return '<tr><td>' + new Date(dep.date).toLocaleDateString('uk-UA') + '</td><td style="color:#4ade80">+' + mainAmount + origLabel + '</td></tr>';
+        return '<tr id="depRow-' + d.id + '-' + idx + '">' +
+          '<td>' + new Date(dep.date).toLocaleDateString('uk-UA') + '</td>' +
+          '<td style="color:#4ade80">+' + mainAmount + origLabel + '</td>' +
+          '<td style="text-align:right;white-space:nowrap">' +
+            '<button class="btn-delete" onclick="editDreamDeposit(\'' + d.id + '\',' + idx + ')" style="color:#60a5fa;padding:2px 6px;font-size:13px">✎</button>' +
+            '<button class="btn-delete" onclick="deleteDreamDeposit(\'' + d.id + '\',' + idx + ')" style="padding:2px 6px;font-size:13px">✕</button>' +
+          '</td>' +
+          '</tr>';
       }).join('') +
       '</tbody></table></div></div>';
   }
