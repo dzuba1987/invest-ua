@@ -1215,6 +1215,12 @@ html[data-theme-effective="light"] .p-type-compound { background: rgba(147,51,23
 html[data-theme-effective="light"] .p-type-insurance { background: rgba(219,39,119,0.14); color: #be185d; }
 html[data-theme-effective="light"] .p-type-cash { background: rgba(71,85,105,0.14); color: #334155; }
 html[data-theme-effective="light"] .p-type-other { background: rgba(202,138,4,0.14); color: #a16207; }
+
+/* Savings row badges — 'free' and 'linked to dream' */
+.saving-badge-free { background: rgba(5,150,105,0.18); color: #6ee7b7; }
+.saving-badge-linked { background: rgba(30,64,175,0.25); color: #93c5fd; }
+html[data-theme-effective="light"] .saving-badge-free { background: rgba(5,150,105,0.15); color: #047857; }
+html[data-theme-effective="light"] .saving-badge-linked { background: rgba(37,99,235,0.14); color: #1d4ed8; }
 .p-item-details {
   display: flex;
   gap: 20px;

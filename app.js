@@ -4440,8 +4440,8 @@ function renderSavings() {
       : '';
     const linkedDream = s.dreamId ? dreamsById[String(s.dreamId)] : null;
     const dreamBadge = linkedDream
-      ? '<span class="p-item-type" style="background:#1e3a8a33;color:#93c5fd">' + (linkedDream.icon || '🎯') + ' ' + esc(linkedDream.name) + '</span>'
-      : '<span class="p-item-type" style="background:#064e3b33;color:#6ee7b7">🆓 Вільні</span>';
+      ? '<span class="p-item-type saving-badge-linked">' + (linkedDream.icon || '🎯') + ' ' + esc(linkedDream.name) + '</span>'
+      : '<span class="p-item-type saving-badge-free">🆓 Вільні</span>';
     return `
       <div class="p-item" style="flex-wrap:wrap">
         <div class="p-item-info" style="width:100%">
