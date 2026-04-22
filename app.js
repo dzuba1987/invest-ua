@@ -359,6 +359,33 @@ document.getElementById('bondName').addEventListener('input', () => calculate())
 // yield and show it next to the user-entered rate, so the difference is visible.
 // We do NOT overwrite pRate — that stays whatever the user entered (or what the
 // picker pre-filled from the bond's nominal-based YTM).
+// Update the "Сума вкладення" currency hint label based on selected cash currency.
+function onPCashCurrencyChange() {
+  const isCash = document.getElementById('pType').value === 'cash';
+  const label = document.getElementById('pInvestedCurLabel');
+  if (!label) return;
+  if (!isCash) { label.textContent = '(грн)'; return; }
+  const cc = (document.getElementById('pCashCurrency').value || 'UAH').toUpperCase();
+  label.textContent = cc === 'UAH' ? '(грн)' : (cc === 'USD' ? '($)' : cc === 'EUR' ? '(€)' : '(' + cc + ')');
+}
+
+// Portfolio cash currency helpers.
+function portfolioCurOf(p) { return (p && p.currency) || 'UAH'; }
+function portfolioToUah(amount, cc) {
+  if (!cc || cc === 'UAH') return amount;
+  if (typeof cachedRates === 'undefined' || !cachedRates || !cachedRates[cc]) return amount;
+  return amount * cachedRates[cc];
+}
+function fmtPortfolioAmount(amount, cc) {
+  if (!cc || cc === 'UAH') return formatNum(amount) + ' грн';
+  const sym = cc === 'USD' ? '$' : cc === 'EUR' ? '€' : cc + ' ';
+  const uah = portfolioToUah(amount, cc);
+  const uahPart = uah !== amount && typeof cachedRates !== 'undefined' && cachedRates && cachedRates[cc]
+    ? ' <span style="color:#64748b;font-size:12px;font-weight:400">≈ ' + formatNum(uah) + ' грн</span>'
+    : '';
+  return sym + formatNum(amount) + uahPart;
+}
+
 // Real annual yield implied by a portfolio item's receivedAtMaturity.
 // Returns null when it can't be computed (no receivedAtMaturity / dates / invested).
 function computeRealRate(item) {
@@ -2039,6 +2066,13 @@ function togglePortfolioTypeFields() {
   const rcvField = document.getElementById('pReceivedAtMaturityField');
   if (rcvField) rcvField.style.display = isOvdp ? '' : 'none';
 
+  // Cash currency — only for cash; bank field is hidden for cash.
+  const cashCurField = document.getElementById('pCashCurrencyField');
+  if (cashCurField) cashCurField.style.display = isCash ? '' : 'none';
+  const bankField = document.getElementById('pBankField');
+  if (bankField) bankField.style.display = isCash ? 'none' : '';
+  if (typeof onPCashCurrencyChange === 'function') onPCashCurrencyChange();
+
   // Rate and dates — hidden for cash
   document.getElementById('pRateField').style.display = isCash ? 'none' : '';
   document.getElementById('pDateStartField').style.display = isCash ? 'none' : '';
@@ -2086,6 +2120,7 @@ function addPortfolioItem() {
   const notes = document.getElementById('pNotes').value.trim();
   const indexation = parseNum(document.getElementById('pIndex').value);
   const receivedAtMaturity = parseNum(document.getElementById('pReceivedAtMaturity').value);
+  const cashCurrency = (document.getElementById('pCashCurrency').value || 'UAH').toUpperCase();
 
   const isCompound = document.getElementById('pCompound').checked;
 
@@ -2124,6 +2159,7 @@ function addPortfolioItem() {
     indexation: !isCash && !isNaN(indexation) && indexation > 0 ? indexation : null,
     compound: !isCash && isCompound,
     receivedAtMaturity: type === 'ovdp' && !isNaN(receivedAtMaturity) && receivedAtMaturity > 0 ? receivedAtMaturity : null,
+    currency: isCash ? cashCurrency : null,
     history: isCash ? history : undefined
   };
 
@@ -2527,6 +2563,8 @@ function editPortfolioItem(id) {
   document.getElementById('pNotes').value = item.notes || '';
   document.getElementById('pReceivedAtMaturity').value = item.receivedAtMaturity ? formatShort(item.receivedAtMaturity) : '';
   if (typeof _updateRealRateDisplay === 'function') _updateRealRateDisplay();
+  document.getElementById('pCashCurrency').value = item.currency || 'UAH';
+  if (typeof onPCashCurrencyChange === 'function') onPCashCurrencyChange();
 
   // Compound fields
   // If saved as compound, set type to compound
@@ -2574,7 +2612,8 @@ function renderPortfolio() {
     const isCash = p.type === 'cash';
     const isActive = isCash ? false : (p.dateEnd ? new Date(p.dateEnd) > now : true);
     if (isActive) activeCount++;
-    totalInvested += p.invested;
+    // Cash can be in different currencies — convert to UAH for aggregation.
+    totalInvested += isCash ? portfolioToUah(p.invested, portfolioCurOf(p)) : p.invested;
 
     let days = 0, elapsed = 0, progress = 0, daysLeft = 0;
     let expectedProfit = 0, dailyGross = 0, dailyNet = 0, earnedSoFar = 0;
@@ -2662,7 +2701,7 @@ function renderPortfolio() {
           </div>
           ${days > 0 ? '<div class="detail-progress" style="margin:6px 0"><div class="detail-progress-bar" style="width:' + progress.toFixed(1) + '%"></div></div><div style="display:flex;justify-content:space-between;font-size:10px;color:#475569;margin-bottom:4px"><span>' + (isActive ? elapsed + ' з ' + days + ' дн. (' + progress.toFixed(0) + '%)' : 'Завершено') + '</span><span>' + (daysLeft > 0 ? daysLeft + ' дн. залишилось' : '') + '</span></div>' : ''}
           <div class="p-item-details p-row">
-            <span>${isCash ? 'Сума' : 'Вкладено'}: <strong>${formatNum(p.invested)} грн</strong></span>
+            <span>${isCash ? 'Сума' : 'Вкладено'}: <strong>${isCash ? fmtPortfolioAmount(p.invested, portfolioCurOf(p)) : formatNum(p.invested) + ' грн'}</strong></span>
             ${p.bondPrice ? '<span>' + formatShort(p.bondPrice) + ' грн × ' + p.bondCount + ' шт.</span>' : ''}
           </div>
           <div class="p-item-details p-row">
@@ -3564,17 +3603,41 @@ function showDreamDeposit(id) {
 
 function addDreamDeposit(id) {
   const input = document.getElementById('dreamDepositAmount-' + id);
-  const amount = parseNum(input.value);
-  if (isNaN(amount) || amount <= 0) return;
+  const rawAmount = parseNum(input.value);
+  if (isNaN(rawAmount) || rawAmount <= 0) return;
 
   const item = dreamItems.find(d => String(d.id) === String(id));
   if (!item) return;
 
-  item.saved = (item.saved || 0) + amount;
+  const dreamCc = dreamCurOf(item);
+  const sel = document.getElementById('dreamDepositCurrency-' + id);
+  const depositCc = sel ? (sel.value || dreamCc) : dreamCc;
 
-  // Save deposit history
+  // Convert deposit amount to the dream's currency using NBU rates.
+  let convertedAmount = rawAmount;
+  if (depositCc !== dreamCc) {
+    if (!cachedRates) {
+      alert('Курси валют ще завантажуються, спробуйте за кілька секунд.');
+      return;
+    }
+    const toUah = depositCc === 'UAH' ? rawAmount : (cachedRates[depositCc] ? rawAmount * cachedRates[depositCc] : null);
+    if (toUah === null) { alert('Немає курсу для ' + depositCc); return; }
+    const fromUahRate = dreamCc === 'UAH' ? 1 : cachedRates[dreamCc];
+    if (!fromUahRate) { alert('Немає курсу для ' + dreamCc); return; }
+    convertedAmount = toUah / fromUahRate;
+  }
+
+  item.saved = (item.saved || 0) + convertedAmount;
+
+  // Save deposit history — keep both the dream-currency amount (for aggregation)
+  // and the original amount + currency (for the "відкладено в євро" label).
   if (!item.deposits) item.deposits = [];
-  item.deposits.push({ amount, date: new Date().toISOString() });
+  const entry = { amount: convertedAmount, date: new Date().toISOString() };
+  if (depositCc !== dreamCc) {
+    entry.originalAmount = rawAmount;
+    entry.originalCurrency = depositCc;
+  }
+  item.deposits.push(entry);
 
   renderDreams();
   saveDreamsToFirestore();
@@ -3607,7 +3670,13 @@ function openDreamDetail(id) {
     depositsHtml = '<div class="a-card"><h3>Історія внесків</h3>' +
       '<div style="max-height:300px;overflow-y:auto"><table class="credit-schedule-table"><thead><tr>' +
       '<th style="text-align:left">Дата</th><th>Сума</th></tr></thead><tbody>' +
-      d.deposits.map(dep => '<tr><td>' + new Date(dep.date).toLocaleDateString('uk-UA') + '</td><td style="color:#4ade80">+' + fmtDreamAmount(dep.amount, cc) + '</td></tr>').join('') +
+      d.deposits.map(dep => {
+        const mainAmount = fmtDreamAmount(dep.amount, cc);
+        const origLabel = dep.originalCurrency && dep.originalCurrency !== cc
+          ? ' <span style="color:#94a3b8;font-size:11px;font-weight:400">(внесено ' + (dep.originalCurrency === 'UAH' ? formatNum(dep.originalAmount) + ' грн' : (dep.originalCurrency === 'USD' ? '$' : dep.originalCurrency === 'EUR' ? '€' : dep.originalCurrency + ' ') + formatNum(dep.originalAmount)) + ')</span>'
+          : '';
+        return '<tr><td>' + new Date(dep.date).toLocaleDateString('uk-UA') + '</td><td style="color:#4ade80">+' + mainAmount + origLabel + '</td></tr>';
+      }).join('') +
       '</tbody></table></div></div>';
   }
 
@@ -3809,8 +3878,13 @@ function renderDreams() {
         </div>
       </div>
       <div id="dreamDeposit-${d.id}" style="display:none;width:100%;margin-top:8px;padding-top:8px;border-top:1px solid #1e293b">
-        <div style="display:flex;gap:8px;align-items:center">
-          <input type="text" id="dreamDepositAmount-${d.id}" placeholder="Сума внеску (${dreamCurUnitLabel(cc)})" inputmode="decimal" style="flex:1;padding:8px 10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;outline:none">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="dreamDepositCurrency-${d.id}" data-dream-cc="${cc}" style="padding:8px 10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;outline:none">
+            <option value="UAH"${cc === 'UAH' ? ' selected' : ''}>UAH (₴)</option>
+            <option value="USD"${cc === 'USD' ? ' selected' : ''}>USD ($)</option>
+            <option value="EUR"${cc === 'EUR' ? ' selected' : ''}>EUR (€)</option>
+          </select>
+          <input type="text" id="dreamDepositAmount-${d.id}" placeholder="Сума внеску" inputmode="decimal" style="flex:1;min-width:100px;padding:8px 10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;outline:none">
           <button class="btn-save" onclick="addDreamDeposit('${d.id}')" style="width:auto;padding:8px 16px;margin:0;white-space:nowrap">Внести</button>
           <button class="btn-clear" onclick="document.getElementById('dreamDeposit-${d.id}').style.display='none'" style="width:auto;padding:8px 12px;margin:0">✕</button>
         </div>
@@ -4143,7 +4217,7 @@ if (typeof FormDrafts !== 'undefined') {
   FormDrafts.register('portfolio.form', [
     'pName', 'pType', 'pBondPrice', 'pBondCount', 'pInvested', 'pRate',
     'pIndex', 'pDateStart', 'pDateEnd', 'pTax', 'pBank', 'pNotes', 'pCompound',
-    'pReceivedAtMaturity'
+    'pReceivedAtMaturity', 'pCashCurrency'
   ]);
   FormDrafts.register('dream.form', [
     'dreamName', 'dreamTarget', 'dreamSaved', 'dreamMonthly',

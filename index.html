@@ -587,8 +587,16 @@
           </div>
           <!-- Row 3: Сума | Ставка -->
           <div class="field">
-            <label>Сума вкладення (грн)</label>
+            <label>Сума вкладення <span id="pInvestedCurLabel" style="color:#64748b;font-weight:400">(грн)</span></label>
             <input type="text" id="pInvested" placeholder="500 000" inputmode="decimal">
+          </div>
+          <div class="field" id="pCashCurrencyField" style="display:none">
+            <label>Валюта</label>
+            <select id="pCashCurrency" onchange="onPCashCurrencyChange()" style="width:100%;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none">
+              <option value="UAH">UAH (₴)</option>
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+            </select>
           </div>
           <div class="field" id="pRateField">
             <label data-i18n="portfolio.rate">Річна ставка (%)</label>
@@ -620,7 +628,7 @@
             <input type="text" id="pTax" placeholder="19.5" inputmode="decimal">
           </div>
           <!-- Row 6: Банк | Картка -->
-          <div class="field">
+          <div class="field" id="pBankField">
             <label data-i18n="portfolio.bank">Виведення коштів (банк)</label>
             <input type="text" id="pBank" placeholder="Приватбанк">
             <p class="field-hint">Ваша нотатка — зберігається тільки у вашому профілі</p>
