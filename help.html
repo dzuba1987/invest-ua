@@ -14,374 +14,531 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <title>Довідка — Invest UA</title>
 <link rel="stylesheet" href="styles.css">
+<style>
+  .help-toc {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 12px; margin: 0 0 16px 0;
+    background: rgba(30,41,59,0.5); border-radius: 10px;
+    border: 1px solid #1e293b;
+    position: sticky; top: 0; z-index: 10;
+    backdrop-filter: blur(8px);
+  }
+  .help-toc a {
+    padding: 6px 12px; border-radius: 6px;
+    background: rgba(59,130,246,0.08); color: #93c5fd;
+    text-decoration: none; font-size: 13px; font-weight: 500;
+    border: 1px solid rgba(59,130,246,0.15);
+    transition: all 0.15s;
+  }
+  .help-toc a:hover { background: rgba(59,130,246,0.18); color: #dbeafe; }
+  html[data-theme-effective="light"] .help-toc {
+    background: rgba(241,245,249,0.9); border-color: #e2e8f0;
+  }
+  html[data-theme-effective="light"] .help-toc a {
+    background: rgba(59,130,246,0.08); color: #1d4ed8; border-color: rgba(59,130,246,0.2);
+  }
+
+  details.help-details {
+    margin: 0 0 10px 0;
+    padding: 0; border: 1px solid #1e293b; border-radius: 10px;
+    background: #0f172a;
+    overflow: hidden;
+  }
+  details.help-details > summary {
+    padding: 14px 16px; cursor: pointer; list-style: none;
+    font-size: 15px; font-weight: 600; color: #f1f5f9;
+    display: flex; align-items: center; gap: 8px;
+    user-select: none;
+  }
+  details.help-details > summary::-webkit-details-marker { display: none; }
+  details.help-details > summary::after {
+    content: '▾'; margin-left: auto; color: #64748b;
+    transition: transform 0.15s;
+  }
+  details.help-details[open] > summary::after { transform: rotate(180deg); }
+  details.help-details > summary:hover { background: rgba(59,130,246,0.06); }
+  details.help-details[open] > summary { border-bottom: 1px solid #1e293b; }
+  details.help-details > .details-body { padding: 14px 16px 18px 16px; }
+  details.help-details > .details-body > *:first-child { margin-top: 0; }
+  details.help-details > .details-body > *:last-child { margin-bottom: 0; }
+
+  html[data-theme-effective="light"] details.help-details {
+    background: #ffffff; border-color: #e2e8f0;
+  }
+  html[data-theme-effective="light"] details.help-details > summary { color: #0f172a; }
+  html[data-theme-effective="light"] details.help-details[open] > summary { border-bottom-color: #e2e8f0; }
+
+  .help-section-group {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+    color: #475569; margin: 20px 0 8px 4px; font-weight: 600;
+  }
+  .help-emoji { font-size: 18px; line-height: 1; }
+  .callout {
+    padding: 10px 12px; border-radius: 8px;
+    background: rgba(245,158,11,0.08); border-left: 3px solid #f59e0b;
+    color: #cbd5e1; font-size: 13px; margin: 10px 0;
+  }
+  .callout.info { background: rgba(59,130,246,0.08); border-left-color: #3b82f6; }
+  .callout.success { background: rgba(34,197,94,0.08); border-left-color: #22c55e; }
+  .callout strong { color: #f1f5f9; }
+  html[data-theme-effective="light"] .callout { color: #334155; }
+  html[data-theme-effective="light"] .callout strong { color: #0f172a; }
+
+  .help-h3 { font-size: 14px; color: #f1f5f9; margin: 14px 0 6px; font-weight: 600; }
+  html[data-theme-effective="light"] .help-h3 { color: #0f172a; }
+</style>
 </head>
 <body>
 
 <div class="container">
   <a href="index.html" class="back-link" id="helpBack">← Назад</a>
   <h1 id="helpTitle">Довідка</h1>
-  <p class="subtitle" id="helpSubtitle">Все, що потрібно знати про Invest UA</p>
+  <p class="subtitle" id="helpSubtitle">Розгорніть секцію, щоб прочитати деталі</p>
 
   <!-- ===== UKRAINIAN ===== -->
-  <div id="help-uk" class="help-columns">
-    <div>
-      <div class="section">
-        <h2><span class="icon icon-blue">1</span> Що це за додаток?</h2>
-        <p>Invest UA — PWA-додаток для управління портфелем вкладень: ОВДП, депозити, облігації та інші фінансові інструменти. Працює офлайн, синхронізується через Google.</p>
+  <div id="help-uk">
+    <nav class="help-toc" aria-label="Розділи довідки">
+      <a href="#uk-overview">Огляд</a>
+      <a href="#uk-portfolio">Портфель</a>
+      <a href="#uk-ovdp">ОВДП</a>
+      <a href="#uk-calc">Калькулятор</a>
+      <a href="#uk-analytics">Аналітика</a>
+      <a href="#uk-currencies">Валюти</a>
+      <a href="#uk-dreams">Мрії</a>
+      <a href="#uk-savings">Заощадження</a>
+      <a href="#uk-search">Пошук</a>
+      <a href="#uk-telegram">Telegram</a>
+      <a href="#uk-export">Імпорт/Експорт</a>
+      <a href="#uk-install">Встановлення</a>
+      <a href="#uk-formulas">Формули</a>
+      <a href="#uk-privacy">Дані та безпека</a>
+    </nav>
+
+    <div class="help-section-group">Головне</div>
+
+    <details class="help-details" id="uk-overview" open>
+      <summary><span class="help-emoji">📱</span> Що це за додаток?</summary>
+      <div class="details-body">
+        <p>Invest UA — PWA-додаток для управління особистими фінансами: ОВДП, депозити, страхування, готівка, цілі накопичення. Працює офлайн, синхронізується через Google між пристроями.</p>
         <div class="feature-grid">
-          <div class="feature">
-            <div class="feature-title">Портфель</div>
-            <div class="feature-desc">Дашборд з вартістю портфеля, денним доходом та детальною інформацією по кожному вкладенню</div>
-          </div>
-          <div class="feature">
-            <div class="feature-title">Калькулятор</div>
-            <div class="feature-desc">Розрахунок прибутку, дохідності та складного відсотка з графіками</div>
-          </div>
-          <div class="feature">
-            <div class="feature-title">Аналітика</div>
-            <div class="feature-desc">Рейтинг, комбінації та стратегії реінвестування</div>
-          </div>
-          <div class="feature">
-            <div class="feature-title">Валюти</div>
-            <div class="feature-desc">Курси НБУ та готівковий курс (чорний ринок) в реальному часі</div>
-          </div>
-          <div class="feature">
-            <div class="feature-title">Мрії</div>
-            <div class="feature-desc">Фінансові цілі з автопрогнозом дати та щомісячного внеску</div>
-          </div>
-          <div class="feature">
-            <div class="feature-title">Telegram-бот</div>
-            <div class="feature-desc">Баланс, список вкладень, курси валют та сповіщення прямо в Telegram</div>
-          </div>
-          <div class="feature">
-            <div class="feature-title">Хмарна синхронізація</div>
-            <div class="feature-desc">Вхід через Google — дані доступні з будь-якого пристрою</div>
-          </div>
+          <div class="feature"><div class="feature-title">💼 Портфель</div><div class="feature-desc">Активні вкладення: ОВДП, депозити, страхування — з дохідністю</div></div>
+          <div class="feature"><div class="feature-title">🎯 Мрії</div><div class="feature-desc">Фінансові цілі з іконками, валютою та автопрогнозом</div></div>
+          <div class="feature"><div class="feature-title">💰 Заощадження</div><div class="feature-desc">Кошти, що не працюють — готівка, сейф, заначки</div></div>
+          <div class="feature"><div class="feature-title">🧮 Калькулятор</div><div class="feature-desc">Прибутковість, складний %, кредит</div></div>
+          <div class="feature"><div class="feature-title">📈 Аналітика</div><div class="feature-desc">Рейтинг, комбінації, стратегії реінвесту</div></div>
+          <div class="feature"><div class="feature-title">💱 Валюти</div><div class="feature-desc">НБУ + готівковий курс в реальному часі</div></div>
+          <div class="feature"><div class="feature-title">🤖 Telegram-бот</div><div class="feature-desc">Баланс, вкладення, курси прямо в месенджері</div></div>
+          <div class="feature"><div class="feature-title">☁️ Хмара</div><div class="feature-desc">Синхронізація між пристроями через Google</div></div>
         </div>
       </div>
+    </details>
 
-      <div class="section">
-        <h2><span class="icon icon-blue">2</span> Портфель</h2>
-        <p>Головна сторінка додатку. Показує загальну картину ваших вкладень.</p>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Додавання запису</h3>
-        <p>Кнопка «+ Новий запис». Оберіть <strong>Тип</strong> — від нього залежить які поля показуються:</p>
+    <div class="help-section-group">Розділи додатку</div>
+
+    <details class="help-details" id="uk-portfolio">
+      <summary><span class="help-emoji">💼</span> Портфель</summary>
+      <div class="details-body">
+        <p>Головна сторінка — активні вкладення, що приносять прибуток.</p>
+
+        <h3 class="help-h3">Додавання запису</h3>
+        <p>Кнопка «+ Новий запис» → оберіть <strong>Тип</strong> (поля форми залежать від нього):</p>
         <ul style="font-size:13px;color:#94a3b8;margin:8px 0 8px 20px">
-          <li><strong>ОВДП</strong> — поля ціни та кількості облігацій. Якщо адмін додав список облігацій Дії, зверху зʼявиться селектор: оберіть облігацію → назва та дати заповняться автоматично; введіть ціну з Дії — ставка порахується сама.</li>
-          <li><strong>Депозит</strong> — сума, ставка, податок; чекбокс «Складний %» для реінвестування.</li>
-          <li><strong>Страхування із накопиченням</strong> — поле «Індексація внеску (%/рік)» для щорічного збільшення внеску.</li>
-          <li><strong>Інше</strong> — базовий набір полів без специфічних розрахунків.</li>
+          <li><strong>ОВДП</strong> — ціна, кількість, селектор облігацій Дії (див. окрему секцію)</li>
+          <li><strong>Депозит</strong> — сума, ставка, податок; чекбокс «Складний %»</li>
+          <li><strong>Страхування з накопиченням</strong> — поле індексації (%/рік)</li>
+          <li><strong>Готівка</strong> — вибір валюти (UAH/USD/EUR), без дат і ставки</li>
+          <li><strong>Інше</strong> — базові поля</li>
         </ul>
-        <div style="background:rgba(245,158,11,0.08);border-left:3px solid #f59e0b;padding:10px 12px;border-radius:6px;margin:12px 0;font-size:13px;color:#cbd5e1">
-          <strong style="color:#f59e0b">💳 Комісія «Дії» 0.20%</strong><br>
-          З <strong>15 квітня 2026</strong> при купівлі ОВДП через застосунок «Дія» вводиться комісія — <strong>0.20% від суми операції</strong>. Вона списується <strong>загальною сумою</strong> разом із вартістю облігацій.<br>
-          Для записів з датою початку ≥ 15.04.2026 додаток автоматично: додає комісію до суми вкладення (<code>ціна × к-сть × 1.002</code>), враховує її в ефективній дохідності та показує суму комісії в картці облігації.
-        </div>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Дашборд</h3>
-        <p>Вартість портфеля, зароблено всього, дохід за день, кількість активних вкладень. Нижче — розбивка денного доходу по кожному вкладенню.</p>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Сторінка вкладення</h3>
-        <p>Натисніть на будь-яке вкладення — відкриється детальна сторінка з прогрес-баром (минулі/залишилось днів, %), зарахованим доходом, ставкою, оподаткуванням. Для вкладень до 2 років показується <strong>щомісячна</strong> таблиця нарахувань, довших — щорічна; для страхування — графік внесків з індексацією.</p>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Сповіщення</h3>
-        <p>Банери на дашборді попереджають коли термін вкладення закінчується. Налаштовується в Профілі (за скільки днів нагадувати).</p>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Автозбереження чернеток</h3>
-        <p>Якщо ви почали заповнювати форму (портфель, мрію, калькулятор, профіль) і вирішили перейти на іншу вкладку, закрити форму або перезавантажити сторінку — додаток попередить: «У формі є незбережені зміни». При повторному відкритті форми буде запитано, чи відновити чернетку.</p>
-      </div>
 
-      <div class="section">
-        <h2><span class="icon icon-blue">3</span> Калькулятор</h2>
+        <h3 class="help-h3">Дашборд</h3>
+        <p>Вартість портфеля, зароблено всього, дохід за день, кількість активних, розбивка денного доходу по кожному вкладенню. Готівка у різних валютах автоматично конвертується в грн для загального підсумку.</p>
+
+        <h3 class="help-h3">Картка вкладення</h3>
+        <p>Клік на запис → деталі: прогрес-бар (минулі / залишилось днів, %), зарахований дохід, ставка, оподаткування. Для строків до 2 років — щомісячна таблиця нарахувань, довших — щорічна.</p>
+
+        <h3 class="help-h3">Сповіщення</h3>
+        <p>Банери попереджають про завершення терміну. За скільки днів — у Профілі → Сповіщення.</p>
+
+        <h3 class="help-h3">Автозбереження чернеток</h3>
+        <p>Якщо ви заповнили форму і перейшли на іншу вкладку — додаток попередить і запропонує відновити чернетку при повторному відкритті.</p>
+      </div>
+    </details>
+
+    <details class="help-details" id="uk-ovdp">
+      <summary><span class="help-emoji">🏛</span> ОВДП: пікер, комісія Дії, реальна ставка</summary>
+      <div class="details-body">
+        <h3 class="help-h3">Селектор облігацій</h3>
+        <p>Якщо адмін додав список Дії, при виборі типу ОВДП з'явиться селектор. Виберіть облігацію — назва та дати заповняться автоматично. Введіть ціну з Дії — <strong>річна ставка</strong> розрахується сама, а в полі «Отримаю при погашенні» з'явиться повна сума виплати (номінал × кількість + залишок купонів).</p>
+
+        <div class="callout">
+          <strong style="color:#f59e0b">💳 Комісія Дії 0.20%</strong><br>
+          З <strong>15.04.2026</strong> купівля ОВДП через Дію має комісію 0.20%, яка списується разом з вартістю. Для записів з датою початку ≥ 15.04.2026 додаток автоматично додає її до суми (<code>ціна × к-сть × 1.002</code>) та враховує в ефективній дохідності. У картці видно фактичну ціну + розмір комісії.
+        </div>
+
+        <h3 class="help-h3">«Отримаю при погашенні»</h3>
+        <p>Точна сума, яку ви отримаєте — як показує Дія / банк. Якщо поле задано:</p>
+        <ul style="font-size:13px;color:#94a3b8;margin:8px 0 8px 20px">
+          <li>Очікуваний прибуток = <code>отримаю − вкладено</code> (без апроксимацій)</li>
+          <li>Денний дохід = <code>прибуток / днів_усього</code> — співпадатиме з банком</li>
+          <li>Ставка, введена вручну, ігнорується в розрахунках</li>
+        </ul>
+
+        <h3 class="help-h3">Реальна vs введена ставка</h3>
+        <p>Поруч з «Річною ставкою» показується <strong>реальна ставка</strong> — обчислена з фактичного «Отримаю при погашенні». Якщо відрізняються більше ніж на 0.05% — показується різниця амбером. Наприклад: ввели 15% (YTM з пікера), а реально виходить 13.91% — видно одразу.</p>
+        <p class="tip">Банк рахує купон на номінал (зазвичай ~13-14% для ОВДП), а YTM з пікера включає капітальний приріст до номіналу — тому YTM вища. Для точних прогнозів довіряйте «Отримаю при погашенні».</p>
+      </div>
+    </details>
+
+    <details class="help-details" id="uk-calc">
+      <summary><span class="help-emoji">🧮</span> Калькулятор</summary>
+      <div class="details-body">
         <p>Розрахунок дохідності окремого вкладення. Заповніть будь-які відомі поля — решта розрахується автоматично.</p>
-        <div class="step"><div class="step-num">1</div><div class="step-text">Оберіть <strong>Тип</strong> — ОВДП, Депозит, Страхування або Інше. Залежно від типу показуються релевантні поля.</div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-text">Введіть <strong>суму вкладення</strong> та <strong>річну ставку</strong>.</div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-text">Вкажіть <strong>дати</strong> початку та завершення.</div></div>
-        <div class="step"><div class="step-num">4</div><div class="step-text">Натисніть <strong>«Розрахувати»</strong> або <span class="kbd">Enter</span>.</div></div>
-        <div class="step"><div class="step-num">5</div><div class="step-text"><strong>«Зберегти запис»</strong> — додає до історії розрахунків.</div></div>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Типи</h3>
+        <div class="step"><div class="step-num">1</div><div class="step-text">Оберіть <strong>Тип</strong></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">Введіть <strong>суму</strong> та <strong>річну ставку</strong></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">Вкажіть <strong>дати</strong></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-text"><strong>«Розрахувати»</strong> або <span class="kbd">Enter</span></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-text"><strong>«Зберегти запис»</strong> → історія розрахунків</div></div>
+
+        <h3 class="help-h3">Складний відсоток</h3>
+        <p>Чекбокс для Депозиту (автоматично для Страхування) — розкриває додаткові поля: ставка реінвестування, податок, індексація, горизонт 1-20 років. Графік порівнює простий і складний зростання.</p>
+
+        <h3 class="help-h3">Кредитний калькулятор</h3>
+        <p>Для залогінених. Ануїтет: щомісячний платіж, переплата, графік з розбивкою «тіло / відсотки».</p>
+
+        <h3 class="help-h3">Історія</h3>
+        <p>Збережені записи в таблиці — клік на рядок завантажує дані у форму.</p>
+
+        <div class="tip">Блакитні поля — авторозрахунок. Вручну введене значення стає «фіксованим», решта полів підлаштовуються.</div>
+      </div>
+    </details>
+
+    <details class="help-details" id="uk-analytics">
+      <summary><span class="help-emoji">📈</span> Аналітика</summary>
+      <div class="details-body">
+        <p>Доступна після 2+ записів у калькуляторі.</p>
         <ul style="font-size:13px;color:#94a3b8;margin:8px 0 8px 20px">
-          <li><strong>ОВДП</strong> — додаткові поля: ціна/кількість облігацій. Якщо адмін додав список — зʼявиться селектор для швидкого вибору. З 15.04.2026 автоматично враховується комісія «Дії» 0.20% (див. нижче).</li>
-          <li><strong>Депозит</strong> — чекбокс «Складний %» для реінвестування.</li>
-          <li><strong>Страхування</strong> — автоматично вмикається складний режим з індексацією.</li>
-          <li><strong>Інше</strong> — проста відсоткова ставка без специфічних полів.</li>
+          <li><strong>Бюджет</strong> — загальна сума</li>
+          <li><strong>Облігацій у портфелі</strong> — кількість позицій</li>
+          <li><strong>Горизонт</strong> — фільтр по строку</li>
         </ul>
-        <div style="background:rgba(245,158,11,0.08);border-left:3px solid #f59e0b;padding:10px 12px;border-radius:6px;margin:12px 0;font-size:13px;color:#cbd5e1">
-          <strong style="color:#f59e0b">💳 Комісія «Дії» для ОВДП (0.20%)</strong><br>
-          З <strong>15 квітня 2026</strong> при купівлі ОВДП через застосунок «Дія» діє комісія <strong>0.20% від суми операції</strong>, яка списується разом з вартістю облігацій.<br><br>
-          <strong>Як це впливає на розрахунок:</strong>
-          <ul style="margin:6px 0 0 20px">
-            <li>Сума вкладення = <code>ціна × к-сть × 1.002</code> (комісія додається автоматично)</li>
-            <li>Ефективна ціна облігації = <code>ціна + 0.20%</code> — з неї рахується дохідність</li>
-            <li>У картці облігації показується розмір комісії в гривнях та фактична ціна</li>
-            <li>Для записів з датою початку <strong>до 15.04.2026</strong> комісія не застосовується</li>
-          </ul>
-          <strong style="color:#f59e0b">Приклад:</strong> ціна 920 грн × 10 шт. = 9 200 грн + комісія 18.40 грн = <strong>9 218.40 грн</strong> фактичної суми.
-        </div>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Складний відсоток</h3>
-        <p>Чекбокс доступний для Депозиту (і авто-ON для Страхування) — зʼявляться поля:</p>
+        <p><strong>Рейтинг</strong> — за ефективною річною дохідністю. <strong>Комбінації</strong> — топ-5 розподілу бюджету. <strong>Реінвестування</strong> — стратегія «коротка → довга».</p>
+      </div>
+    </details>
+
+    <details class="help-details" id="uk-currencies">
+      <summary><span class="help-emoji">💱</span> Валюти</summary>
+      <div class="details-body">
+        <p>Два джерела курсів:</p>
+        <div class="step"><div class="step-num">1</div><div class="step-text"><strong>НБУ</strong> (офіційний) — всі валюти з пошуком</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text"><strong>Чорний ринок</strong> (@X_Change_Vinnitsa) — купівля/продаж, зміна за день, відхилення від НБУ</div></div>
+        <p>У Профілі оберіть 1-2 валюти для дашборду (USD, EUR, PLN, GBP, CHF, CAD).</p>
+      </div>
+    </details>
+
+    <details class="help-details" id="uk-dreams">
+      <summary><span class="help-emoji">🎯</span> Мрії</summary>
+      <div class="details-body">
+        <p>Фінансові цілі — квартира, авто, подорож. Потребує Google-вхід.</p>
+
+        <h3 class="help-h3">Створення мрії</h3>
+        <div class="step"><div class="step-num">1</div><div class="step-text">Оберіть <strong>іконку</strong> (🏠 🚗 ✈️ 📱 💻…), <strong>валюту</strong> (UAH/USD/EUR), назву й суму</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">Вкажіть накопичене та дату досягнення</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">Щомісячний внесок авторахується, але можна правити вручну</div></div>
+
+        <h3 class="help-h3">Валюта</h3>
+        <p>Якщо ціль не в грн — суми показуються в обраній валюті + еквівалент у $ поруч. Дашборд сумує усі мрії у грн (конвертація за курсами НБУ).</p>
+
+        <h3 class="help-h3">Внески</h3>
+        <p>Кнопка «+» на картці відкриває форму внеску. Валюта внеску може відрізнятися від валюти мрії — вона буде автоматично сконвертована. В історії відображається: <code>+44 200 грн (внесено €1 000)</code>.</p>
+        <p>Кожен запис в історії можна <strong>редагувати</strong> (✎) або <strong>видалити</strong> (✕) — сума мрії перерахується відповідно.</p>
+
+        <h3 class="help-h3">Детальна картка</h3>
+        <p>Прогрес-бар, залишок, темп, прогноз дати завершення. Якщо до цієї мрії прив'язані заощадження — показується їхня сума в грн.</p>
+
+        <div class="tip">Якщо вкажете дату завершення — додаток підкаже, чи встигаєте при поточному темпі.</div>
+      </div>
+    </details>
+
+    <details class="help-details" id="uk-savings">
+      <summary><span class="help-emoji">💰</span> Заощадження</summary>
+      <div class="details-body">
+        <p>Окрема вкладка для коштів, які <strong>не працюють</strong> — готівка в сейфі, під матрацом, на безвідсотковій картці. На відміну від Портфеля та Мрій, немає ставок, дат чи прогнозів.</p>
+
+        <h3 class="help-h3">Створення</h3>
+        <p>Назва, сума, валюта (UAH/USD/EUR), нотатки (де саме зберігається). Плюс опціонально — <strong>прив'язка до мрії</strong>.</p>
+
+        <h3 class="help-h3">Прив'язка до мрії</h3>
+        <p>У формі заощадження є селектор «Закріплено за мрією». Можете залишити «🆓 Вільні» або обрати конкретну мрію. У списку відображається бейдж: <code>🆓 Вільні</code> або <code>🚗 Автомобіль</code>. У картці мрії видно, скільки заощаджень за нею закріплено.</p>
+        <p>При видаленні мрії прив'язані заощадження не видаляються — просто стають «Вільними».</p>
+
+        <h3 class="help-h3">Дашборд</h3>
+        <p>Загальна сума в грн (з $ еквівалентом), розбивка <strong>«Вільні / по мріях»</strong> та окремо по валютах.</p>
+      </div>
+    </details>
+
+    <div class="help-section-group">Сервіси</div>
+
+    <details class="help-details" id="uk-search">
+      <summary><span class="help-emoji">🔍</span> Глобальний пошук</summary>
+      <div class="details-body">
+        <p>Поле пошуку зверху шукає <strong>по всьому додатку</strong>:</p>
         <ul style="font-size:13px;color:#94a3b8;margin:8px 0 8px 20px">
-          <li><strong>Ставка реінвестування</strong> — річна ставка (дефолт 10%)</li>
-          <li><strong>Податок від доходу</strong> — % податку на прибуток</li>
-          <li><strong>Індексація</strong> — щорічна зміна ставки/внеску</li>
-          <li><strong>Горизонт</strong> — 1-20 років</li>
+          <li>💼 Вкладення портфеля (назва, банк, нотатки)</li>
+          <li>🎯 Мрії (назва, нотатки)</li>
+          <li>💰 Заощадження (назва, нотатки) — плюс показує, за якою мрією закріплено</li>
+          <li>📊 Історія розрахунків</li>
+          <li>💱 Курси НБУ</li>
+          <li>🧭 Швидка навігація до розділів (спробуйте «валюти», «мрії», «кредит»)</li>
         </ul>
-        <p>Реінвестування відбувається раз на рік. Графік та таблиця порівнюють простий і складний відсоток.</p>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Кредитний калькулятор</h3>
-        <p>Доступний для залогінених. Розраховує ануїтетний платіж: щомісячний платіж, загальну переплату, графік погашення з розбивкою на тіло та відсотки.</p>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Історія розрахунків</h3>
-        <p>Збережені записи відображаються в таблиці. Клікніть на рядок — дані завантажаться у форму для повторного розрахунку.</p>
-        <div class="tip">Поля з блакитним текстом — авторозрахунки. Вручну введене значення стає «фіксованим», решта полів підлаштовуються.</div>
+        <p>Результати відкривають детальну картку одним кліком. Мінімум — 2 символи.</p>
       </div>
+    </details>
 
-      <div class="section">
-        <h2><span class="icon icon-yellow">4</span> Формули розрахунку</h2>
-        <p><strong>Дохідність за період:</strong></p>
-        <div class="formula">Дохідність = (Прибуток / Вкладено) x 100%</div>
-        <p><strong>Проста річна дохідність:</strong></p>
-        <div class="formula">Річна = Дохідність за період / Днів x 365.25</div>
-        <p><strong>Складний відсоток (щорічне реінвестування):</strong></p>
-        <div class="formula">Сума = Вклад x (1 + Ставка) ^ Кількість років</div>
-        <p><strong>Ануїтетний платіж (кредит):</strong></p>
-        <div class="formula">M = P x r x (1+r)^n / ((1+r)^n − 1)</div>
-        <div class="tip">У «Калькуляторі» — проста річна дохідність. У «Аналітиці» — ефективна річна. Складний відсоток враховує щорічне реінвестування прибутку.</div>
-      </div>
-    </div>
-
-    <div>
-      <div class="section">
-        <h2><span class="icon icon-green">5</span> Аналітика</h2>
-        <p>Доступна після збереження мінімум 2 записів у калькуляторі. Аналізує портфель та пропонує оптимальні варіанти.</p>
-        <div class="step"><div class="step-num">$</div><div class="step-text"><strong>Бюджет</strong> — загальна сума для вкладення.</div></div>
-        <div class="step"><div class="step-num">#</div><div class="step-text"><strong>Облігацій у портфелі</strong> — скільки різних позицій.</div></div>
-        <div class="step"><div class="step-num">T</div><div class="step-text"><strong>Горизонт</strong> — фільтр по строку.</div></div>
-        <p style="margin-top:12px"><strong>Рейтинг</strong> — таблиця за ефективною річною дохідністю. <strong>Комбінації</strong> — топ-5 варіантів розподілу бюджету. <strong>Реінвестування</strong> — стратегія коротка → довга.</p>
-      </div>
-
-      <div class="section">
-        <h2><span class="icon icon-blue">6</span> Валюти</h2>
-        <p>Курси валют з двох джерел:</p>
-        <div class="step"><div class="step-num">1</div><div class="step-text"><strong>НБУ (офіційний курс)</strong> — Національний банк України. Усі валюти з пошуком.</div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-text"><strong>Чорний ринок (@X_Change_Vinnitsa)</strong> — купівля/продаж, зміна за день у %, відхилення від НБУ.</div></div>
-        <p style="margin-top:12px">Оберіть 1-2 валюти для дашборду (Профіль → Валюти на дашборді). Доступні: USD, EUR, PLN, GBP, CHF, CAD.</p>
-      </div>
-
-      <div class="section">
-        <h2><span class="icon icon-yellow">7</span> Мрії</h2>
-        <p>Окрема вкладка для фінансових цілей — квартира, авто, подорож тощо. Потрібен вхід через Google (дані синхронізуються між пристроями).</p>
-        <div class="step"><div class="step-num">1</div><div class="step-text">Натисніть <strong>«+ Нова мрія»</strong>, оберіть <strong>іконку</strong> (🏠 🚗 ✈️ 📱 💻…), <strong>валюту</strong> (UAH / USD / EUR), введіть назву і бажану суму.</div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-text">Вкажіть <strong>скільки вже накопичено</strong> та дату, до якої хочете зібрати.</div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-text">Щомісячний внесок <strong>розраховується автоматично</strong>, але його можна задати вручну.</div></div>
-        <p style="margin-top:12px"><strong>Валюта:</strong> якщо ціль не в грн — суми показуються в обраній валюті, а поруч дрібним шрифтом <strong>≈ $</strong> (еквівалент в доларах за курсом НБУ). Дашборд сумує мрії в грн (різні валюти автоматично конвертуються).</p>
-        <p style="margin-top:12px"><strong>Дашборд:</strong> загальний прогрес (% зібраного від загальної суми всіх мрій) та кругова діаграма з розподілом по цілях.</p>
-        <p><strong>Деталі мрії:</strong> клік на картку — прогрес-бар, залишок, темп накопичення, прогноз дати завершення на основі щомісячних внесків.</p>
-        <div class="tip">Якщо вкажете дату завершення, додаток підкаже, чи встигаєте при поточному темпі, і запропонує скоригувати внесок.</div>
-      </div>
-
-      <div class="section">
-        <h2><span class="icon icon-green">7.5</span> Заощадження</h2>
-        <p>Окрема вкладка для коштів, які просто відкладені та не приносять прибутку — готівка в сейфі, під матрацом, на картці без відсотків тощо. На відміну від Портфеля (активні вкладення) та Мрій (цільове накопичення), тут немає ставок, дат чи прогнозів.</p>
-        <div class="step"><div class="step-num">1</div><div class="step-text">Натисніть <strong>«+ Нове заощадження»</strong>, оберіть валюту (UAH / USD / EUR) та введіть суму й назву.</div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-text">У полі <strong>Нотатки</strong> можна записати, де саме лежать кошти.</div></div>
-        <p style="margin-top:12px"><strong>Дашборд:</strong> загальна сума в гривнях (з еквівалентом у $), плюс розбивка по валютах — видно скільки всього вкладено окремо в UAH, USD, EUR.</p>
-      </div>
-
-      <div class="section">
-        <h2><span class="icon icon-green">8</span> Сповіщення та Telegram-бот</h2>
-        <p>В Профілі → Сповіщення можна обрати канали:</p>
-        <ul style="font-size:13px;color:#94a3b8;margin:8px 0 12px 20px">
-          <li><strong>Email</strong> — листи на пошту Google акаунту</li>
+    <details class="help-details" id="uk-telegram">
+      <summary><span class="help-emoji">🤖</span> Telegram-бот та сповіщення</summary>
+      <div class="details-body">
+        <p>Профіль → Сповіщення. Канали:</p>
+        <ul style="font-size:13px;color:#94a3b8;margin:8px 0 8px 20px">
+          <li><strong>Email</strong> — листи на Google-пошту</li>
           <li><strong>Telegram-сповіщення</strong> — нагадування про вкладення</li>
-          <li><strong>Telegram-бот</strong> — інтерактивні команди для перегляду портфеля</li>
+          <li><strong>Бот</strong> — інтерактивні команди</li>
         </ul>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:12px 0 8px">Команди бота @my_invest_ua_bot</h3>
-        <p><code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#60a5fa">/balance</code> — баланс: вкладено, зароблено, дохід/день</p>
-        <p><code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#60a5fa">/portfolio</code> — список вкладень</p>
-        <p><code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#60a5fa">/expiring</code> — що завершується скоро</p>
-        <p><code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#60a5fa">/rates</code> — курси НБУ + чорний ринок</p>
-        <p><code style="background:#0f172a;padding:2px 6px;border-radius:4px;color:#60a5fa">/help</code> — список команд</p>
-        <h3 style="font-size:14px;color:#f1f5f9;margin:16px 0 8px">Підключення Telegram (в один клік)</h3>
-        <p>Профіль → Сповіщення → увімкніть <strong>Telegram-сповіщення</strong> → натисніть <strong>«🔗 Підключити Telegram»</strong> → у Telegram натисніть <strong>Start</strong>. Ваш акаунт прив'яжеться автоматично протягом 10 секунд — копіювати Chat ID не потрібно.</p>
-        <p class="tip">Якщо автопідключення не спрацювало, у блоці є <em>«Ввести Chat ID вручну»</em> — відкриваєте бот, копіюєте Chat ID з повідомлення, вставляєте і зберігаєте.</p>
-      </div>
 
-      <div class="section">
-        <h2><span class="icon icon-purple">9</span> Імпорт та експорт</h2>
-        <p><strong>Імпорт з Excel:</strong> натисніть «Імпорт з Excel» у калькуляторі.</p>
-        <p><strong>Експорт у Excel:</strong> натисніть «Експорт у Excel» під таблицею історії.</p>
-      </div>
+        <h3 class="help-h3">Команди @my_invest_ua_bot</h3>
+        <p><code>/balance</code> · <code>/portfolio</code> · <code>/expiring</code> · <code>/rates</code> · <code>/help</code></p>
 
-      <div class="section">
-        <h2><span class="icon icon-blue">10</span> Глобальний пошук</h2>
-        <p>Поле пошуку зверху сторінки шукає по всьому додатку: вкладення портфеля, історія розрахунків, валюти, мрії та навігація по розділах.</p>
+        <h3 class="help-h3">Підключення в один клік</h3>
+        <p>Профіль → Сповіщення → увімкніть Telegram → «🔗 Підключити Telegram» → у боті <strong>Start</strong>. Акаунт прив'яжеться протягом 10 секунд.</p>
+        <p class="tip">Є fallback — ручне введення Chat ID, якщо автопідключення не спрацювало.</p>
       </div>
+    </details>
 
-      <div class="section">
-        <h2><span class="icon icon-green">11</span> Встановлення та синхронізація</h2>
-        <p><strong>Хмарна синхронізація:</strong> увійдіть через Google — дані доступні з будь-якого пристрою.</p>
+    <details class="help-details" id="uk-export">
+      <summary><span class="help-emoji">📤</span> Імпорт та експорт</summary>
+      <div class="details-body">
+        <p><strong>Excel:</strong> «Імпорт з Excel» у калькуляторі, «Експорт у Excel» під історією.</p>
+        <p><strong>Всі дані (JSON):</strong> Профіль → Дані та конфіденційність → «Експорт моїх даних».</p>
+      </div>
+    </details>
+
+    <details class="help-details" id="uk-install">
+      <summary><span class="help-emoji">📲</span> Встановлення та синхронізація</summary>
+      <div class="details-body">
+        <p><strong>Хмара:</strong> вхід через Google — дані доступні на всіх пристроях.</p>
         <p><strong>Android/Chrome:</strong> меню → «Встановити додаток».</p>
         <p><strong>iPhone/Safari:</strong> «Поділитися» → «На початковий екран».</p>
-        <p><strong>Desktop:</strong> іконка встановлення в адресному рядку Chrome.</p>
-        <div class="tip">Без входу дані зберігаються локально. Google потрібен тільки для синхронізації між пристроями.</div>
+        <p><strong>Desktop:</strong> іконка встановлення у адресному рядку Chrome.</p>
+        <div class="tip">Без входу — дані зберігаються локально. Google тільки для синхронізації.</div>
       </div>
+    </details>
 
-      <div class="section">
-        <h2><span class="icon icon-purple">12</span> Безпека</h2>
-        <p><strong>Content Security Policy (CSP)</strong> — обмежує джерела скриптів, стилів та з'єднань тільки до довірених доменів.</p>
-        <p><strong>PIN-код</strong> — зберігається як хеш SHA-256, не у відкритому вигляді.</p>
-        <p><strong>XSS-захист</strong> — всі дані користувача екрануються перед вставкою в DOM.</p>
-        <p><strong>Firebase Security Rules</strong> — кожен користувач має доступ тільки до своїх даних.</p>
-        <p><strong>Telegram Bot Token</strong> — зберігається тільки на сервері, не в клієнтському коді.</p>
-      </div>
+    <div class="help-section-group">Технічне</div>
 
-      <div class="section">
-        <h2><span class="icon icon-blue">13</span> Дані та конфіденційність</h2>
-        <p><strong>Що зберігається:</strong> профіль (ім'я, email, телефон), портфель вкладень, історія розрахунків, налаштування.</p>
-        <p><strong>Де:</strong> локально (IndexedDB) та у хмарі (Firebase Firestore) при вході через Google.</p>
-        <p><strong>Що НЕ зберігається:</strong> паролі, платіжні дані, IP-адреси.</p>
-        <p><strong>Експорт даних:</strong> Профіль → Дані та конфіденційність → «Експорт моїх даних» (JSON).</p>
-        <p><strong>Видалення:</strong> Профіль → «Видалити всі дані» — повністю видаляє з пристрою та хмари.</p>
+    <details class="help-details" id="uk-formulas">
+      <summary><span class="help-emoji">🧾</span> Формули розрахунку</summary>
+      <div class="details-body">
+        <p><strong>Дохідність за період:</strong></p>
+        <div class="formula">Дохідність = (Прибуток / Вкладено) × 100%</div>
+        <p><strong>Проста річна дохідність:</strong></p>
+        <div class="formula">Річна = Дохідність за період / Днів × 365.25</div>
+        <p><strong>Складний відсоток:</strong></p>
+        <div class="formula">Сума = Вклад × (1 + Ставка)^Років</div>
+        <p><strong>Ануїтетний платіж (кредит):</strong></p>
+        <div class="formula">M = P × r × (1+r)^n / ((1+r)^n − 1)</div>
+        <p><strong>Реальна ставка з «Отримаю при погашенні»:</strong></p>
+        <div class="formula">Ставка = (Отримаю − Вкладено) / Вкладено × 365 / Днів</div>
+        <div class="tip">У «Калькуляторі» — проста річна. У «Аналітиці» — ефективна річна. Складний відсоток — щорічне реінвестування.</div>
       </div>
-    </div>
+    </details>
+
+    <details class="help-details" id="uk-privacy">
+      <summary><span class="help-emoji">🔒</span> Дані, конфіденційність, безпека</summary>
+      <div class="details-body">
+        <h3 class="help-h3">Що зберігається</h3>
+        <p>Профіль (ім'я, email, телефон), портфель, мрії, заощадження, історія розрахунків, налаштування.</p>
+
+        <h3 class="help-h3">Де</h3>
+        <p>Локально (IndexedDB) + у хмарі (Firebase Firestore) при вході через Google.</p>
+
+        <h3 class="help-h3">НЕ зберігається</h3>
+        <p>Паролі, платіжні дані, IP-адреси.</p>
+
+        <h3 class="help-h3">Експорт / видалення</h3>
+        <p>Профіль → Дані та конфіденційність → «Експорт моїх даних» (JSON) / «Видалити всі дані».</p>
+
+        <h3 class="help-h3">Безпека</h3>
+        <ul style="font-size:13px;color:#94a3b8;margin:8px 0 8px 20px">
+          <li><strong>CSP</strong> — обмеження джерел скриптів та з'єднань</li>
+          <li><strong>PIN</strong> — хеш SHA-256, не відкритий вигляд</li>
+          <li><strong>XSS</strong> — санітізація DOMPurify перед вставкою</li>
+          <li><strong>Firestore Rules</strong> — доступ тільки до власних даних</li>
+          <li><strong>Bot Token</strong> — тільки на сервері, ніколи в клієнтському коді</li>
+        </ul>
+      </div>
+    </details>
   </div>
 
   <!-- ===== ENGLISH ===== -->
-  <div id="help-en" class="help-columns" style="display:none">
-    <div>
-      <div class="section">
-        <h2><span class="icon icon-blue">1</span> What is this app?</h2>
-        <p>Invest UA is a PWA for managing your portfolio: government bonds (OVDP), deposits, and other financial instruments. Works offline, syncs via Google.</p>
+  <div id="help-en" style="display:none">
+    <nav class="help-toc" aria-label="Help sections">
+      <a href="#en-overview">Overview</a>
+      <a href="#en-portfolio">Portfolio</a>
+      <a href="#en-ovdp">OVDP</a>
+      <a href="#en-calc">Calculator</a>
+      <a href="#en-analytics">Analytics</a>
+      <a href="#en-currencies">Currencies</a>
+      <a href="#en-dreams">Dreams</a>
+      <a href="#en-savings">Savings</a>
+      <a href="#en-search">Search</a>
+      <a href="#en-telegram">Telegram</a>
+      <a href="#en-export">Import/Export</a>
+      <a href="#en-install">Install</a>
+      <a href="#en-formulas">Formulas</a>
+      <a href="#en-privacy">Privacy</a>
+    </nav>
+
+    <div class="help-section-group">Main</div>
+
+    <details class="help-details" id="en-overview" open>
+      <summary><span class="help-emoji">📱</span> What is this app?</summary>
+      <div class="details-body">
+        <p>Invest UA is a PWA for personal finance tracking: government bonds, deposits, insurance, cash, savings goals. Works offline, syncs via Google across devices.</p>
         <div class="feature-grid">
-          <div class="feature">
-            <div class="feature-title">Portfolio</div>
-            <div class="feature-desc">Dashboard with portfolio value, daily income, and detailed view per entry</div>
-          </div>
-          <div class="feature">
-            <div class="feature-title">Calculator</div>
-            <div class="feature-desc">Profit calculation, returns, and compound interest with charts</div>
-          </div>
-          <div class="feature">
-            <div class="feature-title">Analytics</div>
-            <div class="feature-desc">Rankings, combinations, and reinvestment strategies</div>
-          </div>
-          <div class="feature">
-            <div class="feature-title">Currencies</div>
-            <div class="feature-desc">NBU official rates and cash rates (black market) in real time</div>
-          </div>
-          <div class="feature">
-            <div class="feature-title">Dreams</div>
-            <div class="feature-desc">Financial goals with auto-projected completion date and monthly contribution</div>
-          </div>
-          <div class="feature">
-            <div class="feature-title">Telegram bot</div>
-            <div class="feature-desc">Balance, portfolio list, exchange rates and notifications in Telegram</div>
-          </div>
-          <div class="feature">
-            <div class="feature-title">Cloud sync</div>
-            <div class="feature-desc">Sign in with Google — access data from any device</div>
-          </div>
+          <div class="feature"><div class="feature-title">💼 Portfolio</div><div class="feature-desc">Active investments with yield calculations</div></div>
+          <div class="feature"><div class="feature-title">🎯 Dreams</div><div class="feature-desc">Savings goals with icons, currency, deposits</div></div>
+          <div class="feature"><div class="feature-title">💰 Savings</div><div class="feature-desc">Idle money not earning interest</div></div>
+          <div class="feature"><div class="feature-title">🧮 Calculator</div><div class="feature-desc">Yield, compound interest, credit</div></div>
+          <div class="feature"><div class="feature-title">📈 Analytics</div><div class="feature-desc">Ranking, combinations, reinvestment</div></div>
+          <div class="feature"><div class="feature-title">💱 Currencies</div><div class="feature-desc">NBU + cash market rates</div></div>
+          <div class="feature"><div class="feature-title">🤖 Telegram bot</div><div class="feature-desc">Balance, portfolio, rates in chat</div></div>
+          <div class="feature"><div class="feature-title">☁️ Cloud sync</div><div class="feature-desc">Google login to sync devices</div></div>
         </div>
       </div>
+    </details>
 
-      <div class="section">
-        <h2><span class="icon icon-blue">2</span> Portfolio</h2>
-        <p>Main page of the app. Shows an overview of all your entries.</p>
-        <p><strong>Add entry:</strong> "+ New record" opens the form. Pick a <strong>Type</strong> — fields shown depend on it:</p>
-        <ul style="font-size:13px;color:#94a3b8;margin:8px 0 8px 20px">
-          <li><strong>Gov. bonds (OVDP)</strong> — price and count fields. If admin added a bond list, a picker appears: select a bond → name/dates auto-fill; enter price from Diia → yield auto-computes.</li>
-          <li><strong>Deposit</strong> — amount, rate, tax; "Compound %" checkbox for reinvestment.</li>
-          <li><strong>Savings insurance</strong> — "Indexation" field for yearly premium increase.</li>
-          <li><strong>Other</strong> — basic fields, no special calculations.</li>
-        </ul>
-        <p><strong>Dashboard:</strong> total value, earned so far, daily income, active entries count. Tap any entry for a detailed view with a progress bar (elapsed/remaining days, %), earnings and tax info. For entries ≤2 years — a monthly accrual table; longer — yearly; insurance — premium schedule with indexation.</p>
-        <p><strong>Alerts:</strong> banners warn when an entry is about to expire. Configure in Profile (days before reminder).</p>
-        <p><strong>Unsaved edits protection:</strong> if you start filling a form (portfolio, dream, calculator, profile) and switch tab, close the form or reload — the app warns about unsaved changes and offers to restore the draft next time you open the form.</p>
-      </div>
+    <div class="help-section-group">App sections</div>
 
-      <div class="section">
-        <h2><span class="icon icon-blue">3</span> Calculator</h2>
-        <p>Calculate returns for a single entry. Fill in any known fields — the rest is auto-calculated.</p>
-        <div class="step"><div class="step-num">1</div><div class="step-text">Pick a <strong>Type</strong> — OVDP, Deposit, Insurance, or Other. Fields adapt to the type.</div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-text">Enter <strong>amount</strong> and <strong>annual rate</strong>.</div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-text">Set <strong>start and end dates</strong>.</div></div>
-        <div class="step"><div class="step-num">4</div><div class="step-text">Click <strong>"Calculate"</strong> or press <span class="kbd">Enter</span>.</div></div>
-        <p style="margin-top:12px"><strong>Types:</strong> OVDP shows bond price/count (and a bond picker if admin provided a list). Deposit shows the compound checkbox. Insurance auto-enables compound mode with indexation. Other keeps a simple-interest form.</p>
-        <p><strong>Compound interest:</strong> yearly reinvestment with custom rate, tax, indexation, and 1-20 year horizon. Chart compares simple vs compound growth.</p>
-        <p><strong>Credit calculator:</strong> available for logged-in users. Annuity payments, total overpayment, monthly chart with principal/interest breakdown.</p>
-        <p><strong>History:</strong> saved records in a table. Click a row to reload data into the form.</p>
+    <details class="help-details" id="en-portfolio">
+      <summary><span class="help-emoji">💼</span> Portfolio</summary>
+      <div class="details-body">
+        <p>Home tab — active yield-earning investments.</p>
+        <p><strong>Add:</strong> "+ New item" → pick <strong>Type</strong> (OVDP / Deposit / Insurance / Cash / Other). Form fields adapt. Cash has a UAH/USD/EUR currency selector.</p>
+        <p><strong>Dashboard:</strong> total value, total earned, daily income, active count, per-item daily breakdown. Cash in foreign currency is auto-converted to UAH for totals.</p>
+        <p><strong>Detail view:</strong> progress bar, earned so far, rate, tax, monthly or yearly accrual table.</p>
+        <p><strong>Expiry alerts:</strong> banners for deadlines. Configurable in Profile.</p>
+        <p><strong>Unsaved drafts protection:</strong> warns when switching tabs with dirty forms; offers to restore.</p>
       </div>
+    </details>
 
-      <div class="section">
-        <h2><span class="icon icon-yellow">4</span> Formulas</h2>
-        <p><strong>Period return:</strong></p>
-        <div class="formula">Return = (Profit / Invested) x 100%</div>
-        <p><strong>Simple annual return:</strong></p>
-        <div class="formula">Annual = Period return / Days x 365.25</div>
-        <p><strong>Compound interest (yearly):</strong></p>
-        <div class="formula">Amount = Principal x (1 + Rate) ^ Years</div>
-        <p><strong>Annuity payment (credit):</strong></p>
-        <div class="formula">M = P x r x (1+r)^n / ((1+r)^n − 1)</div>
+    <details class="help-details" id="en-ovdp">
+      <summary><span class="help-emoji">🏛</span> OVDP: picker, Diia fee, real yield</summary>
+      <div class="details-body">
+        <p><strong>Bond picker:</strong> if admin added a bond list, pick one — name and dates auto-fill. Enter the price from Diia — YTM and "Amount at maturity" are computed automatically.</p>
+        <div class="callout">
+          <strong>💳 Diia 0.20% fee</strong><br>
+          From Apr 15, 2026, OVDP purchases via Diia carry a 0.20% fee charged with the bond cost. For entries with start date ≥ 2026-04-15 the app adds it automatically (<code>price × count × 1.002</code>) and includes it in effective yield.
+        </div>
+        <p><strong>"Amount at maturity":</strong> exact bank-promised payout. If set, expected profit = <code>received − invested</code>, daily income = <code>profit / days</code> — matches bank numbers.</p>
+        <p><strong>Real rate vs entered:</strong> below the rate input, the implied annual yield is shown. If it differs from entered by > 0.05%, the gap is flagged in amber.</p>
       </div>
-    </div>
+    </details>
 
-    <div>
-      <div class="section">
-        <h2><span class="icon icon-green">5</span> Analytics</h2>
-        <p>Available after saving at least 2 records. Rankings, top-5 combinations, and reinvestment strategies.</p>
+    <details class="help-details" id="en-calc">
+      <summary><span class="help-emoji">🧮</span> Calculator</summary>
+      <div class="details-body">
+        <p>Fill any known fields — the rest auto-computes. Compound interest toggle for Deposit, credit calculator for logged-in users, savable history.</p>
       </div>
+    </details>
 
-      <div class="section">
-        <h2><span class="icon icon-blue">6</span> Currencies</h2>
-        <p><strong>NBU rates:</strong> official rates with search. <strong>Black market (@X_Change_Vinnitsa):</strong> buy/sell, daily change %, NBU deviation.</p>
-        <p>Select 1-2 currencies for dashboard: USD, EUR, PLN, GBP, CHF, CAD.</p>
+    <details class="help-details" id="en-analytics">
+      <summary><span class="help-emoji">📈</span> Analytics</summary>
+      <div class="details-body">
+        <p>Requires 2+ saved records. Rankings, top-5 combinations, reinvestment strategies.</p>
       </div>
+    </details>
 
-      <div class="section">
-        <h2><span class="icon icon-yellow">7</span> Dreams</h2>
-        <p>A dedicated tab for financial goals — apartment, car, travel, etc. Requires Google sign-in (goals sync across devices).</p>
-        <p><strong>Create a goal:</strong> tap "+ New dream", pick an <strong>icon</strong> (🏠 🚗 ✈️ 📱 💻…) and <strong>currency</strong> (UAH / USD / EUR), enter name, target amount, how much you've already saved, and a target date. Monthly contribution is auto-computed but can be edited.</p>
-        <p><strong>Currency:</strong> non-UAH goals show amounts in the chosen currency with a small <strong>≈ $</strong> USD equivalent beside them (NBU rate). The dashboard aggregates all goals in UAH (mixed currencies are auto-converted).</p>
-        <p><strong>Dashboard:</strong> overall progress (% of total across all dreams) and a pie chart splitting goals by weight.</p>
-        <p><strong>Detail view:</strong> click a dream card to see progress bar, remaining amount, current pace, and the projected completion date based on monthly contributions.</p>
+    <details class="help-details" id="en-currencies">
+      <summary><span class="help-emoji">💱</span> Currencies</summary>
+      <div class="details-body">
+        <p>NBU official rates + cash market (@X_Change_Vinnitsa): buy/sell, daily change, NBU deviation. Pick 1-2 currencies for the dashboard in Profile.</p>
       </div>
+    </details>
 
-      <div class="section">
-        <h2><span class="icon icon-green">7.5</span> Savings</h2>
-        <p>Dedicated tab for idle money that isn't invested and doesn't earn a return — safe-deposit cash, under-the-mattress, zero-rate cards. No dates, no rates, no forecasts — just tracking.</p>
-        <p><strong>Create entry:</strong> name, amount, currency (UAH / USD / EUR), and a note describing where it's stored.</p>
-        <p><strong>Dashboard:</strong> total in UAH (with $ equivalent) plus per-currency breakdown.</p>
+    <details class="help-details" id="en-dreams">
+      <summary><span class="help-emoji">🎯</span> Dreams</summary>
+      <div class="details-body">
+        <p>Savings goals. Needs Google login.</p>
+        <p><strong>Create:</strong> pick icon (🏠 🚗 ✈️ 📱 💻…) and currency (UAH/USD/EUR), enter name, target, and deadline. Monthly contribution auto-calculated.</p>
+        <p><strong>Non-UAH goals</strong> show amounts in chosen currency with a small USD equivalent. Dashboard aggregates all dreams in UAH.</p>
+        <p><strong>Deposits:</strong> "+" button on the card opens a deposit form with its own currency selector — foreign-currency deposits are converted automatically. History shows <code>+44 200 UAH (deposited €1 000)</code>. Each entry has ✎ edit / ✕ delete controls — dream totals are adjusted accordingly.</p>
+        <p><strong>Linked savings:</strong> if you have savings earmarked for this dream, the detail view shows their count and UAH sum.</p>
       </div>
+    </details>
 
-      <div class="section">
-        <h2><span class="icon icon-green">8</span> Telegram bot</h2>
-        <p>Bot <strong>@my_invest_ua_bot</strong> — /balance, /portfolio, /expiring, /rates, /help</p>
-        <p><strong>Setup (one-click):</strong> Profile → Notifications → enable <strong>Telegram</strong> → tap <strong>"🔗 Connect Telegram"</strong> → press <strong>Start</strong> in the bot. Your account links automatically within 10 seconds — no Chat ID copy needed. Manual Chat ID entry is still available as a fallback.</p>
+    <details class="help-details" id="en-savings">
+      <summary><span class="help-emoji">💰</span> Savings</summary>
+      <div class="details-body">
+        <p>Dedicated tab for idle money that isn't invested: safe-deposit cash, under-the-mattress, zero-rate cards. No dates, no rates, just tracking.</p>
+        <p><strong>Entry:</strong> name, amount, currency, notes, and optional <strong>link to a dream</strong>.</p>
+        <p><strong>Dream link:</strong> each entry can be earmarked for a specific dream (badge on the row) or left as <code>🆓 Free</code>. Dashboard splits totals as "Free / per-dream". Deleting a dream unlinks its savings instead of deleting them.</p>
       </div>
+    </details>
 
-      <div class="section">
-        <h2><span class="icon icon-purple">9</span> Import & Export</h2>
-        <p><strong>Import:</strong> "Import from Excel" in Calculator. <strong>Export:</strong> "Export to Excel" below history. <strong>Data export:</strong> Profile → "Export my data" (JSON).</p>
-      </div>
+    <div class="help-section-group">Services</div>
 
-      <div class="section">
-        <h2><span class="icon icon-blue">10</span> Global search</h2>
-        <p>Search bar at the top — portfolio, history, currencies, dreams, navigation.</p>
+    <details class="help-details" id="en-search">
+      <summary><span class="help-emoji">🔍</span> Global search</summary>
+      <div class="details-body">
+        <p>Top-bar search across: portfolio, dreams, savings, calculation history, currencies, and navigation. Min 2 characters.</p>
       </div>
+    </details>
 
-      <div class="section">
-        <h2><span class="icon icon-green">11</span> Installation & sync</h2>
-        <p>Sign in with Google to sync. Install as native app from browser menu. Works offline.</p>
+    <details class="help-details" id="en-telegram">
+      <summary><span class="help-emoji">🤖</span> Telegram bot & notifications</summary>
+      <div class="details-body">
+        <p>Bot <strong>@my_invest_ua_bot</strong> — <code>/balance</code> <code>/portfolio</code> <code>/expiring</code> <code>/rates</code> <code>/help</code>.</p>
+        <p><strong>Setup:</strong> Profile → Notifications → enable Telegram → "🔗 Connect Telegram" → press <strong>Start</strong> in bot. Auto-links in ~10s. Manual Chat ID entry as fallback.</p>
       </div>
+    </details>
 
-      <div class="section">
-        <h2><span class="icon icon-purple">12</span> Security</h2>
-        <p>CSP headers, PIN stored as SHA-256 hash, XSS sanitization, Firebase Security Rules, bot token server-side only.</p>
+    <details class="help-details" id="en-export">
+      <summary><span class="help-emoji">📤</span> Import & Export</summary>
+      <div class="details-body">
+        <p><strong>Excel:</strong> "Import from Excel" in Calculator, "Export to Excel" below history. <strong>All data (JSON):</strong> Profile → Data & Privacy → "Export my data".</p>
       </div>
+    </details>
 
-      <div class="section">
-        <h2><span class="icon icon-blue">13</span> Data & Privacy</h2>
-        <p>Profile → Data & Privacy: see what's stored, export all data (JSON), or delete everything permanently.</p>
+    <details class="help-details" id="en-install">
+      <summary><span class="help-emoji">📲</span> Install & sync</summary>
+      <div class="details-body">
+        <p>Sign in with Google to sync. Install as native PWA from browser menu. Works offline.</p>
       </div>
-    </div>
+    </details>
+
+    <div class="help-section-group">Reference</div>
+
+    <details class="help-details" id="en-formulas">
+      <summary><span class="help-emoji">🧾</span> Formulas</summary>
+      <div class="details-body">
+        <p><strong>Period return:</strong></p><div class="formula">Return = (Profit / Invested) × 100%</div>
+        <p><strong>Simple annual:</strong></p><div class="formula">Annual = Period return / Days × 365.25</div>
+        <p><strong>Compound:</strong></p><div class="formula">Amount = Principal × (1 + Rate)^Years</div>
+        <p><strong>Annuity:</strong></p><div class="formula">M = P × r × (1+r)^n / ((1+r)^n − 1)</div>
+        <p><strong>Real rate from maturity payout:</strong></p><div class="formula">Rate = (Payout − Invested) / Invested × 365 / Days</div>
+      </div>
+    </details>
+
+    <details class="help-details" id="en-privacy">
+      <summary><span class="help-emoji">🔒</span> Data, privacy, security</summary>
+      <div class="details-body">
+        <p>Stored: profile, portfolio, dreams, savings, calc history. Location: IndexedDB + Firestore on Google login. Not stored: passwords, payment data, IPs.</p>
+        <p>Security: CSP headers, PIN stored as SHA-256 hash, XSS sanitization via DOMPurify, per-user Firestore Rules, bot token server-side only.</p>
+      </div>
+    </details>
   </div>
 
   <p style="text-align:center;color:#475569;font-size:12px;margin-top:20px">
-    Invest UA v4.0
+    Invest UA
   </p>
 </div>
 
@@ -391,9 +548,31 @@
   document.getElementById('help-uk').style.display = lang === 'uk' ? '' : 'none';
   document.getElementById('help-en').style.display = lang === 'en' ? '' : 'none';
   document.getElementById('helpTitle').textContent = lang === 'en' ? 'Help' : 'Довідка';
-  document.getElementById('helpSubtitle').textContent = lang === 'en' ? 'Everything you need to know about Invest UA' : 'Все, що потрібно знати про Invest UA';
+  document.getElementById('helpSubtitle').textContent = lang === 'en' ? 'Expand a section to see details' : 'Розгорніть секцію, щоб прочитати деталі';
   document.getElementById('helpBack').textContent = lang === 'en' ? '← Back' : '← Назад';
   document.title = lang === 'en' ? 'Help — Invest UA' : 'Довідка — Invest UA';
+
+  // TOC links: open the target <details> if it's collapsed, then smooth-scroll.
+  document.querySelectorAll('.help-toc a').forEach(link => {
+    link.addEventListener('click', e => {
+      const id = link.getAttribute('href');
+      if (!id || !id.startsWith('#')) return;
+      const target = document.querySelector(id);
+      if (target && target.tagName === 'DETAILS') {
+        e.preventDefault();
+        target.open = true;
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  // Apply theme (like the main app does) so dark/light match user preference.
+  const savedTheme = localStorage.getItem('appTheme') || 'dark';
+  const effective = savedTheme === 'auto'
+    ? ((window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark')
+    : savedTheme;
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  document.documentElement.setAttribute('data-theme-effective', effective);
 </script>
 
 </body>

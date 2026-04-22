@@ -45,89 +45,111 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ============ GLOBAL SEARCH ============
+// Single entry point with debounce; indexes portfolio, dream, savings,
+// calc history, currencies and navigation shortcuts. Each source caps its
+// own contribution so a single query can't flood the dropdown.
+let _globalSearchDebounceTimer = null;
 function onGlobalSearch() {
   const q = document.getElementById('globalSearchInput').value.toLowerCase().trim();
-  const resultsEl = document.getElementById('globalSearchResults');
   const clearBtn = document.getElementById('globalSearchClear');
-
   clearBtn.style.display = q ? 'block' : 'none';
+  if (_globalSearchDebounceTimer) clearTimeout(_globalSearchDebounceTimer);
+  _globalSearchDebounceTimer = setTimeout(_runGlobalSearch, 120);
+}
 
-  if (!q || q.length < 2) {
-    resultsEl.style.display = 'none';
-    return;
-  }
+function _runGlobalSearch() {
+  const q = document.getElementById('globalSearchInput').value.toLowerCase().trim();
+  const resultsEl = document.getElementById('globalSearchResults');
+  if (!q || q.length < 2) { resultsEl.style.display = 'none'; return; }
 
+  const matches = (text) => (text || '').toLowerCase().includes(q);
   const results = [];
+  const SECTION_LIMIT = 6; // cap each source
 
-  // Search portfolio items
+  // Portfolio
   if (typeof portfolioItems !== 'undefined') {
-    portfolioItems.forEach(p => {
-      const match = (p.name || '').toLowerCase().includes(q) ||
-                    (p.bank || '').toLowerCase().includes(q) ||
-                    (p.notes || '').toLowerCase().includes(q);
-      if (match) {
-        results.push({
-          icon: '💼',
-          title: p.name,
-          sub: formatShort(p.invested) + ' грн · ' + (p.dateEnd || ''),
-          badge: 'Портфель',
-          badgeClass: 'search-badge-portfolio',
-          action: () => { goToTab('portfolio'); openInvestmentDetail(String(p.id)); clearGlobalSearch(); }
-        });
-      }
+    const hit = portfolioItems.filter(p => matches(p.name) || matches(p.bank) || matches(p.notes)).slice(0, SECTION_LIMIT);
+    hit.forEach(p => results.push({
+      icon: '💼', title: p.name,
+      sub: formatShort(p.invested) + ' грн' + (p.dateEnd ? ' · ' + p.dateEnd : ''),
+      badge: 'Портфель', badgeClass: 'search-badge-portfolio',
+      action: () => { goToTab('portfolio'); openInvestmentDetail(String(p.id)); clearGlobalSearch(); }
+    }));
+  }
+
+  // Dreams
+  if (typeof dreamItems !== 'undefined') {
+    const hit = dreamItems.filter(d => matches(d.name) || matches(d.notes)).slice(0, SECTION_LIMIT);
+    hit.forEach(d => {
+      const cc = (d.currency || 'UAH').toUpperCase();
+      const sym = cc === 'USD' ? '$' : cc === 'EUR' ? '€' : '';
+      const amountStr = cc === 'UAH' ? formatShort(d.saved || 0) + ' з ' + formatShort(d.target || 0) + ' грн'
+        : sym + formatShort(d.saved || 0) + ' з ' + sym + formatShort(d.target || 0);
+      results.push({
+        icon: d.icon || '🎯', title: d.name,
+        sub: amountStr,
+        badge: 'Мрія', badgeClass: 'search-badge-dream',
+        action: () => { goToTab('dreams'); if (typeof openDreamDetail === 'function') openDreamDetail(String(d.id)); clearGlobalSearch(); }
+      });
     });
   }
 
-  // Search saved records (calculation history)
+  // Savings
+  if (typeof savingItems !== 'undefined') {
+    const hit = savingItems.filter(s => matches(s.name) || matches(s.notes)).slice(0, SECTION_LIMIT);
+    const dreamsById = {};
+    (typeof dreamItems !== 'undefined' ? dreamItems : []).forEach(d => { dreamsById[String(d.id)] = d; });
+    hit.forEach(s => {
+      const cc = (s.currency || 'UAH').toUpperCase();
+      const sym = cc === 'USD' ? '$' : cc === 'EUR' ? '€' : '';
+      const amountStr = cc === 'UAH' ? formatShort(s.amount || 0) + ' грн' : sym + formatShort(s.amount || 0);
+      const link = s.dreamId && dreamsById[String(s.dreamId)] ? ' · ' + (dreamsById[String(s.dreamId)].icon || '🎯') + ' ' + dreamsById[String(s.dreamId)].name : ' · вільні';
+      results.push({
+        icon: '💰', title: s.name,
+        sub: amountStr + link,
+        badge: 'Заощадж.', badgeClass: 'search-badge-saving',
+        action: () => { goToTab('savings'); clearGlobalSearch(); }
+      });
+    });
+  }
+
+  // Calculation history
   if (typeof savedRecords !== 'undefined') {
-    savedRecords.forEach(r => {
-      const match = (r.name || '').toLowerCase().includes(q);
-      if (match) {
-        results.push({
-          icon: '📊',
-          title: r.name,
-          sub: formatShort(r.invested) + ' → ' + formatShort(r.received) + ' грн · ' + r.annualRate.toFixed(1) + '%',
-          badge: 'Історія',
-          badgeClass: 'search-badge-history',
-          action: () => { goToTab('calc'); loadRecordToForm(r); clearGlobalSearch(); }
-        });
-      }
-    });
+    const hit = savedRecords.filter(r => matches(r.name)).slice(0, SECTION_LIMIT);
+    hit.forEach(r => results.push({
+      icon: '📊', title: r.name,
+      sub: formatShort(r.invested) + ' → ' + formatShort(r.received) + ' грн · ' + r.annualRate.toFixed(1) + '%',
+      badge: 'Історія', badgeClass: 'search-badge-history',
+      action: () => { goToTab('calc'); loadRecordToForm(r); clearGlobalSearch(); }
+    }));
   }
 
-  // Search currencies
+  // Currencies (NBU rates)
   if (cachedRatesArray) {
-    cachedRatesArray.forEach(r => {
-      const match = r.cc.toLowerCase().includes(q) || r.txt.toLowerCase().includes(q);
-      if (match && results.filter(x => x.badgeClass === 'search-badge-currency').length < 5) {
-        results.push({
-          icon: '💱',
-          title: r.cc + ' — ' + r.txt,
-          sub: r.rate.toFixed(4) + ' грн',
-          badge: 'Валюта',
-          badgeClass: 'search-badge-currency',
-          action: () => { goToTab('currencies'); clearGlobalSearch(); }
-        });
-      }
-    });
+    const hit = cachedRatesArray.filter(r => matches(r.cc) || matches(r.txt)).slice(0, 5);
+    hit.forEach(r => results.push({
+      icon: '💱', title: r.cc + ' — ' + r.txt,
+      sub: r.rate.toFixed(4) + ' грн',
+      badge: 'Валюта', badgeClass: 'search-badge-currency',
+      action: () => { goToTab('currencies'); clearGlobalSearch(); }
+    }));
   }
 
   // Navigation shortcuts
   const navItems = [
-    { keywords: ['портфель', 'portfolio', 'вклад', 'інвест'], title: 'Портфель', icon: '💼', tab: 'portfolio' },
-    { keywords: ['калькулятор', 'calculator', 'розрах'], title: 'Калькулятор', icon: '🧮', tab: 'calc' },
+    { keywords: ['портфель', 'portfolio', 'вклад', 'інвест', 'овдп', 'депозит'], title: 'Портфель', icon: '💼', tab: 'portfolio' },
+    { keywords: ['калькулятор', 'calculator', 'розрах', 'кредит'], title: 'Калькулятор', icon: '🧮', tab: 'calc' },
     { keywords: ['аналітик', 'analytics', 'рейтинг', 'комбін'], title: 'Аналітика', icon: '📈', tab: 'analytics' },
-    { keywords: ['валют', 'курс', 'dollar', 'євро', 'usd', 'eur', 'currency'], title: 'Валюти', icon: '💱', tab: 'currencies' },
-    { keywords: ['профіль', 'profile', 'налашт', 'settings', 'telegram', 'мова'], title: 'Профіль', icon: '⚙️', tab: 'profile' },
+    { keywords: ['валют', 'курс', 'dollar', 'євро', 'usd', 'eur', 'currency', 'нбу'], title: 'Валюти', icon: '💱', tab: 'currencies' },
+    { keywords: ['мрі', 'dream', 'ціль', 'goal'], title: 'Мрії', icon: '🎯', tab: 'dreams' },
+    { keywords: ['заощадж', 'saving', 'готівк', 'cash', 'сейф'], title: 'Заощадження', icon: '💰', tab: 'savings' },
+    { keywords: ['профіль', 'profile', 'налашт', 'settings', 'telegram', 'мова', 'тема'], title: 'Профіль', icon: '⚙️', tab: 'profile' },
   ];
   navItems.forEach(nav => {
     if (nav.keywords.some(k => k.includes(q) || q.includes(k))) {
       results.push({
-        icon: nav.icon,
-        title: nav.title,
-        sub: 'Перейти до розділу',
-        badge: 'Розділ',
-        badgeClass: 'search-badge-nav',
+        icon: nav.icon, title: nav.title, sub: 'Перейти до розділу',
+        badge: 'Розділ', badgeClass: 'search-badge-nav',
         action: () => { goToTab(nav.tab); clearGlobalSearch(); }
       });
     }
@@ -146,7 +168,6 @@ function onGlobalSearch() {
         <span class="search-result-badge ${r.badgeClass}">${r.badge}</span>
       </div>`
     ).join(''));
-    // Store action callbacks
     window.globalSearchResults = results.map(r => r.action);
   }
   resultsEl.style.display = 'block';
