@@ -71,43 +71,37 @@
     line-height: 1.25;
   }
   .user-card-me { color: #64748b; font-size: 11px; font-weight: 400; }
-  .user-card-email {
+  .user-card-fields {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    column-gap: 10px;
+    row-gap: 3px;
     font-size: 12px;
-    color: #94a3b8;
-    margin-top: 2px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    margin: 6px 0 0 0;
+    line-height: 1.35;
+  }
+  .user-card-fields dt {
+    color: #64748b;
+    font-weight: 400;
     white-space: nowrap;
   }
-  .user-card-meta {
-    display: flex;
-    gap: 4px 12px;
-    flex-wrap: wrap;
-    font-size: 11px;
-    color: #64748b;
-    margin-top: 4px;
-    line-height: 1.4;
+  .user-card-fields dd {
+    margin: 0;
+    color: #cbd5e1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
   }
-  .user-card-meta > span {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-  }
-  .user-card-lang {
-    padding: 1px 6px;
-    border: 1px solid #334155;
-    border-radius: 4px;
-    font-size: 10px;
-    letter-spacing: 0.3px;
-  }
+  .uc-link { color: #60a5fa; text-decoration: none; }
+  .uc-link:hover { text-decoration: underline; }
+  .uc-yes { color: #4ade80; font-weight: 600; }
+  .uc-no { color: #64748b; }
   .user-card-aside {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    align-items: flex-end;
     flex-shrink: 0;
+    align-items: center;
   }
-  .user-card-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .user-card-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
   .admin-tabs {
     display: flex;
     gap: 6px;
@@ -160,24 +154,21 @@
     color: #64748b;
     margin: 0 0 12px 0;
   }
-  .user-card-toggles {
+  .uc-toggles {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
     align-items: center;
-    flex-shrink: 0;
   }
-  .user-card-toggles label {
-    display: flex;
+  .uc-toggles label {
+    display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 11px;
-    color: #94a3b8;
+    color: #cbd5e1;
     cursor: pointer;
     white-space: nowrap;
   }
-  .user-card-toggles input[type="checkbox"] { width: 14px; height: 14px; margin: 0; }
-  .user-card-toggle-sep { color: #334155; font-size: 11px; }
+  .uc-toggles input[type="checkbox"] { width: 14px; height: 14px; margin: 0; }
   .admin-badge {
     display: inline-block;
     padding: 1px 6px;
@@ -248,17 +239,14 @@
     }
     .user-card img { width: 32px; height: 32px; }
     .user-card-info { flex: 1 1 calc(100% - 42px); }
-    .user-card-meta { gap: 2px 8px; }
+    .user-card-fields { font-size: 12px; column-gap: 8px; }
     .user-card-aside {
       width: 100%;
-      flex-direction: row;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 6px;
+      border-top: 1px solid #1e293b;
+      padding-top: 8px;
+      margin-top: 2px;
     }
-    .user-card-toggles { gap: 10px; }
-    .user-card-actions { justify-content: flex-end; flex-wrap: wrap; margin-left: auto; }
+    .user-card-actions { width: 100%; justify-content: flex-end; }
     .admin-tabs { padding: 4px; gap: 4px; }
     .admin-tab { min-width: 0; padding: 8px 10px; font-size: 12px; }
     .admin-card { padding: 12px; }
@@ -579,13 +567,21 @@
     }
 
     document.getElementById('userList').innerHTML = users.map(u => {
-      const lastLogin = u.lastLogin ? new Date(u.lastLogin).toLocaleString('uk-UA', {
+      const fmt = ts => ts ? new Date(ts).toLocaleString('uk-UA', {
         day: '2-digit', month: '2-digit', year: '2-digit',
         hour: '2-digit', minute: '2-digit'
+      }) : '—';
+      const fmtDate = ts => ts ? new Date(ts).toLocaleDateString('uk-UA', {
+        day: '2-digit', month: '2-digit', year: 'numeric'
       }) : '—';
       const isMe = u.uid === currentUser.uid;
       const disabled = u.disabled;
       const isOnline = u.lastSeen && (Date.now() - new Date(u.lastSeen).getTime()) < 3 * 60 * 1000;
+      const tgLinked = !!u.profile?.telegramChatId;
+      const tgNotify = !!u.profile?.notifyTelegram;
+      const emailNotify = !!u.profile?.notifyEmail;
+      const yes = '<span class="uc-yes">✓ так</span>';
+      const no = '<span class="uc-no">— ні</span>';
 
       const hasActions = !isMe;
       return `
@@ -599,27 +595,31 @@
               ${disabled ? '<span class="admin-badge disabled-badge">Заблоковано</span>' : ''}
               ${isMe ? '<span class="user-card-me">(ви)</span>' : ''}
             </div>
-            <div class="user-card-email">${u.email || '—'}</div>
-            <div class="user-card-meta">
-              <span title="Останній вхід">🕐 ${lastLogin}</span>
-              ${u.profile?.phone ? '<span>📞 ' + u.profile.phone + '</span>' : ''}
-              ${u.profile?.language ? '<span class="user-card-lang">' + u.profile.language.toUpperCase() + '</span>' : ''}
-              ${u.profile?.notifyTelegram && u.profile?.telegramChatId ? '<span class="admin-badge" style="background:rgba(59,130,246,0.12);color:#60a5fa">TG ✓</span>' : ''}
-              ${u.profile?.notifyTelegram && !u.profile?.telegramChatId ? '<span class="admin-badge" style="background:rgba(250,204,21,0.12);color:#facc15">TG (без ID)</span>' : ''}
-            </div>
+            <dl class="user-card-fields">
+              <dt>Email:</dt>
+              <dd><a href="mailto:${u.email || ''}" class="uc-link">${u.email || '—'}</a></dd>
+              <dt>Реєстрація:</dt>
+              <dd>${fmtDate(u.createdAt)}</dd>
+              <dt>Останній вхід:</dt>
+              <dd>${fmt(u.lastLogin)}</dd>
+              ${u.profile?.phone ? `<dt>Телефон:</dt><dd>${u.profile.phone}</dd>` : ''}
+              <dt>Telegram бот:</dt>
+              <dd>${tgLinked ? yes : no}</dd>
+              <dt>Сповіщення:</dt>
+              <dd class="uc-toggles">
+                <label>
+                  <input type="checkbox" ${tgNotify ? 'checked' : ''} onchange="toggleUserNotify('${u.id}','notifyTelegram',this.checked)" style="accent-color:#3b82f6">
+                  Telegram
+                </label>
+                <label>
+                  <input type="checkbox" ${emailNotify ? 'checked' : ''} onchange="toggleUserNotify('${u.id}','notifyEmail',this.checked)" style="accent-color:#3b82f6">
+                  Email
+                </label>
+              </dd>
+            </dl>
           </div>
+          ${hasActions ? `
           <div class="user-card-aside">
-            <div class="user-card-toggles">
-              <label>
-                <input type="checkbox" ${u.profile?.notifyTelegram ? 'checked' : ''} onchange="toggleUserNotify('${u.id}','notifyTelegram',this.checked)" style="accent-color:#3b82f6">
-                TG
-              </label>
-              <label>
-                <input type="checkbox" ${u.profile?.notifyEmail ? 'checked' : ''} onchange="toggleUserNotify('${u.id}','notifyEmail',this.checked)" style="accent-color:#3b82f6">
-                Email
-              </label>
-            </div>
-            ${hasActions ? `
             <div class="user-card-actions">
               ${u.isAdmin
                 ? '<button class="btn-sm danger" onclick="toggleAdmin(\'' + u.id + '\', false)">Зняти admin</button>'
@@ -627,8 +627,8 @@
               ${disabled
                 ? '<button class="btn-sm success" onclick="toggleDisabled(\'' + u.id + '\', false)">Розблокувати</button>'
                 : '<button class="btn-sm danger" onclick="toggleDisabled(\'' + u.id + '\', true)">Заблокувати</button>'}
-            </div>` : ''}
-          </div>
+            </div>
+          </div>` : ''}
         </div>
       `;
     }).join('');

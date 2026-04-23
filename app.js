@@ -2259,41 +2259,40 @@ function openInvestmentDetail(id) {
     progress = days > 0 ? Math.min(100, (elapsed / days) * 100) : 0;
 
     if (days > 0) {
-      const totalYears = Math.ceil(days / 365.25);
-      const elapsedYears = Math.min(Math.ceil(elapsed / 365.25), totalYears);
+      const totalYears = Math.round(days / 365.25);
       const ratePct = (item.rate || 0) / 100;
       const idxPct = (item.indexation || 0) / 100;
       const isIns = item.type === 'insurance';
 
       if (isIns || item.compound) {
-        // Year-by-year simulation (same logic as the yearly table)
+        // Year-by-year simulation for FINAL expected profit.
         let balance = 0, totalInterest = 0, totalPaid = 0;
-        let balanceAtElapsed = 0, interestAtElapsed = 0;
         let yearlyPayment = item.invested;
 
         for (let y = 1; y <= totalYears; y++) {
           if (isIns) {
-            // Insurance: yearly payment with indexation + interest on balance
             if (y > 1 && idxPct > 0) yearlyPayment = item.invested * Math.pow(1 + idxPct, y - 1);
             const interest = balance * ratePct;
             balance += yearlyPayment + interest;
             totalPaid += yearlyPayment;
             totalInterest += interest;
           } else {
-            // Compound deposit: interest on balance
             if (y === 1) balance = item.invested;
             const interest = balance * ratePct;
             balance += interest;
             totalInterest += interest;
           }
-          if (y <= elapsedYears) {
-            balanceAtElapsed = balance;
-            interestAtElapsed = totalInterest;
-          }
         }
 
         expectedProfit = totalInterest;
-        earnedSoFar = interestAtElapsed;
+        // Fractional proration — day 1 earnedSoFar ≈ 0, not a full year's interest.
+        const yearsE = Math.min(elapsed, days) / 365.25;
+        if (item.compound && !isIns) {
+          earnedSoFar = item.invested * (Math.pow(1 + ratePct, yearsE) - 1);
+        } else {
+          earnedSoFar = totalYears > 0 ? totalInterest * Math.min(yearsE / totalYears, 1) : 0;
+        }
+        earnedSoFar = Math.min(earnedSoFar, expectedProfit);
       } else if (item.rate) {
         // Simple interest
         const ty = days / 365.25;
@@ -2357,7 +2356,7 @@ function openInvestmentDetail(id) {
     </div>`}
 
     ${!isCash && item.compound && item.rate && days > 0 ? (() => {
-      const totalYears = Math.ceil(days / 365.25);
+      const totalYears = Math.round(days / 365.25);
       const r = item.rate / 100;
       const finalBalance = item.invested * Math.pow(1 + r, totalYears);
       const compProfit = finalBalance - item.invested;
@@ -2398,7 +2397,7 @@ function openInvestmentDetail(id) {
 
     ${(() => {
       if (!item.dateStart || !item.dateEnd || days <= 0 || !item.rate) return '';
-      const totalYears = Math.ceil(days / 365.25);
+      const totalYears = Math.round(days / 365.25);
       const totalMonths = Math.round(days / 30.44);
       const isIns = item.type === 'insurance';
       const isCmp = !!item.compound;
@@ -2435,21 +2434,69 @@ function openInvestmentDetail(id) {
           '<td><strong>' + formatNum(balance) + '</strong></td></tr></tbody></table></div></div>';
 
       } else if (isCmp) {
-        // Compound deposit: yearly
-        balance = item.invested;
+        // Compound deposit: CALENDAR-year breakdown.
+        // Each deposit year's interest is split proportionally between the calendar
+        // years it spans, so partial start/end years appear with (N міс.) note.
+        const endDate = new Date(item.dateEnd);
+        const startCalYear = startDate.getFullYear();
+        const endCalYear = endDate.getFullYear();
+
+        // 1) Simulate deposit-year compounding to get each year's interest.
+        const depYears = [];
+        let depBal = item.invested;
         for (let y = 1; y <= totalYears; y++) {
+          const yStart = new Date(startDate.getFullYear() + y - 1, startDate.getMonth(), startDate.getDate());
+          const yEnd = new Date(startDate.getFullYear() + y, startDate.getMonth(), startDate.getDate());
+          const interest = depBal * ratePct;
+          depYears.push({ start: yStart, end: yEnd, interest });
+          depBal += interest;
+        }
+
+        // 2) Distribute each deposit year's interest across calendar years by time share.
+        const calInt = {};
+        for (const dy of depYears) {
+          const first = dy.start.getFullYear();
+          const last = dy.end.getFullYear();
+          if (first === last) {
+            calInt[first] = (calInt[first] || 0) + dy.interest;
+          } else {
+            const boundary = new Date(last, 0, 1);
+            const totalMs = dy.end - dy.start;
+            const shareFirst = (boundary - dy.start) / totalMs;
+            calInt[first] = (calInt[first] || 0) + dy.interest * shareFirst;
+            calInt[last] = (calInt[last] || 0) + dy.interest * (1 - shareFirst);
+          }
+        }
+
+        // 3) Months of deposit actually inside each calendar year.
+        const monthsInYear = yr => {
+          const yStart = new Date(yr, 0, 1);
+          const yEnd = new Date(yr + 1, 0, 1);
+          const effStart = startDate > yStart ? startDate : yStart;
+          const effEnd = endDate < yEnd ? endDate : yEnd;
+          const ms = effEnd - effStart;
+          return ms <= 0 ? 0 : ms / (30.4375 * 86400000);
+        };
+
+        balance = item.invested;
+        for (let yr = startCalYear; yr <= endCalYear; yr++) {
+          const months = monthsInYear(yr);
+          if (months <= 0) continue;
+          const int = calInt[yr] || 0;
           const balStart = balance;
-          const interest = balance * ratePct;
-          balance += interest;
-          totalInterest += interest;
-          rows += '<tr><td>' + y + '</td><td>' + (startYear + y - 1) + '</td><td>' + formatNum(balStart) +
-            '</td><td style="color:#4ade80">+' + formatNum(interest) + '</td><td><strong>' + formatNum(balance) + '</strong></td></tr>';
+          balance += int;
+          totalInterest += int;
+          const mRound = Math.max(1, Math.round(months));
+          const isPartial = mRound < 12;
+          const label = yr + (isPartial ? ' <span style="color:#94a3b8;font-size:11px">(' + mRound + ' міс.)</span>' : '');
+          rows += '<tr><td>' + label + '</td><td>' + formatNum(balStart) +
+            '</td><td style="color:#4ade80">+' + formatNum(int) + '</td><td><strong>' + formatNum(balance) + '</strong></td></tr>';
         }
         return '<div class="a-card"><h3>Графік нарахувань по роках</h3>' +
           '<div style="max-height:400px;overflow-y:auto"><table class="credit-schedule-table"><thead><tr>' +
-          '<th style="text-align:left">Рік</th><th>Календ.</th><th>Баланс (поч.)</th><th>Нараховано</th><th>Баланс (кін.)</th>' +
+          '<th style="text-align:left">Календ. рік</th><th>Баланс (поч.)</th><th>Нараховано</th><th>Баланс (кін.)</th>' +
           '</tr></thead><tbody>' + rows +
-          '<tr style="font-weight:700;border-top:2px solid #334155"><td colspan="2">Всього</td><td>' + formatNum(item.invested) +
+          '<tr style="font-weight:700;border-top:2px solid #334155"><td>Всього</td><td>' + formatNum(item.invested) +
           '</td><td style="color:#4ade80">+' + formatNum(totalInterest) + '</td><td><strong>' + formatNum(balance) + '</strong></td></tr></tbody></table></div></div>';
 
       } else if (totalYears <= 2) {
@@ -2473,20 +2520,40 @@ function openInvestmentDetail(id) {
           '<td style="color:#4ade80">+' + formatNum(totalInterest) + '</td><td><strong>' + formatNum(balance) + '</strong></td></tr></tbody></table></div></div>';
 
       } else {
-        // Simple deposit/OVDP over 2 years: yearly table
+        // Simple deposit/OVDP over 2 years: CALENDAR-year table.
+        // Simple interest — each year contributes invested*rate, partial calendar
+        // years contribute proportionally to their months in the deposit range.
+        const endDate = new Date(item.dateEnd);
+        const startCalYear = startDate.getFullYear();
+        const endCalYear = endDate.getFullYear();
+        const yearInt = item.invested * ratePct;
+        const monthsInYear = yr => {
+          const yStart = new Date(yr, 0, 1);
+          const yEnd = new Date(yr + 1, 0, 1);
+          const effStart = startDate > yStart ? startDate : yStart;
+          const effEnd = endDate < yEnd ? endDate : yEnd;
+          const ms = effEnd - effStart;
+          return ms <= 0 ? 0 : ms / (30.4375 * 86400000);
+        };
         balance = item.invested;
-        for (let y = 1; y <= totalYears; y++) {
-          const interest = item.invested * ratePct;
-          balance += interest;
-          totalInterest += interest;
-          rows += '<tr><td>' + y + '</td><td>' + (startYear + y - 1) + '</td><td style="color:#4ade80">+' + formatNum(interest) +
+        for (let yr = startCalYear; yr <= endCalYear; yr++) {
+          const months = monthsInYear(yr);
+          if (months <= 0) continue;
+          const frac = Math.min(months / 12, 1);
+          const int = yearInt * frac;
+          balance += int;
+          totalInterest += int;
+          const mRound = Math.max(1, Math.round(months));
+          const isPartial = mRound < 12;
+          const label = yr + (isPartial ? ' <span style="color:#94a3b8;font-size:11px">(' + mRound + ' міс.)</span>' : '');
+          rows += '<tr><td>' + label + '</td><td style="color:#4ade80">+' + formatNum(int) +
             '</td><td><strong>' + formatNum(balance) + '</strong></td></tr>';
         }
         return '<div class="a-card"><h3>Графік нарахувань по роках</h3>' +
           '<div style="max-height:400px;overflow-y:auto"><table class="credit-schedule-table"><thead><tr>' +
-          '<th style="text-align:left">Рік</th><th>Календ.</th><th>Нараховано</th><th>Баланс</th>' +
+          '<th style="text-align:left">Календ. рік</th><th>Нараховано</th><th>Баланс</th>' +
           '</tr></thead><tbody>' + rows +
-          '<tr style="font-weight:700;border-top:2px solid #334155"><td colspan="2">Всього</td>' +
+          '<tr style="font-weight:700;border-top:2px solid #334155"><td>Всього</td>' +
           '<td style="color:#4ade80">+' + formatNum(totalInterest) + '</td><td><strong>' + formatNum(balance) + '</strong></td></tr></tbody></table></div></div>';
       }
     })()}
@@ -2627,7 +2694,7 @@ function renderPortfolio() {
 
   const now = new Date();
   const endOfYear = new Date(now.getFullYear(), 11, 31);
-  let totalInvested = 0, totalExpectedProfit = 0, totalEarnedSoFar = 0, activeCount = 0;
+  let totalInvested = 0, totalExpectedProfit = 0, totalEarnedSoFar = 0, totalEarnedSoFarNet = 0, totalTaxSoFar = 0, activeCount = 0;
   let totalDailyGross = 0, totalDailyNet = 0, totalProfitToEOY = 0;
   const dailyBreakdown = [];
 
@@ -2648,7 +2715,7 @@ function renderPortfolio() {
       daysLeft = Math.max(0, Math.round((new Date(p.dateEnd) - now) / 86400000));
       progress = days > 0 ? Math.min(100, (elapsed / days) * 100) : 0;
       if (days > 0) {
-        const totalYearsN = Math.ceil(days / 365.25);
+        const totalYearsN = Math.round(days / 365.25);
         const elapsedYearsN = Math.min(Math.ceil(elapsed / 365.25), totalYearsN);
         const ratePct = (p.rate || 0) / 100;
         const idxPct = (p.indexation || 0) / 100;
@@ -2659,8 +2726,8 @@ function renderPortfolio() {
           expectedProfit = p.receivedAtMaturity - p.invested;
           earnedSoFar = expectedProfit * Math.min(elapsed, days) / days;
         } else if (isIns || p.compound) {
-          // Year-by-year simulation
-          let bal = 0, totalInt = 0, intAtElapsed = 0;
+          // Year-by-year simulation for FINAL expected profit.
+          let bal = 0, totalInt = 0;
           let yPayment = p.invested;
           for (let y = 1; y <= totalYearsN; y++) {
             if (isIns) {
@@ -2674,10 +2741,16 @@ function renderPortfolio() {
               bal += interest;
               totalInt += interest;
             }
-            if (y <= elapsedYearsN) intAtElapsed = totalInt;
           }
           expectedProfit = totalInt;
-          earnedSoFar = intAtElapsed;
+          // Fractional elapsed years — prorate so day 1 is ≈ 0, not a full year's interest.
+          const yearsE = Math.min(elapsed, days) / 365.25;
+          if (p.compound && !isIns) {
+            earnedSoFar = p.invested * (Math.pow(1 + ratePct, yearsE) - 1);
+          } else {
+            earnedSoFar = totalYearsN > 0 ? totalInt * Math.min(yearsE / totalYearsN, 1) : 0;
+          }
+          earnedSoFar = Math.min(earnedSoFar, expectedProfit);
         } else if (p.rate) {
           const ty = days / 365.25;
           const ey = Math.min(elapsed, days) / 365.25;
@@ -2698,6 +2771,8 @@ function renderPortfolio() {
           totalDailyGross += dailyGross;
           totalDailyNet += dailyNet;
           totalEarnedSoFar += earnedSoFar;
+          totalEarnedSoFarNet += earnedSoFar * (1 - taxRate);
+          totalTaxSoFar += earnedSoFar * taxRate;
 
           // Profit from now to end of year (or dateEnd if earlier)
           const eoyLimit = new Date(p.dateEnd) < endOfYear ? new Date(p.dateEnd) : endOfYear;
@@ -2737,11 +2812,13 @@ function renderPortfolio() {
           ${p.dateStart ? '<div class="p-item-details p-row"><span>' + formatDate(p.dateStart) + ' → ' + (p.dateEnd ? formatDate(p.dateEnd) : '...') + '</span></div>' : ''}
           ${p.bank ? '<div class="p-item-details p-row"><span>Банк: <strong>' + esc(p.bank) + '</strong></span></div>' : ''}
           ${p.notes ? '<div class="p-item-notes">' + esc(p.notes) + '</div>' : ''}
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn-delete" onclick="event.stopPropagation();editPortfolioItem('${p.id}')" style="color:#60a5fa">✎</button>
+            <button class="btn-delete" onclick="event.stopPropagation();if(confirm('Видалити ' + ${JSON.stringify(p.name || 'запис')} + '?'))deletePortfolioItem('${p.id}')">✕</button>
+          </div>
         </div>
         <div class="p-item-actions">
           ${expectedProfit > 0 ? '<div class="p-item-profit"><div class="amount">+' + formatShort(expectedProfit) + ' грн</div><div class="label">очікуваний дохід</div>' + (p.tax && expectedProfit > 0 ? '<div style="color:#f87171;font-size:12px;margin-top:2px">−' + formatShort(expectedProfit * p.tax / 100) + ' податок</div><div style="color:#4ade80;font-size:13px;font-weight:700">=' + formatShort(expectedProfit - expectedProfit * p.tax / 100) + ' чистими</div>' : '') + '</div>' : ''}
-          <button class="btn-delete" onclick="editPortfolioItem('${p.id}')" style="color:#60a5fa">✎</button>
-          <button class="btn-delete" onclick="deletePortfolioItem('${p.id}')">✕</button>
         </div>
       </div>
     `;
@@ -2749,12 +2826,28 @@ function renderPortfolio() {
 
   // Dashboard
   summary.style.display = 'block';
-  const totalValue = totalInvested + totalEarnedSoFar;
+  // Hero shows net value — principal + what the user would actually get if withdrawn today (after tax).
+  const totalValue = totalInvested + totalEarnedSoFarNet;
   document.getElementById('dashTotalValue').textContent = formatShort(totalValue) + ' грн';
   document.getElementById('dashDailyTotal').innerHTML =
     '<span class="dash-daily-badge">+' + formatNum(totalDailyNet) + ' грн сьогодні (чисті)</span>';
   document.getElementById('dashInvested').textContent = formatShort(totalInvested) + ' грн';
-  document.getElementById('dashEarned').textContent = '+' + formatNum(totalEarnedSoFar) + ' грн';
+  // Earned so far — show net; include gross+tax hint when tax applies.
+  const earnedEl = document.getElementById('dashEarned');
+  earnedEl.textContent = '+' + formatNum(totalEarnedSoFarNet) + ' грн';
+  const earnedHintId = 'dashEarnedHint';
+  let earnedHint = document.getElementById(earnedHintId);
+  if (totalTaxSoFar > 0.005) {
+    if (!earnedHint) {
+      earnedHint = document.createElement('div');
+      earnedHint.id = earnedHintId;
+      earnedHint.style.cssText = 'font-size:11px;color:#94a3b8;margin-top:2px';
+      earnedEl.parentNode.appendChild(earnedHint);
+    }
+    earnedHint.textContent = 'гросс: ' + formatNum(totalEarnedSoFar) + ' грн (−' + formatNum(totalTaxSoFar) + ' податок)';
+  } else if (earnedHint) {
+    earnedHint.remove();
+  }
   document.getElementById('dashDailyNet').textContent = '+' + formatNum(totalDailyNet) + ' грн';
   document.getElementById('dashActiveCount').textContent = activeCount;
 
@@ -2853,14 +2946,16 @@ function renderPortfolioChart(items) {
     if (e > maxDate) maxDate = e;
   });
 
-  // Build year filter select (show chart from start up to selected year end)
+  // Build year filter select (show chart from start up to selected year end).
+  // Ascending order from today's year to maturity — intermediate views only.
   const minYear = minDate.getFullYear();
   const maxYear = maxDate.getFullYear();
   const sel = document.getElementById('chartYearFilter');
   const currentVal = portfolioChartYear === null ? 'all' : String(portfolioChartYear);
-  const extendedMaxYear = minYear + 60;
+  const nowYear = now.getFullYear();
+  const firstYear = Math.max(nowYear, minYear);
   let opts = '<option value="all"' + (currentVal === 'all' ? ' selected' : '') + '>До кінця (' + maxYear + ')</option>';
-  for (let yr = extendedMaxYear; yr >= minYear; yr--) {
+  for (let yr = firstYear; yr <= maxYear; yr++) {
     opts += '<option value="' + yr + '"' + (currentVal === String(yr) ? ' selected' : '') + '>До ' + yr + '</option>';
   }
   sel.innerHTML = opts;
@@ -4112,7 +4207,7 @@ async function saveDreamsToFirestore() {
     return;
   }
   try {
-    const uid = currentUser.uid;
+    const uid = effectiveUid(currentUser.uid);
     const ref = db.collection('users').doc(uid).collection('dreams');
     const localIds = new Set(dreamItems.map(d => String(d.id)));
     const ops = [];
@@ -4137,7 +4232,7 @@ async function saveDreamsToFirestore() {
 async function loadDreamsFromFirestore() {
   if (!firebaseReady || !currentUser) return;
   try {
-    const ref = db.collection('users').doc(currentUser.uid).collection('dreams');
+    const ref = db.collection('users').doc(effectiveUid(currentUser.uid)).collection('dreams');
     const snapshot = await ref.get();
     const remote = [];
     snapshot.forEach(doc => remote.push(doc.data()));
@@ -4485,7 +4580,7 @@ function renderSavings() {
 async function saveSavingsToFirestore() {
   if (!firebaseReady || !currentUser) return;
   try {
-    const ref = db.collection('users').doc(currentUser.uid).collection('savings');
+    const ref = db.collection('users').doc(effectiveUid(currentUser.uid)).collection('savings');
     const localIds = new Set(savingItems.map(s => String(s.id)));
     const ops = [];
     if (savingsLoaded) {
@@ -4501,7 +4596,7 @@ async function saveSavingsToFirestore() {
 async function loadSavingsFromFirestore() {
   if (!firebaseReady || !currentUser) return;
   try {
-    const ref = db.collection('users').doc(currentUser.uid).collection('savings');
+    const ref = db.collection('users').doc(effectiveUid(currentUser.uid)).collection('savings');
     const snap = await ref.get();
     const remote = [];
     snap.forEach(doc => remote.push(doc.data()));

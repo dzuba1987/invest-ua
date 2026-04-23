@@ -7,6 +7,37 @@ let currentUser = null;
 let db = null;
 // _skipFirestoreSync declared in app.js as var (shared global)
 
+// === Dev-mode isolation ===
+// When the app is served from localhost, all per-user Firestore writes go to
+// `users/{uid}_dev` instead of `users/{uid}`. This lets you log in with the
+// same Google account locally without overwriting production data. Telegram
+// admin notifications are also suppressed in dev.
+const IS_DEV = (typeof location !== 'undefined') && (
+  location.hostname === 'localhost' ||
+  location.hostname === '127.0.0.1' ||
+  location.hostname === '0.0.0.0' ||
+  /\.local$/.test(location.hostname)
+);
+const DEV_UID_SUFFIX = '_dev';
+function effectiveUid(rawUid) {
+  return (IS_DEV && rawUid) ? rawUid + DEV_UID_SUFFIX : rawUid;
+}
+if (typeof window !== 'undefined') {
+  window.IS_DEV = IS_DEV;
+  window.effectiveUid = effectiveUid;
+}
+
+if (IS_DEV && typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('devBanner')) return;
+    const b = document.createElement('div');
+    b.id = 'devBanner';
+    b.textContent = '🛠 DEV MODE — дані пишуться у users/{uid}' + DEV_UID_SUFFIX + ', Telegram-сповіщення вимкнено';
+    b.style.cssText = 'position:sticky;top:0;z-index:9999;background:#facc15;color:#0f172a;font-size:12px;font-weight:600;padding:6px 12px;text-align:center;letter-spacing:0.2px';
+    document.body.insertBefore(b, document.body.firstChild);
+  });
+}
+
 function initFirebase() {
   if (typeof firebase === 'undefined' || !FIREBASE_CONFIG.apiKey) {
     console.warn('Firebase not available or not configured');
@@ -48,7 +79,7 @@ function initFirebase() {
 async function saveUserMeta(user) {
   if (!firebaseReady || !user) return;
   try {
-    const docRef = db.collection('users').doc(user.uid);
+    const docRef = db.collection('users').doc(effectiveUid(user.uid));
     const doc = await docRef.get();
     const isNewUser = !doc.exists;
     const adminEmails = (typeof ADMIN_EMAILS !== 'undefined' ? ADMIN_EMAILS : [])
@@ -160,7 +191,7 @@ async function saveToFirestore() {
   if (!firebaseReady || !currentUser) return;
   if (savedRecords.length === 0) return;
   try {
-    const ref = db.collection('users').doc(currentUser.uid).collection('records');
+    const ref = db.collection('users').doc(effectiveUid(currentUser.uid)).collection('records');
     const existing = await ref.get();
     const deletePromises = [];
     existing.forEach(doc => deletePromises.push(doc.ref.delete()));
@@ -183,7 +214,7 @@ async function saveToFirestore() {
 async function loadFromFirestore() {
   if (!firebaseReady || !currentUser) return;
   try {
-    const ref = db.collection('users').doc(currentUser.uid).collection('records');
+    const ref = db.collection('users').doc(effectiveUid(currentUser.uid)).collection('records');
     const snapshot = await ref.get();
 
     if (!snapshot.empty) {
@@ -232,7 +263,7 @@ function stripUndefined(obj) {
 async function savePortfolioToFirestore() {
   if (!firebaseReady || !currentUser) return;
   try {
-    const ref = db.collection('users').doc(currentUser.uid).collection('portfolio');
+    const ref = db.collection('users').doc(effectiveUid(currentUser.uid)).collection('portfolio');
     const localIds = new Set(portfolioItems.map(p => String(p.id)));
     const ops = [];
 
@@ -252,7 +283,7 @@ async function savePortfolioToFirestore() {
 async function loadPortfolioFromFirestore() {
   if (!firebaseReady || !currentUser) return;
   try {
-    const ref = db.collection('users').doc(currentUser.uid).collection('portfolio');
+    const ref = db.collection('users').doc(effectiveUid(currentUser.uid)).collection('portfolio');
     const snapshot = await ref.get();
     const remote = [];
     snapshot.forEach(doc => remote.push(doc.data()));
@@ -377,7 +408,7 @@ async function saveProfile() {
 async function saveProfileToFirestore() {
   if (!firebaseReady || !currentUser) return;
   try {
-    await db.collection('users').doc(currentUser.uid).set({
+    await db.collection('users').doc(effectiveUid(currentUser.uid)).set({
       profile: {
         displayName: userProfile.displayName || '',
         phone: userProfile.phone || '',
@@ -402,7 +433,7 @@ async function saveProfileToFirestore() {
 async function loadProfileFromFirestore() {
   if (!firebaseReady || !currentUser) return;
   try {
-    const doc = await db.collection('users').doc(currentUser.uid).get();
+    const doc = await db.collection('users').doc(effectiveUid(currentUser.uid)).get();
     if (doc.exists) {
       const meta = doc.data().meta;
       if (meta && meta.disabled) {
@@ -439,7 +470,7 @@ async function loadProfileFromFirestore() {
 function startHeartbeat() {
   function beat() {
     if (firebaseReady && currentUser) {
-      db.collection('users').doc(currentUser.uid).update({
+      db.collection('users').doc(effectiveUid(currentUser.uid)).update({
         'meta.lastSeen': new Date().toISOString()
       }).catch(() => {});
     }
@@ -536,7 +567,7 @@ async function deleteAllUserData() {
   try {
     // Delete from Firestore
     if (firebaseReady && currentUser) {
-      const uid = currentUser.uid;
+      const uid = effectiveUid(currentUser.uid);
 
       // Delete portfolio subcollection
       const portfolio = await db.collection('users').doc(uid).collection('portfolio').get();
@@ -593,7 +624,7 @@ async function checkMaintenance() {
     if (doc.exists && doc.data().enabled) {
       // Admins can bypass
       if (currentUser) {
-        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        const userDoc = await db.collection('users').doc(effectiveUid(currentUser.uid)).get();
         if (userDoc.exists && userDoc.data().meta && userDoc.data().meta.isAdmin) return;
       }
       const msg = doc.data().message || 'Сайт на обслуговуванні. Скоро повернемось!';

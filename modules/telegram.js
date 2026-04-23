@@ -24,6 +24,7 @@ async function getTelegramConfig() {
 }
 
 async function notifyTelegram(event, user) {
+  if (window.IS_DEV) { console.log('[DEV] skipped Telegram notify:', event); return; }
   const config = await getTelegramConfig();
   if (!config || !config.chatId) return;
 
@@ -43,6 +44,7 @@ async function notifyTelegram(event, user) {
 }
 
 async function notifyTelegramFeedback(name, email, text) {
+  if (window.IS_DEV) { console.log('[DEV] skipped feedback Telegram notify'); return; }
   const config = await getTelegramConfig();
   if (!config || !config.chatId || config.notifyFeedback === false) return;
 
@@ -144,7 +146,7 @@ function startTelegramConnectListener() {
 
   // Listen for profile changes in Firestore; bot writes profile.telegramChatId on /start
   try {
-    tgListenerUnsubscribe = db.collection('users').doc(currentUser.uid).onSnapshot(doc => {
+    tgListenerUnsubscribe = db.collection('users').doc(effectiveUid(currentUser.uid)).onSnapshot(doc => {
       const data = doc.data();
       const chatId = data && data.profile && data.profile.telegramChatId;
       if (chatId) {
@@ -194,7 +196,7 @@ async function disconnectTelegram() {
   localStorage.removeItem('telegramChatId');
   if (currentUser && firebaseReady) {
     try {
-      await db.collection('users').doc(currentUser.uid).set(
+      await db.collection('users').doc(effectiveUid(currentUser.uid)).set(
         { profile: { telegramChatId: '' } },
         { merge: true }
       );
