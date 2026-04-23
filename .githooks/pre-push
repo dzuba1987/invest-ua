@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Pre-push hook: regenerate changelog.js from commit messages before pushing.
+# Activate once with:  git config core.hooksPath .githooks
+
+set -e
+
+# Skip when inside an ongoing rebase / merge to avoid amend loops.
+GIT_DIR=$(git rev-parse --git-dir)
+if [ -d "$GIT_DIR/rebase-merge" ] || [ -d "$GIT_DIR/rebase-apply" ] || [ -f "$GIT_DIR/MERGE_HEAD" ]; then
+  exit 0
+fi
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "⚠️  pre-push: node not found on PATH, skipping changelog regen." >&2
+  exit 0
+fi
+
+set +e
+node scripts/build-changelog.mjs
+status=$?
+set -e
+
+if [ $status -eq 2 ]; then
+  git add changelog.js sw.js
+  git commit --no-verify -m "chore: regenerate changelog + bump SW"
+  echo ""
+  echo "✨ Changelog regenerated and committed automatically."
+  echo "❌ This push was cancelled because the new commit isn't in its ref list."
+  echo "➡️  Run \`git push\` again — the next push will include the regen commit."
+  exit 1
+fi
+
+exit 0

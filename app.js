@@ -42,6 +42,8 @@ window.addEventListener('themechange', updateChartJsColors);
 // При початковому завантаженні (Chart може завантажитись пізніше)
 document.addEventListener('DOMContentLoaded', function() {
   if (typeof Chart !== 'undefined') updateChartJsColors();
+  // Load built-in changelog early so the updates badge is ready before auth.
+  if (typeof loadChangelog === 'function') loadChangelog();
 });
 
 // ============ GLOBAL SEARCH ============
@@ -113,20 +115,27 @@ function _runGlobalSearch() {
     });
   }
 
-  // Purchases
-  if (typeof purchaseItems !== 'undefined') {
-    const hit = purchaseItems.filter(p => matches(p.name) || matches(p.notes)).slice(0, SECTION_LIMIT);
+  // Purchases (private + shared)
+  const allPurchases = [
+    ...(typeof purchaseItems !== 'undefined' ? purchaseItems : []),
+    ...(typeof sharedPurchaseItems !== 'undefined' ? sharedPurchaseItems : [])
+  ];
+  if (allPurchases.length) {
+    const hit = allPurchases.filter(p => matches(p.name) || matches(p.notes) || matches(p.link)).slice(0, SECTION_LIMIT);
     hit.forEach(p => {
       const cc = (p.currency || 'UAH').toUpperCase();
       const sym = cc === 'USD' ? '$' : cc === 'EUR' ? '€' : '';
       const amountStr = cc === 'UAH' ? formatShort(p.amount || 0) + ' грн' : sym + formatShort(p.amount || 0);
       const monthStr = p.plannedMonth ? ' · ' + (typeof formatMonthKey === 'function' ? formatMonthKey(p.plannedMonth) : p.plannedMonth) : '';
       const boughtStr = p.bought ? ' · ✓ здійснено' : '';
+      const isShared = typeof sharedPurchaseItems !== 'undefined' && sharedPurchaseItems.some(x => String(x.id) === String(p.id));
+      const sharedStr = isShared ? ' · 👥 спільна' : '';
+      const pid = String(p.id);
       results.push({
         icon: p.icon || '🛒', title: p.name,
-        sub: amountStr + monthStr + boughtStr,
+        sub: amountStr + monthStr + boughtStr + sharedStr,
         badge: 'Витрата', badgeClass: 'search-badge-purchase',
-        action: () => { goToTab('purchases'); clearGlobalSearch(); }
+        action: () => { goToTab('purchases'); clearGlobalSearch(); setTimeout(() => { if (typeof openPurchaseDetail === 'function') openPurchaseDetail(pid); }, 60); }
       });
     });
   }
@@ -4331,16 +4340,27 @@ function refreshUpdatesBadge() {
 }
 
 async function loadChangelog(force) {
-  if (!firebaseReady || !db) return;
   if (_changelogLoadedOnce && !force) return;
-  try {
-    const snapshot = await db.collection('changelog').orderBy('createdAt', 'desc').limit(50).get();
-    changelogEntries = [];
-    snapshot.forEach(doc => changelogEntries.push({ id: doc.id, ...doc.data() }));
-    _changelogLoadedOnce = true;
-    renderUpdates();
-    refreshUpdatesBadge();
-  } catch(e) { console.warn('Changelog load failed:', e); }
+  const seed = Array.isArray(window.CHANGELOG_SEED) ? window.CHANGELOG_SEED : [];
+  const auto = Array.isArray(window.BUILT_IN_CHANGELOG) ? window.BUILT_IN_CHANGELOG : [];
+  const merged = new Map();
+  // Order matters: seed first, then auto (commits), then Firestore overrides both.
+  [...seed, ...auto].forEach(e => { if (e && e.id) merged.set(String(e.id), e); });
+  if (firebaseReady && db) {
+    try {
+      const snapshot = await db.collection('changelog').orderBy('createdAt', 'desc').limit(50).get();
+      snapshot.forEach(doc => {
+        const data = { id: doc.id, ...doc.data() };
+        merged.set(String(doc.id), data);
+      });
+    } catch(e) { console.warn('Changelog load failed:', e); }
+  }
+  changelogEntries = Array.from(merged.values())
+    .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+    .slice(0, 50);
+  _changelogLoadedOnce = true;
+  renderUpdates();
+  refreshUpdatesBadge();
 }
 
 function renderUpdates() {
@@ -4667,6 +4687,13 @@ async function loadSavingsFromFirestore() {
 let purchaseItems = [];
 let sharedPurchaseItems = [];        // loaded from root /sharedPurchases collection
 let sharedPurchasesUnsubscribe = null;
+let _openPurchaseDetailId = null;    // id of purchase currently shown on detail page
+// List filter / search / collapse state (persisted across renders in-memory).
+let _purchasesFilter = 'all';        // 'all'|'overdue'|'current'|'future'|'done'|'shared'
+let _purchasesSearchQuery = '';
+let _purchasesSearchDebounce = null;
+let _purchasesCollapsed = { overdue: false, current: false, future: true, done: true };
+let _purchasesDoneMonthsOpen = {};   // { 'YYYY-MM': true }  defaults: current month open
 let purchasesLoaded = false;
 let _editingPurchaseId = null;
 
@@ -5024,8 +5051,9 @@ function deferPurchase(id) {
 }
 
 function sharePurchase(id) {
-  const item = purchaseItems.find(p => String(p.id) === String(id));
-  if (!item) return;
+  const found = _findPurchase(id);
+  if (!found) return;
+  const item = found.item;
   const cc = purchaseCurOf(item);
   const icon = purchaseIconOf(item);
   const lines = [
@@ -5151,6 +5179,8 @@ function renderPurchases() {
   if (!allItems.length) {
     list.innerHTML = '<div class="a-empty">Ще немає запланованих витрат. Додайте першу вище 🛒</div>';
     dashboard.style.display = 'none';
+    const toolbar = document.getElementById('purchasesToolbar');
+    if (toolbar) toolbar.style.display = 'none';
     return;
   }
 
@@ -5210,11 +5240,12 @@ function renderPurchases() {
       const boughtStr = p.boughtAmount && p.boughtAmount !== p.amount
         ? 'Здійснено за ' + fmtPurchaseAmount(p.boughtAmount, cc)
         : 'Здійснено';
+      actions.push('<button class="btn-delete purchase-action-icon" title="Деталі" onclick="event.stopPropagation();openPurchaseDetail(\'' + p.id + '\')" style="color:#60a5fa">📋</button>');
       if (isShared) actions.push('<button class="btn-delete purchase-action-icon" title="Запросити ще учасника" onclick="event.stopPropagation();invitePurchaseByEmail(\'' + p.id + '\')" style="color:#c084fc">👥</button>');
       actions.push('<button class="btn-delete purchase-action-icon" title="Поділитись" onclick="event.stopPropagation();sharePurchase(\'' + p.id + '\')" style="color:#a855f7">↗</button>');
       actions.push('<button class="btn-delete purchase-action-icon" title="Скасувати позначку" onclick="event.stopPropagation();unmarkPurchaseBought(\'' + p.id + '\')" style="color:#f59e0b">↺</button>');
       actions.push('<button class="btn-delete purchase-action-icon" title="' + (isShared ? 'Покинути спільну' : 'Видалити') + '" onclick="event.stopPropagation();deletePurchase(\'' + p.id + '\')">✕</button>');
-      return `<div class="p-item" style="opacity:0.75">
+      return `<div class="p-item" style="opacity:0.75;cursor:pointer" onclick="if(!event.target.closest('button')&&!event.target.closest('a'))openPurchaseDetail('${p.id}')">
         <div class="p-item-info" style="width:100%">
           <div class="p-item-name">
             <span class="dream-icon">${purchaseIconOf(p)}</span>${esc(p.name)}
@@ -5238,6 +5269,7 @@ function renderPurchases() {
     const nextMonthName = formatMonthKey(addMonths(p.plannedMonth || cm, 1));
     actions.push('<button class="btn-save purchase-action" title="Відмітити як здійснену" onclick="event.stopPropagation();markPurchaseBought(\'' + p.id + '\')">✓ Відмітити</button>');
     actions.push('<button class="btn-clear purchase-action" onclick="event.stopPropagation();deferPurchase(\'' + p.id + '\')" title="Перенести на ' + nextMonthName + '">📅 +міс</button>');
+    actions.push('<button class="btn-delete purchase-action-icon" title="Деталі" onclick="event.stopPropagation();openPurchaseDetail(\'' + p.id + '\')" style="color:#60a5fa">📋</button>');
     if (isShared) {
       actions.push('<button class="btn-delete purchase-action-icon" title="Запросити ще учасника" onclick="event.stopPropagation();invitePurchaseByEmail(\'' + p.id + '\')" style="color:#c084fc">👥</button>');
     } else {
@@ -5247,7 +5279,7 @@ function renderPurchases() {
     actions.push('<button class="btn-delete purchase-action-icon" title="Редагувати" onclick="event.stopPropagation();editPurchase(\'' + p.id + '\')" style="color:#60a5fa">✎</button>');
     actions.push('<button class="btn-delete purchase-action-icon" title="' + (isShared ? 'Покинути спільну' : 'Видалити') + '" onclick="event.stopPropagation();deletePurchase(\'' + p.id + '\')">✕</button>');
 
-    return `<div class="p-item" style="flex-wrap:wrap${isOverdue ? ';border-color:#7f1d1d' : ''}">
+    return `<div class="p-item" style="flex-wrap:wrap;cursor:pointer${isOverdue ? ';border-color:#7f1d1d' : ''}" onclick="if(!event.target.closest('button')&&!event.target.closest('a'))openPurchaseDetail('${p.id}')">
       <div class="p-item-info" style="width:100%">
         <div class="p-item-name">
           <span class="dream-icon">${purchaseIconOf(p)}</span>${esc(p.name)}
@@ -5266,28 +5298,174 @@ function renderPurchases() {
     </div>`;
   };
 
+  // Toolbar chips — counts reflect raw category sizes (ignoring search),
+  // so the user sees the real distribution when switching filters.
+  const sharedCount = allItems.filter(p => p._source === 'shared').length;
+  _renderPurchasesToolbar({
+    all: allItems.length,
+    overdue: groups.overdue.length,
+    current: groups.current.length,
+    future: groups.future.length,
+    done: groups.done.length,
+    shared: sharedCount
+  });
+
+  // Apply filter + search to produce the visible set per group.
+  const q = _purchasesSearchQuery.trim().toLowerCase();
+  const matchesQuery = p => {
+    if (!q) return true;
+    return String(p.name || '').toLowerCase().includes(q)
+      || String(p.notes || '').toLowerCase().includes(q)
+      || String(p.link || '').toLowerCase().includes(q);
+  };
+  const matchesFilter = (p, groupKey) => {
+    if (_purchasesFilter === 'all') return true;
+    if (_purchasesFilter === 'shared') return p._source === 'shared';
+    return _purchasesFilter === groupKey;
+  };
+  const vis = {
+    overdue: groups.overdue.filter(p => matchesFilter(p, 'overdue') && matchesQuery(p)),
+    current: groups.current.filter(p => matchesFilter(p, 'current') && matchesQuery(p)),
+    future:  groups.future.filter(p => matchesFilter(p, 'future') && matchesQuery(p)),
+    done:    groups.done.filter(p => matchesFilter(p, 'done') && matchesQuery(p))
+  };
+
+  // If search is active, auto-open groups so results aren't hidden behind a caret.
+  const forceOpen = !!q;
+
   const sections = [];
-  if (groups.overdue.length) {
-    sections.push('<h3 class="a-card-title" style="color:#f87171;margin:16px 0 8px">⚠ Прострочено (' + groups.overdue.length + ')</h3>');
-    sections.push(groups.overdue.map(p => renderItem(p, { isOverdue: true })).join(''));
+
+  const pushGroup = (key, label, color, items, body) => {
+    if (!items.length) return;
+    const collapsed = !forceOpen && _purchasesCollapsed[key];
+    sections.push(
+      '<div class="p-group-header' + (collapsed ? ' collapsed' : '') + '" onclick="_togglePurchaseGroup(\'' + key + '\')">' +
+        '<span class="p-group-title"' + (color ? ' style="color:' + color + '"' : '') + '>' + label + ' (' + items.length + ')</span>' +
+        '<span class="caret">▾</span>' +
+      '</div>' +
+      '<div class="p-group-body' + (collapsed ? ' collapsed' : '') + '">' + body + '</div>'
+    );
+  };
+
+  pushGroup('overdue', '⚠ Прострочено', '#f87171', vis.overdue,
+    vis.overdue.map(p => renderItem(p, { isOverdue: true })).join(''));
+
+  pushGroup('current', '📅 ' + formatMonthKey(cm), '', vis.current,
+    vis.current.map(p => renderItem(p)).join(''));
+
+  pushGroup('future', '🔜 На майбутнє', '#94a3b8', vis.future,
+    vis.future.map(p => renderItem(p)).join(''));
+
+  // Done group — archive by month, newest first.
+  if (vis.done.length) {
+    const byMonth = {};
+    vis.done.forEach(p => {
+      const mk = (p.boughtAt || p.plannedMonth || '').slice(0, 7) || '—';
+      (byMonth[mk] = byMonth[mk] || []).push(p);
+    });
+    const monthKeys = Object.keys(byMonth).sort((a, b) => b.localeCompare(a));
+    const monthsHtml = monthKeys.map(mk => {
+      const items = byMonth[mk];
+      // Current month expanded by default; older months collapsed unless user opened them.
+      const opened = forceOpen || (_purchasesDoneMonthsOpen[mk] !== undefined ? _purchasesDoneMonthsOpen[mk] : mk === cm);
+      const header = '<div class="p-done-month-header' + (opened ? '' : ' collapsed') + '" onclick="_toggleDoneMonth(\'' + mk + '\')">' +
+        '<span>📆 ' + (mk === '—' ? 'Без дати' : formatMonthKey(mk)) + ' (' + items.length + ')</span>' +
+        '<span class="caret">▾</span>' +
+        '</div>';
+      const body = '<div class="p-done-month-body' + (opened ? '' : ' collapsed') + '">' +
+        items.map(p => renderItem(p)).join('') +
+        '</div>';
+      return header + body;
+    }).join('');
+    pushGroup('done', '✓ Здійснено', '#4ade80', vis.done, monthsHtml);
   }
-  if (groups.current.length) {
-    sections.push('<h3 class="a-card-title" style="margin:16px 0 8px">📅 ' + formatMonthKey(cm) + ' (' + groups.current.length + ')</h3>');
-    sections.push(groups.current.map(p => renderItem(p)).join(''));
-  }
-  if (groups.future.length) {
-    sections.push('<h3 class="a-card-title" style="color:#94a3b8;margin:16px 0 8px">🔜 На майбутнє (' + groups.future.length + ')</h3>');
-    sections.push(groups.future.map(p => renderItem(p)).join(''));
-  }
-  if (groups.done.length) {
-    sections.push('<h3 class="a-card-title" style="color:#4ade80;margin:16px 0 8px">✓ Здійснено (' + groups.done.length + ')</h3>');
-    sections.push(groups.done.slice(0, 20).map(p => renderItem(p)).join(''));
-    if (groups.done.length > 20) {
-      sections.push('<p style="text-align:center;color:#64748b;font-size:12px;margin-top:8px">Показано останні 20 з ' + groups.done.length + '</p>');
-    }
+
+  if (!sections.length) {
+    const hasFilter = _purchasesFilter !== 'all' || q;
+    list.innerHTML = sanitize(hasFilter
+      ? '<div class="p-no-results">Нічого не знайдено за поточними фільтрами. <a href="#" onclick="event.preventDefault();_purchasesResetFilters()" style="color:#60a5fa">Скинути</a></div>'
+      : '<div class="a-empty">Ще немає запланованих витрат. Додайте першу вище 🛒</div>'
+    );
+    return;
   }
 
   list.innerHTML = sanitize(sections.join(''));
+}
+
+function _renderPurchasesToolbar(counts) {
+  const toolbar = document.getElementById('purchasesToolbar');
+  const chipsEl = document.getElementById('purchasesChips');
+  if (!toolbar || !chipsEl) return;
+  toolbar.style.display = 'block';
+  const chips = [
+    { key: 'all',     label: 'Усі' },
+    { key: 'overdue', label: '⚠ Прострочено' },
+    { key: 'current', label: '📅 Цей місяць' },
+    { key: 'future',  label: '🔜 Майбутнє' },
+    { key: 'done',    label: '✓ Здійснено' },
+    { key: 'shared',  label: '👥 Спільні' }
+  ];
+  chipsEl.innerHTML = chips.map(c => {
+    const n = counts[c.key] || 0;
+    if (c.key !== 'all' && n === 0) return '';
+    const active = _purchasesFilter === c.key;
+    return '<button type="button" class="purchases-chip' + (active ? ' active' : '') + '" onclick="_setPurchasesFilter(\'' + c.key + '\')">' +
+      c.label +
+      (n ? '<span class="purchases-chip-count">' + n + '</span>' : '') +
+      '</button>';
+  }).join('');
+
+  // Sync input value + clear-btn visibility (without stealing focus).
+  const input = document.getElementById('purchasesSearchInput');
+  if (input && input.value !== _purchasesSearchQuery && document.activeElement !== input) {
+    input.value = _purchasesSearchQuery;
+  }
+  const clearBtn = document.getElementById('purchasesSearchClear');
+  if (clearBtn) clearBtn.style.display = _purchasesSearchQuery ? '' : 'none';
+}
+
+function _purchasesOnSearchInput() {
+  const input = document.getElementById('purchasesSearchInput');
+  if (!input) return;
+  const val = input.value;
+  if (_purchasesSearchDebounce) clearTimeout(_purchasesSearchDebounce);
+  _purchasesSearchDebounce = setTimeout(() => {
+    _purchasesSearchQuery = val;
+    renderPurchases();
+  }, 120);
+}
+
+function _purchasesClearSearch() {
+  _purchasesSearchQuery = '';
+  const input = document.getElementById('purchasesSearchInput');
+  if (input) { input.value = ''; input.focus(); }
+  renderPurchases();
+}
+
+function _setPurchasesFilter(name) {
+  _purchasesFilter = name;
+  renderPurchases();
+}
+
+function _togglePurchaseGroup(key) {
+  _purchasesCollapsed[key] = !_purchasesCollapsed[key];
+  renderPurchases();
+}
+
+function _toggleDoneMonth(mk) {
+  const cm = currentMonthKey();
+  // If not yet explicitly toggled, initialize to the default (current month open).
+  if (_purchasesDoneMonthsOpen[mk] === undefined) _purchasesDoneMonthsOpen[mk] = (mk === cm);
+  _purchasesDoneMonthsOpen[mk] = !_purchasesDoneMonthsOpen[mk];
+  renderPurchases();
+}
+
+function _purchasesResetFilters() {
+  _purchasesFilter = 'all';
+  _purchasesSearchQuery = '';
+  const input = document.getElementById('purchasesSearchInput');
+  if (input) input.value = '';
+  renderPurchases();
 }
 
 async function savePurchasesToFirestore() {
@@ -5333,6 +5511,15 @@ function startSharedPurchasesListener() {
       sharedPurchaseItems = [];
       snap.forEach(doc => sharedPurchaseItems.push({ ...doc.data(), id: doc.id }));
       renderPurchases();
+      // If detail page is open for a shared purchase, re-render so newly
+      // accepted invites or added members show up live.
+      if (_openPurchaseDetailId) {
+        const still = sharedPurchaseItems.some(x => String(x.id) === String(_openPurchaseDetailId));
+        const detail = document.getElementById('purchaseDetail');
+        if (still && detail && detail.style.display !== 'none') {
+          openPurchaseDetail(_openPurchaseDetailId);
+        }
+      }
     }, err => console.warn('Shared purchases listener failed:', err));
   } catch(e) { console.warn('Shared purchases listener setup failed:', e); }
 }
@@ -5388,17 +5575,30 @@ async function acceptShareInvite(shareId) {
     if (!doc.exists) { alert('Посилання недійсне або спільну витрату видалено.'); return; }
     const data = doc.data();
     const members = data.members || [];
+    const myEmail = (currentUser.email || '').toLowerCase();
+    // Mark any pending invitation for this email as accepted by this user
+    const existingInvites = Array.isArray(data.invitations) ? data.invitations : [];
+    const updatedInvites = existingInvites.map(inv => {
+      if (!inv || inv.status === 'accepted') return inv;
+      if (String(inv.email || '').toLowerCase() !== myEmail) return inv;
+      return { ...inv, status: 'accepted', acceptedAt: new Date().toISOString(), acceptedByUid: currentUser.uid };
+    });
+    const invitesChanged = JSON.stringify(existingInvites) !== JSON.stringify(updatedInvites);
     if (members.includes(currentUser.uid)) {
+      // Already a member — still sync invitation status if it was pending
+      if (invitesChanged) {
+        try { await docRef.update({ invitations: updatedInvites }); } catch(_) {}
+      }
       alert('Ви вже учасник цієї витрати.');
     } else {
       const ownerEmail = (data.memberEmails && data.memberEmails[data.ownerUid]) || 'іншого користувача';
       if (!confirm(`${ownerEmail} запрошує вас до спільної витрати:\n\n${data.icon || '🛒'} ${data.name}\n\nПрийняти?`)) return;
-      const emailUpdate = {};
-      emailUpdate['memberEmails.' + currentUser.uid] = currentUser.email || '';
-      await docRef.update({
-        members: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
-        ...emailUpdate
-      });
+      const update = {
+        members: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+      };
+      update['memberEmails.' + currentUser.uid] = currentUser.email || '';
+      if (invitesChanged) update.invitations = updatedInvites;
+      await docRef.update(update);
       alert('✓ Спільну витрату додано до вашого списку.');
     }
   } catch(e) {
@@ -5465,20 +5665,59 @@ async function invitePurchaseByEmail(shareId) {
     const body = await res.json().catch(() => ({}));
     if (body && body.ok) {
       const ch = body.channel === 'telegram' ? 'Telegram' : 'Email';
+      await _recordPurchaseInvitation(shareId, email, body.channel || 'email');
       alert('✓ Запрошення надіслано через ' + ch + '.');
     } else {
       const msg = (body && body.description) || 'Користувача з таким email не знайдено на платформі.';
       if (confirm(msg + '\n\nСкопіювати посилання і надіслати вручну?')) {
+        await _recordPurchaseInvitation(shareId, email, 'manual');
         _copyToClipboard(shareUrl);
         alert('Посилання скопійовано.');
       }
     }
   } catch(e) {
     if (confirm('Сервер недоступний. Скопіювати посилання і надіслати вручну?')) {
+      await _recordPurchaseInvitation(shareId, email, 'manual');
       _copyToClipboard(shareUrl);
       alert('Посилання скопійовано.');
     }
   }
+}
+
+// Append an invitation record to /sharedPurchases/{shareId}.invitations[].
+// Keeps one entry per email — resends refresh sentAt/channel instead of duplicating.
+async function _recordPurchaseInvitation(shareId, email, channel) {
+  if (!firebaseReady || !currentUser) return;
+  try {
+    const docRef = db.collection('sharedPurchases').doc(String(shareId));
+    const snap = await docRef.get();
+    if (!snap.exists) return;
+    const data = snap.data();
+    const existing = Array.isArray(data.invitations) ? data.invitations.slice() : [];
+    const normalized = String(email || '').trim().toLowerCase();
+    const idx = existing.findIndex(inv => inv && String(inv.email || '').toLowerCase() === normalized);
+    const nowIso = new Date().toISOString();
+    if (idx === -1) {
+      existing.push({
+        email,
+        sentAt: nowIso,
+        channel: channel || 'email',
+        status: 'pending',
+        invitedByUid: currentUser.uid,
+        invitedByEmail: currentUser.email || ''
+      });
+    } else if (existing[idx].status !== 'accepted') {
+      existing[idx] = {
+        ...existing[idx],
+        email,
+        sentAt: nowIso,
+        channel: channel || existing[idx].channel || 'email',
+        invitedByUid: existing[idx].invitedByUid || currentUser.uid,
+        invitedByEmail: existing[idx].invitedByEmail || currentUser.email || ''
+      };
+    }
+    await docRef.update({ invitations: existing });
+  } catch(e) { console.warn('Record invitation failed:', e); }
 }
 
 function adminlikeApiFetch(path, data) {
@@ -5502,6 +5741,161 @@ function _copyToClipboard(text) {
     try { document.execCommand('copy'); } catch(_) {}
     ta.remove();
   }
+}
+
+// Open a detail page for a shared or private purchase. Shows full info,
+// member list with acceptance state, and invitation log with statuses.
+function openPurchaseDetail(id) {
+  const found = _findPurchase(id);
+  if (!found) return;
+  const p = found.item;
+  const isShared = found.source === 'shared';
+  const cc = purchaseCurOf(p);
+  const amountStr = fmtPurchaseAmount(p.amount, cc);
+  const uahEq = (cc !== 'UAH' && purchaseToUah(p.amount, cc) !== null)
+    ? ' <span style="color:#64748b;font-size:12px">≈ ' + formatNum(purchaseToUah(p.amount, cc)) + ' грн</span>'
+    : '';
+
+  // Members section (shared only)
+  let membersHtml = '';
+  if (isShared) {
+    const members = Array.isArray(p.members) ? p.members : [];
+    const emails = p.memberEmails || {};
+    const ownerUid = p.ownerUid;
+    const rows = members.map(uid => {
+      const email = emails[uid] || '(без email)';
+      const isOwner = uid === ownerUid;
+      const isMe = currentUser && uid === currentUser.uid;
+      const badges = [];
+      if (isOwner) badges.push('<span style="background:rgba(168,85,247,0.15);color:#c084fc;padding:2px 8px;border-radius:10px;font-size:11px">автор</span>');
+      if (isMe && !isOwner) badges.push('<span style="background:rgba(96,165,250,0.15);color:#60a5fa;padding:2px 8px;border-radius:10px;font-size:11px">це ви</span>');
+      return '<div class="detail-info-row">' +
+        '<span class="detail-info-label">👤 ' + esc(email) + '</span>' +
+        '<span class="detail-info-value">' + badges.join(' ') + '</span>' +
+        '</div>';
+    }).join('');
+    membersHtml = '<div class="a-card"><h3>Учасники (' + members.length + ')</h3>' +
+      (rows || '<p style="color:#94a3b8;font-size:13px">Поки лише ви</p>') + '</div>';
+  }
+
+  // Invitations section (shared only)
+  let invitesHtml = '';
+  if (isShared) {
+    const invites = Array.isArray(p.invitations) ? p.invitations.slice() : [];
+    // Hide invitations that were accepted by someone already in members list AND shown above —
+    // but keep them visible so the inviter can see history. We show all but mark accepted.
+    invites.sort((a, b) => String(b.sentAt || '').localeCompare(String(a.sentAt || '')));
+    if (invites.length) {
+      const chLabel = c => c === 'telegram' ? 'Telegram' : (c === 'manual' ? 'вручну' : 'Email');
+      const rows = invites.map(inv => {
+        const when = inv.sentAt ? new Date(inv.sentAt).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+        let badge;
+        if (inv.status === 'accepted') {
+          const accWhen = inv.acceptedAt ? new Date(inv.acceptedAt).toLocaleDateString('uk-UA') : '';
+          badge = '<span style="background:rgba(74,222,128,0.15);color:#4ade80;padding:2px 8px;border-radius:10px;font-size:11px">✓ прийняв' + (accWhen ? ' · ' + accWhen : '') + '</span>';
+        } else {
+          badge = '<span style="background:rgba(251,191,36,0.15);color:#fbbf24;padding:2px 8px;border-radius:10px;font-size:11px">⏳ очікує</span>';
+        }
+        return '<div style="padding:10px 0;border-bottom:1px solid #1e293b">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">' +
+            '<span style="color:#e2e8f0">📨 ' + esc(inv.email || '') + '</span>' +
+            badge +
+          '</div>' +
+          '<div style="color:#64748b;font-size:12px;margin-top:4px">' + esc(chLabel(inv.channel)) + ' · ' + when + '</div>' +
+          '</div>';
+      }).join('');
+      invitesHtml = '<div class="a-card"><h3>Запрошення (' + invites.length + ')</h3>' + rows + '</div>';
+    } else {
+      invitesHtml = '<div class="a-card"><h3>Запрошення</h3><p style="color:#94a3b8;font-size:13px;margin:0">Ще нікого не запрошено.</p></div>';
+    }
+  }
+
+  // Status line
+  let statusBadge;
+  if (p.bought) {
+    const accStr = p.boughtAmount && p.boughtAmount !== p.amount
+      ? 'Здійснено за ' + fmtPurchaseAmount(p.boughtAmount, cc)
+      : 'Здійснено';
+    const boughtDate = p.boughtAt ? ' · ' + new Date(p.boughtAt).toLocaleDateString('uk-UA') : '';
+    statusBadge = '<span class="p-item-type" style="background:rgba(74,222,128,0.15);color:#4ade80">✓ ' + esc(accStr) + esc(boughtDate) + '</span>';
+  } else {
+    const cm = currentMonthKey();
+    const pm = p.plannedMonth || cm;
+    if (pm < cm) statusBadge = '<span class="p-item-type" style="background:rgba(248,113,113,0.15);color:#f87171">прострочено</span>';
+    else if (pm === cm) statusBadge = '<span class="p-item-type" style="background:rgba(96,165,250,0.15);color:#60a5fa">цей місяць</span>';
+    else statusBadge = '<span class="p-item-type" style="background:rgba(148,163,184,0.15);color:#94a3b8">на майбутнє</span>';
+  }
+  const deferBadge = p.deferCount ? '<span class="p-item-type" style="background:rgba(251,191,36,0.15);color:#fbbf24;margin-left:6px">перенесено ×' + p.deferCount + '</span>' : '';
+
+  // Action buttons
+  const actions = [];
+  if (!p.bought) {
+    actions.push('<button class="btn-save" onclick="markPurchaseBought(\'' + p.id + '\');closePurchaseDetail()" style="width:auto;padding:8px 16px;margin:0">✓ Відмітити</button>');
+  } else {
+    actions.push('<button class="btn-export" onclick="unmarkPurchaseBought(\'' + p.id + '\');closePurchaseDetail()" style="width:auto;padding:8px 16px;margin:0">↺ Скасувати позначку</button>');
+  }
+  if (isShared) {
+    actions.push('<button class="btn-export" onclick="invitePurchaseByEmail(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0;background:#8b5cf6">👥 Запросити</button>');
+  } else {
+    actions.push('<button class="btn-export" onclick="promptMakeShared(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0;background:#8b5cf6">👥 Зробити спільною</button>');
+  }
+  actions.push('<button class="btn-export" onclick="sharePurchase(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0">↗ Поділитись</button>');
+  if (!p.bought) {
+    actions.push('<button class="btn-export" onclick="editPurchaseFromDetail(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0">✎ Редагувати</button>');
+  }
+  actions.push('<button class="btn-clear" onclick="if(confirm(\'' + (isShared ? 'Покинути спільну витрату?' : 'Видалити витрату?') + '\')){deletePurchase(\'' + p.id + '\');closePurchaseDetail();}" style="width:auto;padding:8px 16px;margin:0">✕ ' + (isShared ? 'Покинути' : 'Видалити') + '</button>');
+
+  _openPurchaseDetailId = String(p.id);
+  document.getElementById('purchasesContent').style.display = 'none';
+  const detail = document.getElementById('purchaseDetail');
+  detail.style.display = 'block';
+
+  const sharedBadge = isShared
+    ? '<span class="p-item-type" style="background:rgba(168,85,247,0.15);color:#c084fc;margin-left:6px">👥 Спільна (' + (Array.isArray(p.members) ? p.members.length : 0) + ')</span>'
+    : '';
+
+  detail.querySelector('#purchaseDetailContent').innerHTML = sanitize(`
+    <div class="dash-hero">
+      <div class="dash-hero-label"><span class="dream-icon-hero">${purchaseIconOf(p)}</span>${esc(p.name)}</div>
+      <div class="dash-hero-value">${amountStr}</div>
+      <div style="font-size:13px;color:#94a3b8;margin-top:4px">${uahEq}</div>
+      <div style="margin-top:10px">${statusBadge}${deferBadge}${sharedBadge}</div>
+      <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap">
+        ${actions.join('')}
+      </div>
+    </div>
+
+    <div class="a-card">
+      <h3>Деталі</h3>
+      <div class="detail-info-row"><span class="detail-info-label">Сума</span><span class="detail-info-value">${amountStr}${uahEq}</span></div>
+      <div class="detail-info-row"><span class="detail-info-label">Запланований місяць</span><span class="detail-info-value">${formatMonthKey(p.plannedMonth)}</span></div>
+      ${p.deferCount ? '<div class="detail-info-row"><span class="detail-info-label">Перенесень</span><span class="detail-info-value">' + p.deferCount + '</span></div>' : ''}
+      ${p.bought && p.boughtAt ? '<div class="detail-info-row"><span class="detail-info-label">Позначено як здійснена</span><span class="detail-info-value">' + new Date(p.boughtAt).toLocaleDateString('uk-UA') + '</span></div>' : ''}
+      ${p.bought && p.boughtAmount && p.boughtAmount !== p.amount ? '<div class="detail-info-row"><span class="detail-info-label">Фактична сума</span><span class="detail-info-value">' + fmtPurchaseAmount(p.boughtAmount, cc) + '</span></div>' : ''}
+      ${p.link ? '<div class="detail-info-row"><span class="detail-info-label">Посилання</span><span class="detail-info-value"><a href="' + esc(p.link) + '" target="_blank" rel="noopener noreferrer" class="purchase-link">🔗 ' + esc(p.link.length > 50 ? p.link.slice(0, 47) + '…' : p.link) + '</a></span></div>' : ''}
+      ${isShared && p.sharedAt ? '<div class="detail-info-row"><span class="detail-info-label">Створено як спільна</span><span class="detail-info-value">' + new Date(p.sharedAt).toLocaleDateString('uk-UA') + '</span></div>' : ''}
+      ${p.notes ? '<div class="detail-info-row" style="flex-direction:column;align-items:flex-start;gap:6px"><span class="detail-info-label">Нотатки</span><span class="detail-info-value" style="white-space:pre-wrap;text-align:left">' + esc(p.notes) + '</span></div>' : ''}
+    </div>
+
+    ${membersHtml}
+    ${invitesHtml}
+  `);
+
+  detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closePurchaseDetail() {
+  _openPurchaseDetailId = null;
+  const detail = document.getElementById('purchaseDetail');
+  if (detail) detail.style.display = 'none';
+  const content = document.getElementById('purchasesContent');
+  if (content) content.style.display = 'block';
+  renderPurchases();
+}
+
+function editPurchaseFromDetail(id) {
+  closePurchaseDetail();
+  editPurchase(id);
 }
 
 // ==================== CREDIT CALCULATOR =========================

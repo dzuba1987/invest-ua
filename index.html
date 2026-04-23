@@ -901,7 +901,23 @@
         </div>
       </div>
 
+      <!-- Toolbar: search + filter chips -->
+      <div class="purchases-toolbar" id="purchasesToolbar" style="display:none">
+        <div class="purchases-search">
+          <span style="color:#64748b;font-size:14px">🔍</span>
+          <input type="text" id="purchasesSearchInput" placeholder="Пошук по назві, нотатках, посиланню…" oninput="_purchasesOnSearchInput()">
+          <button type="button" class="purchases-search-clear" id="purchasesSearchClear" style="display:none" onclick="_purchasesClearSearch()">✕</button>
+        </div>
+        <div class="purchases-chips" id="purchasesChips"></div>
+      </div>
+
       <div id="purchasesList"></div>
+    </div>
+
+    <!-- Purchase detail page -->
+    <div id="purchaseDetail" style="display:none">
+      <button class="btn-clear" onclick="closePurchaseDetail()" style="margin-bottom:12px;width:auto;padding:8px 16px">← Назад до витрат</button>
+      <div id="purchaseDetailContent"></div>
     </div>
   </div>
 
@@ -1235,6 +1251,8 @@
 
 <script src="i18n.js"></script>
 <script src="config.js"></script>
+<script src="changelog-seed.js"></script>
+<script src="changelog.js"></script>
 <script src="modules/form-drafts.js"></script>
 <script src="modules/firebase.js"></script>
 <script src="modules/telegram.js"></script>

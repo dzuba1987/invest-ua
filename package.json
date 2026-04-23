@@ -5,7 +5,8 @@
   "main": "app.js",
   "scripts": {
     "test": "npx playwright test --config=modules/playwright.config.js",
-    "changelog": "bash scripts/generate-changelog.sh"
+    "changelog": "bash scripts/generate-changelog.sh",
+    "changelog:build": "node scripts/build-changelog.mjs"
   },
   "repository": {
     "type": "git",

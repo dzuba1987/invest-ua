@@ -1,4 +1,4 @@
-const CACHE_NAME = 'invest-calc-v62';
+const CACHE_NAME = 'invest-calc-v67';
 const ASSETS = [
   './',
   './index.html',
@@ -8,6 +8,8 @@ const ASSETS = [
   './app.js',
   './i18n.js',
   './config.js',
+  './changelog-seed.js',
+  './changelog.js',
   './manifest.json',
   './modules/firebase.js',
   './modules/telegram.js',
