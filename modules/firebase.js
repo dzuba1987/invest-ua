@@ -56,16 +56,22 @@ function initFirebase() {
         portfolioLoaded = false;
         if (typeof dreamsLoaded !== 'undefined') dreamsLoaded = false;
         if (typeof savingsLoaded !== 'undefined') savingsLoaded = false;
+        if (typeof purchasesLoaded !== 'undefined') purchasesLoaded = false;
         saveUserMeta(user);
         loadFromFirestore();
         loadPortfolioFromFirestore();
         if (typeof loadDreamsFromFirestore === 'function') loadDreamsFromFirestore();
         if (typeof loadSavingsFromFirestore === 'function') loadSavingsFromFirestore();
+        if (typeof loadPurchasesFromFirestore === 'function') loadPurchasesFromFirestore();
+        if (typeof startSharedPurchasesListener === 'function') startSharedPurchasesListener();
+        if (typeof processShareInviteOnBoot === 'function') processShareInviteOnBoot();
         loadProfileFromFirestore();
       } else {
         portfolioLoaded = false;
         if (typeof dreamsLoaded !== 'undefined') dreamsLoaded = false;
         if (typeof savingsLoaded !== 'undefined') savingsLoaded = false;
+        if (typeof purchasesLoaded !== 'undefined') purchasesLoaded = false;
+        if (typeof stopSharedPurchasesListener === 'function') stopSharedPurchasesListener();
       }
       checkMaintenance();
       // Load ОВДП bonds for calculator select (available to all, even without auth)
@@ -153,6 +159,7 @@ function updateAuthUI() {
   if (typeof updateCreditCalcVisibility === 'function') updateCreditCalcVisibility();
   if (typeof updateDreamsUI === 'function') updateDreamsUI();
   if (typeof updateSavingsUI === 'function') updateSavingsUI();
+  if (typeof updatePurchasesUI === 'function') updatePurchasesUI();
   // Poll changelog so the tab badge is up-to-date before the user opens it.
   if (typeof loadChangelog === 'function') loadChangelog();
 }
@@ -458,9 +465,17 @@ async function loadProfileFromFirestore() {
         updateProfileUI();
         checkPinOnLogin();
       }
-      const adminLink = document.getElementById('adminLink');
-      if (adminLink) adminLink.style.display = (meta && meta.isAdmin) ? '' : 'none';
     }
+    // Admin flag lives on the REAL user doc, not the dev sandbox — always read
+    // from users/{uid} so the Admin link works on localhost too.
+    try {
+      const realDoc = IS_DEV
+        ? await db.collection('users').doc(currentUser.uid).get()
+        : doc;
+      const realMeta = realDoc && realDoc.exists ? realDoc.data().meta : null;
+      const adminLink = document.getElementById('adminLink');
+      if (adminLink) adminLink.style.display = (realMeta && realMeta.isAdmin) ? '' : 'none';
+    } catch(e) { /* non-fatal */ }
   } catch(e) {
     console.warn('Profile load failed:', e);
   }

@@ -113,6 +113,24 @@ function _runGlobalSearch() {
     });
   }
 
+  // Purchases
+  if (typeof purchaseItems !== 'undefined') {
+    const hit = purchaseItems.filter(p => matches(p.name) || matches(p.notes)).slice(0, SECTION_LIMIT);
+    hit.forEach(p => {
+      const cc = (p.currency || 'UAH').toUpperCase();
+      const sym = cc === 'USD' ? '$' : cc === 'EUR' ? '€' : '';
+      const amountStr = cc === 'UAH' ? formatShort(p.amount || 0) + ' грн' : sym + formatShort(p.amount || 0);
+      const monthStr = p.plannedMonth ? ' · ' + (typeof formatMonthKey === 'function' ? formatMonthKey(p.plannedMonth) : p.plannedMonth) : '';
+      const boughtStr = p.bought ? ' · ✓ здійснено' : '';
+      results.push({
+        icon: p.icon || '🛒', title: p.name,
+        sub: amountStr + monthStr + boughtStr,
+        badge: 'Витрата', badgeClass: 'search-badge-purchase',
+        action: () => { goToTab('purchases'); clearGlobalSearch(); }
+      });
+    });
+  }
+
   // Calculation history
   if (typeof savedRecords !== 'undefined') {
     const hit = savedRecords.filter(r => matches(r.name)).slice(0, SECTION_LIMIT);
@@ -201,7 +219,7 @@ function esc(str) {
 
 // Sanitize HTML for innerHTML (DOMPurify as second layer, allows onclick for UI)
 function sanitize(html) {
-  if (typeof DOMPurify !== 'undefined') return DOMPurify.sanitize(html, { ADD_ATTR: ['onclick', 'style', 'data-cc', 'data-name'] });
+  if (typeof DOMPurify !== 'undefined') return DOMPurify.sanitize(html, { ADD_ATTR: ['onclick', 'style', 'data-cc', 'data-name', 'data-hint', 'title'] });
   return html;
 }
 
@@ -228,6 +246,7 @@ function switchMainTab(tab, btn) {
       if (id === 'dream.form' && typeof toggleDreamForm === 'function') toggleDreamForm(false);
       if (id === 'portfolio.form' && typeof togglePortfolioForm === 'function') togglePortfolioForm(false);
       if (id === 'saving.form' && typeof toggleSavingsForm === 'function') toggleSavingsForm(false);
+      if (id === 'purchase.form' && typeof togglePurchaseForm === 'function') togglePurchaseForm(false);
     }
   }
   document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
@@ -240,6 +259,7 @@ function switchMainTab(tab, btn) {
   if (tab === 'currencies') loadCurrenciesPage();
   if (tab === 'dreams') updateDreamsUI();
   if (tab === 'savings') updateSavingsUI();
+  if (tab === 'purchases') updatePurchasesUI();
   if (tab === 'updates') updateUpdatesUI();
   if (tab === 'profile') { updateProfileUI(); renderDashboardCurrencySettings(); }
 }
@@ -259,6 +279,7 @@ function dirtyFormsOnActiveTab() {
   check('portfolio.form', 'portfolioFormCard', true);
   check('dream.form', 'dreamFormCard', true);
   check('saving.form', 'savingsFormCard', true);
+  check('purchase.form', 'purchaseFormCard', true);
   check('profile', 'profileContent', false);
   check('calc', 'invested', false);
   check('credit', 'creditAmount', true);
@@ -369,6 +390,7 @@ document.getElementById('bondName').addEventListener('input', () => calculate())
 ['pBondPrice', 'pBondCount', 'pInvested', 'pRate', 'pTax', 'pIndex',
  'pCompoundRate', 'pCompoundIndex',
  'dreamTarget', 'dreamSaved', 'dreamMonthly', 'dreamExpenses',
+ 'savingAmount', 'purchaseAmount',
  'creditAmount', 'creditRate', 'creditDown'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('input', () => formatInput(el));
@@ -2263,24 +2285,27 @@ function openInvestmentDetail(id) {
       const ratePct = (item.rate || 0) / 100;
       const idxPct = (item.indexation || 0) / 100;
       const isIns = item.type === 'insurance';
+      // Tax is withheld at each accrual (Ukrainian model), so compounding
+      // happens on the NET interest. All earnings figures below are NET.
+      const taxRate = (item.tax || 0) / 100;
+      const effRate = ratePct * (1 - taxRate);
 
       if (isIns || item.compound) {
-        // Year-by-year simulation for FINAL expected profit.
         let balance = 0, totalInterest = 0, totalPaid = 0;
         let yearlyPayment = item.invested;
 
         for (let y = 1; y <= totalYears; y++) {
           if (isIns) {
             if (y > 1 && idxPct > 0) yearlyPayment = item.invested * Math.pow(1 + idxPct, y - 1);
-            const interest = balance * ratePct;
-            balance += yearlyPayment + interest;
+            const netInt = balance * effRate;
+            balance += yearlyPayment + netInt;
             totalPaid += yearlyPayment;
-            totalInterest += interest;
+            totalInterest += netInt;
           } else {
             if (y === 1) balance = item.invested;
-            const interest = balance * ratePct;
-            balance += interest;
-            totalInterest += interest;
+            const netInt = balance * effRate;
+            balance += netInt;
+            totalInterest += netInt;
           }
         }
 
@@ -2288,27 +2313,32 @@ function openInvestmentDetail(id) {
         // Fractional proration — day 1 earnedSoFar ≈ 0, not a full year's interest.
         const yearsE = Math.min(elapsed, days) / 365.25;
         if (item.compound && !isIns) {
-          earnedSoFar = item.invested * (Math.pow(1 + ratePct, yearsE) - 1);
+          earnedSoFar = item.invested * (Math.pow(1 + effRate, yearsE) - 1);
         } else {
           earnedSoFar = totalYears > 0 ? totalInterest * Math.min(yearsE / totalYears, 1) : 0;
         }
         earnedSoFar = Math.min(earnedSoFar, expectedProfit);
       } else if (item.rate) {
-        // Simple interest
+        // Simple interest — single tax deduction at the end.
         const ty = days / 365.25;
         const ey = Math.min(elapsed, days) / 365.25;
-        expectedProfit = item.invested * ratePct * ty;
-        earnedSoFar = item.invested * ratePct * ey;
-        earnedSoFar = Math.min(earnedSoFar, expectedProfit);
+        const grossExpected = item.invested * ratePct * ty;
+        const grossEarned = item.invested * ratePct * ey;
+        expectedProfit = grossExpected * (1 - taxRate);
+        earnedSoFar = Math.min(grossEarned * (1 - taxRate), expectedProfit);
       }
       dailyGross = item.invested * (item.rate / 100) / 365.25;
-      const taxRate = item.tax ? item.tax / 100 : 0;
       dailyNet = dailyGross * (1 - taxRate);
     }
   }
 
-  const taxAmount = item.tax && expectedProfit > 0 ? expectedProfit * item.tax / 100 : 0;
-  const netProfit = expectedProfit - taxAmount;
+  // expectedProfit is NET; derive implied gross/tax for the Оподаткування card.
+  const _taxRate = (item.tax || 0) / 100;
+  const taxAmount = (item.tax && expectedProfit > 0)
+    ? expectedProfit * _taxRate / (1 - _taxRate)
+    : 0;
+  const netProfit = expectedProfit;
+  const grossProfit = expectedProfit + taxAmount;
 
   // Hide portfolio list, show detail
   document.getElementById('portfolioContent').style.display = 'none';
@@ -2358,13 +2388,16 @@ function openInvestmentDetail(id) {
     ${!isCash && item.compound && item.rate && days > 0 ? (() => {
       const totalYears = Math.round(days / 365.25);
       const r = item.rate / 100;
-      const finalBalance = item.invested * Math.pow(1 + r, totalYears);
+      const tax = (item.tax || 0) / 100;
+      const effR = r * (1 - tax);
+      // After-tax compounding (Ukrainian model: tax withheld each year).
+      const finalBalance = item.invested * Math.pow(1 + effR, totalYears);
       const compProfit = finalBalance - item.invested;
-      const simpleProfit = item.invested * r * totalYears;
+      const simpleProfit = item.invested * r * totalYears * (1 - tax);
       const advantage = compProfit - simpleProfit;
       return `<div class="a-card">
-        <h3>Складний відсоток</h3>
-        <div class="detail-info-row"><span class="detail-info-label">Ставка</span><span class="detail-info-value">${item.rate}% річних</span></div>
+        <h3>Складний відсоток${tax > 0 ? ' (після податку)' : ''}</h3>
+        <div class="detail-info-row"><span class="detail-info-label">Ставка</span><span class="detail-info-value">${item.rate}% річних${tax > 0 ? ' <span style="color:#94a3b8;font-size:12px">(ефект. ' + (effR * 100).toFixed(2) + '%)</span>' : ''}</span></div>
         <div class="detail-info-row"><span class="detail-info-label">Термін</span><span class="detail-info-value">${totalYears} р. (щорічне реінвестування)</span></div>
         <div class="detail-info-row"><span class="detail-info-label">Підсумкова сума</span><span class="detail-info-value" style="color:#4ade80">${formatNum(finalBalance)} грн</span></div>
         <div class="detail-info-row"><span class="detail-info-label">Прибуток (складний)</span><span class="detail-info-value" style="color:#4ade80">+${formatNum(compProfit)} грн</span></div>
@@ -2408,19 +2441,21 @@ function openInvestmentDetail(id) {
       let rows = '', balance = 0, totalPaid = 0, totalInterest = 0;
 
       if (isIns) {
-        // Insurance: yearly with indexation
+        // Insurance: yearly with indexation; tax withheld on each interest accrual.
         const hasIdx = idxPct > 0;
+        const taxRate = (item.tax || 0) / 100;
+        const effRate = ratePct * (1 - taxRate);
         let yearlyPayment = item.invested;
         for (let y = 1; y <= totalYears; y++) {
           if (y > 1 && hasIdx) yearlyPayment = item.invested * Math.pow(1 + idxPct, y - 1);
           const idxAmount = y > 1 && hasIdx ? yearlyPayment - item.invested * Math.pow(1 + idxPct, y - 2) : 0;
-          const interest = balance * ratePct;
-          balance += yearlyPayment + interest;
+          const netInt = balance * effRate;
+          balance += yearlyPayment + netInt;
           totalPaid += yearlyPayment;
-          totalInterest += interest;
+          totalInterest += netInt;
           rows += '<tr><td>' + y + '</td><td>' + (startYear + y - 1) + '</td><td>' + formatNum(yearlyPayment) + '</td>' +
             (hasIdx ? '<td style="color:#f59e0b">' + (idxAmount > 0 ? '+' + formatNum(idxAmount) : '—') + '</td>' : '') +
-            '<td style="color:#4ade80">' + (interest > 0 ? '+' + formatNum(interest) : '—') + '</td>' +
+            '<td style="color:#4ade80">' + (netInt > 0 ? '+' + formatNum(netInt) : '—') + '</td>' +
             '<td><strong>' + formatNum(balance) + '</strong></td></tr>';
         }
         return '<div class="a-card"><h3>Графік внесків по роках</h3>' +
@@ -2434,22 +2469,24 @@ function openInvestmentDetail(id) {
           '<td><strong>' + formatNum(balance) + '</strong></td></tr></tbody></table></div></div>';
 
       } else if (isCmp) {
-        // Compound deposit: CALENDAR-year breakdown.
-        // Each deposit year's interest is split proportionally between the calendar
-        // years it spans, so partial start/end years appear with (N міс.) note.
+        // Compound deposit: CALENDAR-year breakdown on the NET rate.
+        // Tax is withheld yearly (Ukrainian model) → each year's reinvested
+        // amount is net, so balance compounds at rate * (1 - tax).
         const endDate = new Date(item.dateEnd);
         const startCalYear = startDate.getFullYear();
         const endCalYear = endDate.getFullYear();
+        const taxRate = (item.tax || 0) / 100;
+        const effRate = ratePct * (1 - taxRate);
 
-        // 1) Simulate deposit-year compounding to get each year's interest.
+        // 1) Simulate deposit-year compounding on NET interest.
         const depYears = [];
         let depBal = item.invested;
         for (let y = 1; y <= totalYears; y++) {
           const yStart = new Date(startDate.getFullYear() + y - 1, startDate.getMonth(), startDate.getDate());
           const yEnd = new Date(startDate.getFullYear() + y, startDate.getMonth(), startDate.getDate());
-          const interest = depBal * ratePct;
-          depYears.push({ start: yStart, end: yEnd, interest });
-          depBal += interest;
+          const netInt = depBal * effRate;
+          depYears.push({ start: yStart, end: yEnd, interest: netInt });
+          depBal += netInt;
         }
 
         // 2) Distribute each deposit year's interest across calendar years by time share.
@@ -2521,12 +2558,13 @@ function openInvestmentDetail(id) {
 
       } else {
         // Simple deposit/OVDP over 2 years: CALENDAR-year table.
-        // Simple interest — each year contributes invested*rate, partial calendar
-        // years contribute proportionally to their months in the deposit range.
+        // Simple interest — each year contributes invested*rate (net of tax),
+        // partial calendar years contribute proportionally to months in range.
         const endDate = new Date(item.dateEnd);
         const startCalYear = startDate.getFullYear();
         const endCalYear = endDate.getFullYear();
-        const yearInt = item.invested * ratePct;
+        const taxRate = (item.tax || 0) / 100;
+        const yearInt = item.invested * ratePct * (1 - taxRate);
         const monthsInYear = yr => {
           const yStart = new Date(yr, 0, 1);
           const yEnd = new Date(yr + 1, 0, 1);
@@ -2708,7 +2746,8 @@ function renderPortfolio() {
     totalInvested += isCash ? portfolioToUah(p.invested, portfolioCurOf(p)) : p.invested;
 
     let days = 0, elapsed = 0, progress = 0, daysLeft = 0;
-    let expectedProfit = 0, dailyGross = 0, dailyNet = 0, earnedSoFar = 0;
+    let expectedProfit = 0, expectedProfitNet = 0;
+    let dailyGross = 0, dailyNet = 0, earnedSoFar = 0, earnedSoFarNet = 0;
     if (p.dateStart && p.dateEnd) {
       days = Math.round((new Date(p.dateEnd) - new Date(p.dateStart)) / 86400000);
       elapsed = Math.max(0, Math.round((now - new Date(p.dateStart)) / 86400000));
@@ -2716,47 +2755,57 @@ function renderPortfolio() {
       progress = days > 0 ? Math.min(100, (elapsed / days) * 100) : 0;
       if (days > 0) {
         const totalYearsN = Math.round(days / 365.25);
-        const elapsedYearsN = Math.min(Math.ceil(elapsed / 365.25), totalYearsN);
         const ratePct = (p.rate || 0) / 100;
         const idxPct = (p.indexation || 0) / 100;
         const isIns = p.type === 'insurance';
+        // Ukrainian model: tax withheld at each accrual, so compound interest
+        // reinvests net amount. Effective yearly rate = rate * (1 - tax).
+        const taxRate = (p.tax || 0) / 100;
+        const effRate = ratePct * (1 - taxRate);
 
         // ОВДП with exact "receive at maturity" from bank — bypass rate math entirely.
         if (p.type === 'ovdp' && p.receivedAtMaturity && p.receivedAtMaturity > 0) {
           expectedProfit = p.receivedAtMaturity - p.invested;
+          expectedProfitNet = expectedProfit * (1 - taxRate);
           earnedSoFar = expectedProfit * Math.min(elapsed, days) / days;
+          earnedSoFarNet = earnedSoFar * (1 - taxRate);
         } else if (isIns || p.compound) {
-          // Year-by-year simulation for FINAL expected profit.
-          let bal = 0, totalInt = 0;
+          // Year-by-year with yearly tax withholding — balance compounds on NET.
+          let bal = 0, totalNetInt = 0;
           let yPayment = p.invested;
           for (let y = 1; y <= totalYearsN; y++) {
             if (isIns) {
               if (y > 1 && idxPct > 0) yPayment = p.invested * Math.pow(1 + idxPct, y - 1);
-              const interest = bal * ratePct;
-              bal += yPayment + interest;
-              totalInt += interest;
+              const netI = bal * effRate;
+              bal += yPayment + netI;
+              totalNetInt += netI;
             } else {
               if (y === 1) bal = p.invested;
-              const interest = bal * ratePct;
-              bal += interest;
-              totalInt += interest;
+              const netI = bal * effRate;
+              bal += netI;
+              totalNetInt += netI;
             }
           }
-          expectedProfit = totalInt;
-          // Fractional elapsed years — prorate so day 1 is ≈ 0, not a full year's interest.
+          expectedProfitNet = totalNetInt;
+          expectedProfit = taxRate > 0 ? totalNetInt / (1 - taxRate) : totalNetInt;
+          // Fractional elapsed years — day 1 earnedSoFar ≈ 0.
           const yearsE = Math.min(elapsed, days) / 365.25;
           if (p.compound && !isIns) {
-            earnedSoFar = p.invested * (Math.pow(1 + ratePct, yearsE) - 1);
+            earnedSoFarNet = p.invested * (Math.pow(1 + effRate, yearsE) - 1);
           } else {
-            earnedSoFar = totalYearsN > 0 ? totalInt * Math.min(yearsE / totalYearsN, 1) : 0;
+            earnedSoFarNet = totalYearsN > 0 ? totalNetInt * Math.min(yearsE / totalYearsN, 1) : 0;
           }
-          earnedSoFar = Math.min(earnedSoFar, expectedProfit);
+          earnedSoFarNet = Math.min(earnedSoFarNet, expectedProfitNet);
+          earnedSoFar = taxRate > 0 ? earnedSoFarNet / (1 - taxRate) : earnedSoFarNet;
         } else if (p.rate) {
+          // Simple interest — single tax deduction at the end.
           const ty = days / 365.25;
           const ey = Math.min(elapsed, days) / 365.25;
           expectedProfit = p.invested * ratePct * ty;
+          expectedProfitNet = expectedProfit * (1 - taxRate);
           earnedSoFar = p.invested * ratePct * ey;
           earnedSoFar = Math.min(earnedSoFar, expectedProfit);
+          earnedSoFarNet = earnedSoFar * (1 - taxRate);
         }
         totalExpectedProfit += expectedProfit;
 
@@ -2766,13 +2815,12 @@ function renderPortfolio() {
           dailyGross = useReceivedAtMaturity
             ? (days > 0 ? expectedProfit / days : 0)
             : ((p.rate || 0) > 0 ? p.invested * (p.rate / 100) / 365.25 : 0);
-          const taxRate = p.tax ? p.tax / 100 : 0;
           dailyNet = dailyGross * (1 - taxRate);
           totalDailyGross += dailyGross;
           totalDailyNet += dailyNet;
           totalEarnedSoFar += earnedSoFar;
-          totalEarnedSoFarNet += earnedSoFar * (1 - taxRate);
-          totalTaxSoFar += earnedSoFar * taxRate;
+          totalEarnedSoFarNet += earnedSoFarNet;
+          totalTaxSoFar += earnedSoFar - earnedSoFarNet;
 
           // Profit from now to end of year (or dateEnd if earlier)
           const eoyLimit = new Date(p.dateEnd) < endOfYear ? new Date(p.dateEnd) : endOfYear;
@@ -2818,7 +2866,7 @@ function renderPortfolio() {
           </div>
         </div>
         <div class="p-item-actions">
-          ${expectedProfit > 0 ? '<div class="p-item-profit"><div class="amount">+' + formatShort(expectedProfit) + ' грн</div><div class="label">очікуваний дохід</div>' + (p.tax && expectedProfit > 0 ? '<div style="color:#f87171;font-size:12px;margin-top:2px">−' + formatShort(expectedProfit * p.tax / 100) + ' податок</div><div style="color:#4ade80;font-size:13px;font-weight:700">=' + formatShort(expectedProfit - expectedProfit * p.tax / 100) + ' чистими</div>' : '') + '</div>' : ''}
+          ${expectedProfit > 0 ? '<div class="p-item-profit"><div class="amount">+' + formatShort(expectedProfit) + ' грн</div><div class="label">очікуваний дохід</div>' + (p.tax && expectedProfit > 0 ? '<div style="color:#f87171;font-size:12px;margin-top:2px">−' + formatShort(expectedProfit - expectedProfitNet) + ' податок</div><div style="color:#4ade80;font-size:13px;font-weight:700">=' + formatShort(expectedProfitNet) + ' чистими</div>' : '') + '</div>' : ''}
         </div>
       </div>
     `;
@@ -3531,13 +3579,14 @@ function dreamUsdEquiv(amount, cc) {
   if (!cachedRates || !cachedRates.USD || !cachedRates[cc]) return null;
   return amount * cachedRates[cc] / cachedRates.USD;
 }
+const CROSS_RATE_HINT = 'Орієнтовно. Крос-курс через гривню за даними НБУ';
 function fmtDreamAmount(amount, cc) {
   const amt = amount || 0;
   if (!cc || cc === 'UAH') return formatNum(amt) + ' грн';
   const prefix = cc === 'USD' ? '$' : (cc === 'EUR' ? '€' : '');
   let str = (prefix ? prefix + formatNum(amt) : formatNum(amt) + ' ' + cc);
   const eq = dreamUsdEquiv(amt, cc);
-  if (eq !== null) str += ' <span class="dream-equiv">≈ $' + formatNum(eq) + '</span>';
+  if (eq !== null) str += ' <span class="dream-equiv cross-hint" data-hint="' + CROSS_RATE_HINT + '" title="' + CROSS_RATE_HINT + '">≈ $' + formatNum(eq) + ' <span class="cross-rate-info">ⓘ</span></span>';
   return str;
 }
 async function ensureRates() {
@@ -4459,18 +4508,21 @@ function addSaving() {
 function editSaving(id) {
   const item = savingItems.find(s => String(s.id) === String(id));
   if (!item) return;
+  _editingSavingId = id;
   document.getElementById('savingName').value = item.name || '';
   document.getElementById('savingAmount').value = item.amount ? formatShort(item.amount) : '';
   document.getElementById('savingCurrency').value = item.currency || 'UAH';
   document.getElementById('savingNotes').value = item.notes || '';
-  _populateSavingDreamSelect(item.dreamId);
   onSavingCurrencyChange();
-  _editingSavingId = id;
   const btn = document.getElementById('btnAddSaving');
   btn.textContent = 'Зберегти зміни';
   btn.classList.remove('btn-save');
   btn.classList.add('btn-export');
+  // Open form first — toggleSavingsForm calls _populateSavingDreamSelect() with
+  // no args which would clear the selection. Populate with the current value
+  // AFTER the form is open so the dreamId linkage is preserved on edit.
   toggleSavingsForm(true);
+  _populateSavingDreamSelect(item.dreamId);
   if (typeof FormDrafts !== 'undefined') FormDrafts.setBaseline('saving.form');
 }
 
@@ -4607,6 +4659,849 @@ async function loadSavingsFromFirestore() {
     renderSavings();
     if (localOnly.length) saveSavingsToFirestore();
   } catch(e) { console.warn('Savings load failed:', e); }
+}
+
+// ==================== PLANNED PURCHASES =========================
+// ================================================================
+
+let purchaseItems = [];
+let sharedPurchaseItems = [];        // loaded from root /sharedPurchases collection
+let sharedPurchasesUnsubscribe = null;
+let purchasesLoaded = false;
+let _editingPurchaseId = null;
+
+// Helper: locate a purchase across private + shared lists. Returns { item, source, index, list }.
+function _findPurchase(id) {
+  const sid = String(id);
+  let idx = purchaseItems.findIndex(p => String(p.id) === sid);
+  if (idx !== -1) return { item: purchaseItems[idx], source: 'private', index: idx, list: purchaseItems };
+  idx = sharedPurchaseItems.findIndex(p => String(p.id) === sid);
+  if (idx !== -1) return { item: sharedPurchaseItems[idx], source: 'shared', index: idx, list: sharedPurchaseItems };
+  return null;
+}
+
+async function _saveSharedPurchase(item) {
+  if (!firebaseReady || !currentUser) return;
+  try {
+    const clean = (typeof stripUndefined === 'function') ? stripUndefined(item) : item;
+    await db.collection('sharedPurchases').doc(String(item.id)).set(clean, { merge: true });
+  } catch(e) { console.warn('Shared purchase save failed:', e); }
+}
+
+async function _persistPurchase(item, source) {
+  if (source === 'shared') await _saveSharedPurchase(item);
+  else await savePurchasesToFirestore();
+}
+
+// Broader icon set than Dreams — covers typical shopping categories.
+const PURCHASE_ICONS = [
+  '🛒', '🛍️', '🎁', '👕', '👗', '👠', '👟', '👜',
+  '⌚', '💍', '📱', '💻', '🖥️', '🎧', '📷', '🎮',
+  '🎸', '📚', '✏️', '🖌️', '🏠', '🛋️', '🛏️', '🍳',
+  '🧹', '🚗', '🛵', '🚲', '⛽', '✈️', '🏖️', '🍔',
+  '💊', '🪥', '🐶', '🌱', '💡', '🔧',
+];
+const DEFAULT_PURCHASE_ICON = '🛒';
+
+function purchaseIconOf(p) { return (p && p.icon) || DEFAULT_PURCHASE_ICON; }
+
+function renderPurchaseIconPicker() {
+  const container = document.getElementById('purchaseIconPicker');
+  if (!container) return;
+  const current = document.getElementById('purchaseIcon').value || DEFAULT_PURCHASE_ICON;
+  container.innerHTML = PURCHASE_ICONS.map(icon =>
+    `<button type="button" class="dream-icon-btn${icon === current ? ' active' : ''}" data-icon="${icon}" onclick="selectPurchaseIcon('${icon}')">${icon}</button>`
+  ).join('');
+}
+
+function selectPurchaseIcon(icon) {
+  document.getElementById('purchaseIcon').value = icon;
+  document.querySelectorAll('#purchaseIconPicker .dream-icon-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.icon === icon);
+  });
+}
+
+function purchaseCurOf(p) { return (p && p.currency) || 'UAH'; }
+
+function purchaseToUah(amount, cc) {
+  if (!cc || cc === 'UAH') return amount;
+  if (!cachedRates || !cachedRates[cc]) return null;
+  return amount * cachedRates[cc];
+}
+
+function fmtPurchaseAmount(amount, cc) {
+  const amt = amount || 0;
+  if (!cc || cc === 'UAH') return formatNum(amt) + ' грн';
+  const prefix = cc === 'USD' ? '$' : (cc === 'EUR' ? '€' : '');
+  return prefix ? prefix + formatNum(amt) : formatNum(amt) + ' ' + cc;
+}
+
+function onPurchaseCurrencyChange() {
+  const cc = document.getElementById('purchaseCurrency').value;
+  const label = cc === 'USD' ? '($)' : cc === 'EUR' ? '(€)' : '(грн)';
+  const el = document.getElementById('purchaseAmountCurLabel');
+  if (el) el.textContent = label;
+}
+
+// Month helpers — 'YYYY-MM' format throughout.
+const UA_MONTHS_FULL = ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень',
+                        'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'];
+function currentMonthKey() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function addMonths(monthKey, delta) {
+  const [y, m] = monthKey.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function formatMonthKey(monthKey) {
+  if (!monthKey) return '—';
+  const [y, m] = monthKey.split('-').map(Number);
+  return UA_MONTHS_FULL[m - 1] + ' ' + y;
+}
+
+// Populate localized month + year selects (native <input type="month"> uses
+// browser locale which is often English — replaced with two Ukr selects).
+function _populatePurchaseMonthPicker() {
+  const selM = document.getElementById('purchaseMonthM');
+  const selY = document.getElementById('purchaseMonthY');
+  if (!selM || !selY) return;
+  if (!selM.options.length) {
+    selM.innerHTML = UA_MONTHS_FULL.map((name, i) =>
+      '<option value="' + String(i + 1).padStart(2, '0') + '">' + name + '</option>'
+    ).join('');
+  }
+  if (!selY.options.length) {
+    const nowY = new Date().getFullYear();
+    const opts = [];
+    for (let y = nowY - 1; y <= nowY + 5; y++) opts.push('<option value="' + y + '">' + y + '</option>');
+    selY.innerHTML = opts.join('');
+  }
+}
+
+function _syncPurchaseMonth() {
+  const m = document.getElementById('purchaseMonthM').value;
+  const y = document.getElementById('purchaseMonthY').value;
+  const hidden = document.getElementById('purchaseMonth');
+  if (hidden) hidden.value = y + '-' + m;
+}
+
+function _setPurchaseMonthPicker(monthKey) {
+  _populatePurchaseMonthPicker();
+  const key = monthKey || currentMonthKey();
+  const [y, m] = key.split('-');
+  const selM = document.getElementById('purchaseMonthM');
+  const selY = document.getElementById('purchaseMonthY');
+  // Ensure the saved year appears even if outside default range (e.g. old data).
+  if (selY && !Array.from(selY.options).some(o => o.value === y)) {
+    selY.insertAdjacentHTML('afterbegin', '<option value="' + y + '">' + y + '</option>');
+  }
+  if (selM) selM.value = m;
+  if (selY) selY.value = y;
+  const hidden = document.getElementById('purchaseMonth');
+  if (hidden) hidden.value = key;
+}
+
+function togglePurchaseForm(forceOpen) {
+  const card = document.getElementById('purchaseFormCard');
+  const btn = document.getElementById('btnTogglePurchaseForm');
+  const isHidden = card.style.display === 'none';
+  const shouldOpen = forceOpen !== undefined ? forceOpen : isHidden;
+
+  if (!shouldOpen && typeof FormDrafts !== 'undefined' && FormDrafts.isDirty('purchase.form')) {
+    if (!FormDrafts.confirmDiscard('purchase.form', 'У формі витрати є незбережені зміни. Закрити без збереження?')) return;
+  }
+
+  if (shouldOpen) {
+    card.style.display = 'block';
+    btn.textContent = '− Скасувати';
+    btn.classList.remove('btn-save');
+    btn.classList.add('btn-export');
+    _populatePurchaseMonthPicker();
+    if (!document.getElementById('purchaseMonth').value) {
+      _setPurchaseMonthPicker(currentMonthKey());
+    }
+    renderPurchaseIconPicker();
+    onPurchaseCurrencyChange();
+    if (typeof FormDrafts !== 'undefined' && FormDrafts.hasDraft('purchase.form') && !FormDrafts.isDirty('purchase.form') && !_editingPurchaseId) {
+      if (confirm('Знайдено незбережену чернетку витрати. Відновити?')) FormDrafts.restore('purchase.form');
+      else FormDrafts.clear('purchase.form');
+    }
+    // Baseline the form so the "unsaved changes" confirm only fires if the
+    // user actually types — without this, any field value is treated as dirty.
+    if (typeof FormDrafts !== 'undefined') FormDrafts.setBaseline('purchase.form');
+  } else {
+    card.style.display = 'none';
+    btn.textContent = '+ Нова витрата';
+    btn.classList.remove('btn-export');
+    btn.classList.add('btn-save');
+    const addBtn = document.getElementById('btnAddPurchase');
+    addBtn.textContent = 'Додати витрату';
+    addBtn.classList.remove('btn-export');
+    addBtn.classList.add('btn-save');
+    _editingPurchaseId = null;
+  }
+}
+
+function _clearPurchaseForm() {
+  document.getElementById('purchaseName').value = '';
+  document.getElementById('purchaseAmount').value = '';
+  document.getElementById('purchaseCurrency').value = 'UAH';
+  _setPurchaseMonthPicker(currentMonthKey());
+  document.getElementById('purchaseLink').value = '';
+  document.getElementById('purchaseNotes').value = '';
+  document.getElementById('purchaseIcon').value = DEFAULT_PURCHASE_ICON;
+  renderPurchaseIconPicker();
+  onPurchaseCurrencyChange();
+}
+
+function addPurchase() {
+  const name = document.getElementById('purchaseName').value.trim();
+  const amount = parseNum(document.getElementById('purchaseAmount').value);
+  const currency = document.getElementById('purchaseCurrency').value || 'UAH';
+  _syncPurchaseMonth();
+  const month = document.getElementById('purchaseMonth').value || currentMonthKey();
+  const link = document.getElementById('purchaseLink').value.trim();
+  const notes = document.getElementById('purchaseNotes').value.trim();
+  const icon = document.getElementById('purchaseIcon').value || DEFAULT_PURCHASE_ICON;
+  const err = document.getElementById('purchaseError');
+  err.textContent = '';
+
+  if (!name) { err.textContent = 'Вкажіть назву'; return; }
+  if (!(amount > 0)) { err.textContent = 'Вкажіть суму більше 0'; return; }
+  if (link && !/^https?:\/\//i.test(link)) { err.textContent = 'Посилання має починатися з http:// або https://'; return; }
+
+  const payload = { name, icon, amount, currency, plannedMonth: month, link, notes };
+
+  if (_editingPurchaseId) {
+    const found = _findPurchase(_editingPurchaseId);
+    if (found) {
+      const updated = { ...found.item, ...payload };
+      found.list[found.index] = updated;
+      _editingPurchaseId = null;
+      _clearPurchaseForm();
+      togglePurchaseForm(false);
+      if (typeof FormDrafts !== 'undefined') FormDrafts.clear('purchase.form');
+      renderPurchases();
+      _persistPurchase(updated, found.source);
+      const success = document.getElementById('purchaseSuccess');
+      success.textContent = '✓ Збережено';
+      setTimeout(() => { success.textContent = ''; }, 2000);
+      return;
+    }
+    _editingPurchaseId = null;
+  } else {
+    purchaseItems.push({
+      id: Date.now(),
+      ...payload,
+      bought: false,
+      deferCount: 0,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  _clearPurchaseForm();
+  togglePurchaseForm(false);
+  if (typeof FormDrafts !== 'undefined') FormDrafts.clear('purchase.form');
+  renderPurchases();
+  savePurchasesToFirestore();
+  const success = document.getElementById('purchaseSuccess');
+  success.textContent = '✓ Збережено';
+  setTimeout(() => { success.textContent = ''; }, 2000);
+}
+
+function editPurchase(id) {
+  const found = _findPurchase(id);
+  if (!found) return;
+  const item = found.item;
+  _editingPurchaseId = id;
+  const btn = document.getElementById('btnAddPurchase');
+  btn.textContent = 'Зберегти зміни';
+  btn.classList.remove('btn-save');
+  btn.classList.add('btn-export');
+  // Open the form first so togglePurchaseForm doesn't re-populate from scratch
+  // after we set the fields. Populate fields AFTER opening.
+  togglePurchaseForm(true);
+  document.getElementById('purchaseName').value = item.name || '';
+  document.getElementById('purchaseAmount').value = item.amount ? formatShort(item.amount) : '';
+  document.getElementById('purchaseCurrency').value = item.currency || 'UAH';
+  _setPurchaseMonthPicker(item.plannedMonth || currentMonthKey());
+  document.getElementById('purchaseLink').value = item.link || '';
+  document.getElementById('purchaseNotes').value = item.notes || '';
+  document.getElementById('purchaseIcon').value = item.icon || DEFAULT_PURCHASE_ICON;
+  renderPurchaseIconPicker();
+  onPurchaseCurrencyChange();
+  if (typeof FormDrafts !== 'undefined') FormDrafts.setBaseline('purchase.form');
+  // Scroll to form — on mobile the form is at the top, far from the edit
+  // button in the list below.
+  const card = document.getElementById('purchaseFormCard');
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const nameField = document.getElementById('purchaseName');
+  if (nameField) setTimeout(() => nameField.focus({ preventScroll: true }), 300);
+}
+
+function deletePurchase(id) {
+  const found = _findPurchase(id);
+  if (!found) return;
+  const item = found.item;
+  if (found.source === 'shared') {
+    const members = item.members || [];
+    if (members.length <= 1) {
+      if (!confirm('Видалити "' + item.name + '"? Ви єдиний учасник — витрата видалиться повністю.')) return;
+      db.collection('sharedPurchases').doc(String(id)).delete().catch(e => alert('Помилка: ' + e.message));
+    } else {
+      if (!confirm('Покинути спільну витрату "' + item.name + '"? Інші учасники продовжать її бачити.')) return;
+      const emailUpdate = {};
+      emailUpdate['memberEmails.' + currentUser.uid] = firebase.firestore.FieldValue.delete();
+      db.collection('sharedPurchases').doc(String(id)).update({
+        members: firebase.firestore.FieldValue.arrayRemove(currentUser.uid),
+        ...emailUpdate
+      }).catch(e => alert('Помилка: ' + e.message));
+    }
+    return;
+  }
+  if (!confirm('Видалити ' + item.name + '?')) return;
+  purchaseItems = purchaseItems.filter(p => String(p.id) !== String(id));
+  renderPurchases();
+  savePurchasesToFirestore();
+}
+
+function markPurchaseBought(id) {
+  const found = _findPurchase(id);
+  if (!found) return;
+  const item = found.item;
+  const sym = item.currency === 'USD' ? '$' : item.currency === 'EUR' ? '€' : 'грн';
+  const raw = prompt('Фактична сума витрати (' + sym + '). Залиште порожнім щоб зберегти заплановану:', '');
+  let actual = item.amount;
+  if (raw && raw.trim()) {
+    const parsed = parseNum(raw);
+    if (!isNaN(parsed) && parsed > 0) actual = parsed;
+  }
+  const updated = {
+    ...item,
+    bought: true,
+    boughtAt: new Date().toISOString(),
+    boughtAmount: actual
+  };
+  found.list[found.index] = updated;
+  renderPurchases();
+  _persistPurchase(updated, found.source);
+}
+
+function unmarkPurchaseBought(id) {
+  const found = _findPurchase(id);
+  if (!found) return;
+  if (!confirm('Скасувати позначку «здійснено»?')) return;
+  const { boughtAt, boughtAmount, ...rest } = found.item;
+  // For Firestore, explicitly clear the fields in shared documents.
+  if (found.source === 'shared' && firebaseReady) {
+    db.collection('sharedPurchases').doc(String(id)).update({
+      bought: false,
+      boughtAt: firebase.firestore.FieldValue.delete(),
+      boughtAmount: firebase.firestore.FieldValue.delete()
+    }).catch(e => console.warn('Unmark failed:', e));
+    return;
+  }
+  const updated = { ...rest, bought: false };
+  found.list[found.index] = updated;
+  renderPurchases();
+  _persistPurchase(updated, found.source);
+}
+
+function deferPurchase(id) {
+  const found = _findPurchase(id);
+  if (!found) return;
+  const current = found.item.plannedMonth || currentMonthKey();
+  const updated = {
+    ...found.item,
+    plannedMonth: addMonths(current, 1),
+    deferCount: (found.item.deferCount || 0) + 1
+  };
+  found.list[found.index] = updated;
+  renderPurchases();
+  _persistPurchase(updated, found.source);
+}
+
+function sharePurchase(id) {
+  const item = purchaseItems.find(p => String(p.id) === String(id));
+  if (!item) return;
+  const cc = purchaseCurOf(item);
+  const icon = purchaseIconOf(item);
+  const lines = [
+    icon + ' ' + item.name,
+    '💰 ' + fmtPurchaseAmount(item.amount, cc),
+    '📅 ' + formatMonthKey(item.plannedMonth)
+  ];
+  if (item.link) lines.push('🔗 ' + item.link);
+  if (item.notes) lines.push('📝 ' + item.notes);
+  if (item.bought) lines.push('✅ Здійснено' + (item.boughtAmount ? ' за ' + fmtPurchaseAmount(item.boughtAmount, cc) : ''));
+  const text = lines.join('\n');
+  const title = item.name;
+  // Pass url separately when available — Web Share API and Telegram use it
+  // as the primary link (shows preview).
+  const shareData = { title, text };
+  if (item.link) shareData.url = item.link;
+
+  // Prefer the native share sheet on mobile. Fall back to a custom menu.
+  if (navigator.share) {
+    navigator.share(shareData).catch(err => {
+      if (err && err.name !== 'AbortError') _showShareMenu(text, title, item.link);
+    });
+    return;
+  }
+  _showShareMenu(text, title, item.link);
+}
+
+function _showShareMenu(text, title, url) {
+  const existing = document.getElementById('shareMenuBackdrop');
+  if (existing) existing.remove();
+
+  const encoded = encodeURIComponent(text);
+  const encodedSubject = encodeURIComponent(title || 'Запланована витрата');
+  const encodedUrl = url ? encodeURIComponent(url) : '';
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'shareMenuBackdrop';
+  backdrop.className = 'share-menu-backdrop';
+  backdrop.innerHTML = `
+    <div class="share-menu" onclick="event.stopPropagation()">
+      <h3 style="margin:0 0 4px;font-size:16px">Поділитись</h3>
+      <pre class="share-menu-preview">${text.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</pre>
+      <div class="share-menu-grid">
+        <a href="https://t.me/share/url?url=${encodedUrl || encoded}&text=${encoded}" target="_blank" rel="noopener" class="share-menu-btn share-tg">
+          <span class="share-ico">✈️</span><span>Telegram</span>
+        </a>
+        <a href="https://wa.me/?text=${encoded}" target="_blank" rel="noopener" class="share-menu-btn share-wa">
+          <span class="share-ico">💬</span><span>WhatsApp</span>
+        </a>
+        <a href="viber://forward?text=${encoded}" class="share-menu-btn share-viber">
+          <span class="share-ico">📞</span><span>Viber</span>
+        </a>
+        <a href="mailto:?subject=${encodedSubject}&body=${encoded}" class="share-menu-btn share-email">
+          <span class="share-ico">✉️</span><span>Email</span>
+        </a>
+        <button type="button" class="share-menu-btn share-copy" data-text="${text.replace(/"/g, '&quot;').replace(/\n/g, '&#10;')}" onclick="_copyShareText(this)">
+          <span class="share-ico">📋</span><span>Копіювати</span>
+        </button>
+      </div>
+      <button type="button" class="share-menu-close" onclick="document.getElementById('shareMenuBackdrop').remove()">Закрити</button>
+    </div>
+  `;
+  backdrop.addEventListener('click', e => {
+    if (e.target === backdrop) backdrop.remove();
+  });
+  document.body.appendChild(backdrop);
+}
+
+function _copyShareText(btn) {
+  const text = (btn.dataset.text || '').replace(/&#10;/g, '\n').replace(/&quot;/g, '"');
+  const finish = () => {
+    btn.innerHTML = '<span class="share-ico">✓</span><span>Скопійовано</span>';
+    setTimeout(() => {
+      const bd = document.getElementById('shareMenuBackdrop');
+      if (bd) bd.remove();
+    }, 900);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(finish).catch(() => {
+      // Fallback for older browsers
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); finish(); } catch(e) {}
+      ta.remove();
+    });
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); finish(); } catch(e) {}
+    ta.remove();
+  }
+}
+
+function updatePurchasesUI() {
+  const auth = document.getElementById('purchasesAuth');
+  const content = document.getElementById('purchasesContent');
+  if (!auth || !content) return;
+  if (!currentUser) {
+    auth.style.display = 'block';
+    content.style.display = 'none';
+  } else {
+    auth.style.display = 'none';
+    content.style.display = 'block';
+    renderPurchases();
+  }
+}
+
+function renderPurchases() {
+  const list = document.getElementById('purchasesList');
+  const dashboard = document.getElementById('purchasesDashboard');
+  if (!list || !dashboard) return;
+
+  // Merge private + shared with source marker so actions know which doc to update.
+  const allItems = [
+    ...purchaseItems.map(p => ({ ...p, _source: 'private' })),
+    ...sharedPurchaseItems.map(p => ({ ...p, _source: 'shared' }))
+  ];
+
+  if (!allItems.length) {
+    list.innerHTML = '<div class="a-empty">Ще немає запланованих витрат. Додайте першу вище 🛒</div>';
+    dashboard.style.display = 'none';
+    return;
+  }
+
+  const cm = currentMonthKey();
+  const groups = { overdue: [], current: [], future: [], done: [] };
+  allItems.forEach(p => {
+    if (p.bought) groups.done.push(p);
+    else if ((p.plannedMonth || cm) < cm) groups.overdue.push(p);
+    else if ((p.plannedMonth || cm) === cm) groups.current.push(p);
+    else groups.future.push(p);
+  });
+
+  // Dashboard totals (in UAH for aggregation)
+  let totalPlannedCmUah = 0;
+  let totalBoughtCmUah = 0;
+  groups.current.forEach(p => { const v = purchaseToUah(p.amount, purchaseCurOf(p)); if (v != null) totalPlannedCmUah += v; });
+  groups.done.forEach(p => {
+    if ((p.plannedMonth || '').slice(0, 7) !== cm && (p.boughtAt || '').slice(0, 7) !== cm) return;
+    const v = purchaseToUah(p.boughtAmount || p.amount, purchaseCurOf(p));
+    if (v != null) totalBoughtCmUah += v;
+  });
+
+  const usdRate = cachedRates && cachedRates.USD;
+  document.getElementById('purchasesHeroLabel').textContent = 'Заплановано на ' + formatMonthKey(cm);
+  document.getElementById('purchasesTotalPlanned').textContent = formatShort(totalPlannedCmUah) + ' грн';
+  document.getElementById('purchasesHeroHint').textContent = usdRate ? '≈ $' + formatNum(totalPlannedCmUah / usdRate) : '';
+  document.getElementById('purchasesBoughtValue').textContent = formatShort(totalBoughtCmUah) + ' грн';
+  document.getElementById('purchasesRemainingValue').textContent = formatShort(Math.max(0, totalPlannedCmUah - totalBoughtCmUah)) + ' грн';
+  document.getElementById('purchasesOverdueCount').textContent = String(groups.overdue.length);
+  document.getElementById('purchasesFutureCount').textContent = String(groups.future.length);
+  dashboard.style.display = 'block';
+
+  const sortByMonthAsc = (a, b) => (a.plannedMonth || '').localeCompare(b.plannedMonth || '');
+  const sortByBoughtDesc = (a, b) => (b.boughtAt || '').localeCompare(a.boughtAt || '');
+  groups.overdue.sort(sortByMonthAsc);
+  groups.current.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+  groups.future.sort(sortByMonthAsc);
+  groups.done.sort(sortByBoughtDesc);
+
+  const renderItem = (p, opts = {}) => {
+    const cc = purchaseCurOf(p);
+    const amountStr = fmtPurchaseAmount(p.amount, cc);
+    const uahEq = (cc !== 'UAH' && purchaseToUah(p.amount, cc) !== null)
+      ? ' <span style="color:#64748b;font-size:12px">≈ ' + formatNum(purchaseToUah(p.amount, cc)) + ' грн</span>'
+      : '';
+    const actions = [];
+    const linkHtml = p.link
+      ? '<div class="p-item-details"><a href="' + esc(p.link) + '" target="_blank" rel="noopener noreferrer" class="purchase-link" onclick="event.stopPropagation()">🔗 ' + esc(p.link.length > 60 ? p.link.slice(0, 57) + '…' : p.link) + '</a></div>'
+      : '';
+    const isShared = p._source === 'shared';
+    const memberCount = isShared && Array.isArray(p.members) ? p.members.length : 0;
+    const memberEmails = isShared && p.memberEmails ? Object.values(p.memberEmails).filter(Boolean).join(', ') : '';
+    const sharedBadge = isShared
+      ? '<span class="p-item-type" style="background:rgba(168,85,247,0.15);color:#c084fc" title="' + esc(memberEmails) + '">👥 Спільна (' + memberCount + ')</span>'
+      : '';
+    if (p.bought) {
+      const boughtStr = p.boughtAmount && p.boughtAmount !== p.amount
+        ? 'Здійснено за ' + fmtPurchaseAmount(p.boughtAmount, cc)
+        : 'Здійснено';
+      if (isShared) actions.push('<button class="btn-delete purchase-action-icon" title="Запросити ще учасника" onclick="event.stopPropagation();invitePurchaseByEmail(\'' + p.id + '\')" style="color:#c084fc">👥</button>');
+      actions.push('<button class="btn-delete purchase-action-icon" title="Поділитись" onclick="event.stopPropagation();sharePurchase(\'' + p.id + '\')" style="color:#a855f7">↗</button>');
+      actions.push('<button class="btn-delete purchase-action-icon" title="Скасувати позначку" onclick="event.stopPropagation();unmarkPurchaseBought(\'' + p.id + '\')" style="color:#f59e0b">↺</button>');
+      actions.push('<button class="btn-delete purchase-action-icon" title="' + (isShared ? 'Покинути спільну' : 'Видалити') + '" onclick="event.stopPropagation();deletePurchase(\'' + p.id + '\')">✕</button>');
+      return `<div class="p-item" style="opacity:0.75">
+        <div class="p-item-info" style="width:100%">
+          <div class="p-item-name">
+            <span class="dream-icon">${purchaseIconOf(p)}</span>${esc(p.name)}
+            ${sharedBadge}
+            <span class="p-item-type" style="background:rgba(74,222,128,0.15);color:#4ade80">✓ ${boughtStr}</span>
+          </div>
+          <div class="p-item-details">
+            <span>${amountStr}${uahEq}</span>
+            <span>${formatMonthKey(p.plannedMonth)}</span>
+            ${p.boughtAt ? '<span style="color:#64748b">Позначено: ' + new Date(p.boughtAt).toLocaleDateString('uk-UA') + '</span>' : ''}
+          </div>
+          ${linkHtml}
+          ${p.notes ? '<div class="p-item-notes" style="white-space:pre-wrap">' + esc(p.notes) + '</div>' : ''}
+          <div class="purchase-actions">${actions.join('')}</div>
+        </div>
+      </div>`;
+    }
+
+    const isOverdue = opts.isOverdue;
+    const deferBadge = p.deferCount ? '<span class="p-item-type" style="background:rgba(251,191,36,0.15);color:#fbbf24">перенесено ×' + p.deferCount + '</span>' : '';
+    const nextMonthName = formatMonthKey(addMonths(p.plannedMonth || cm, 1));
+    actions.push('<button class="btn-save purchase-action" title="Відмітити як здійснену" onclick="event.stopPropagation();markPurchaseBought(\'' + p.id + '\')">✓ Відмітити</button>');
+    actions.push('<button class="btn-clear purchase-action" onclick="event.stopPropagation();deferPurchase(\'' + p.id + '\')" title="Перенести на ' + nextMonthName + '">📅 +міс</button>');
+    if (isShared) {
+      actions.push('<button class="btn-delete purchase-action-icon" title="Запросити ще учасника" onclick="event.stopPropagation();invitePurchaseByEmail(\'' + p.id + '\')" style="color:#c084fc">👥</button>');
+    } else {
+      actions.push('<button class="btn-delete purchase-action-icon" title="Зробити спільною (поділитись з іншим користувачем)" onclick="event.stopPropagation();promptMakeShared(\'' + p.id + '\')" style="color:#c084fc">👥</button>');
+    }
+    actions.push('<button class="btn-delete purchase-action-icon" title="Поділитись" onclick="event.stopPropagation();sharePurchase(\'' + p.id + '\')" style="color:#a855f7">↗</button>');
+    actions.push('<button class="btn-delete purchase-action-icon" title="Редагувати" onclick="event.stopPropagation();editPurchase(\'' + p.id + '\')" style="color:#60a5fa">✎</button>');
+    actions.push('<button class="btn-delete purchase-action-icon" title="' + (isShared ? 'Покинути спільну' : 'Видалити') + '" onclick="event.stopPropagation();deletePurchase(\'' + p.id + '\')">✕</button>');
+
+    return `<div class="p-item" style="flex-wrap:wrap${isOverdue ? ';border-color:#7f1d1d' : ''}">
+      <div class="p-item-info" style="width:100%">
+        <div class="p-item-name">
+          <span class="dream-icon">${purchaseIconOf(p)}</span>${esc(p.name)}
+          ${sharedBadge}
+          ${isOverdue ? '<span class="p-item-type" style="background:rgba(248,113,113,0.15);color:#f87171">прострочено</span>' : ''}
+          ${deferBadge}
+        </div>
+        <div class="p-item-details">
+          <span><strong>${amountStr}</strong>${uahEq}</span>
+          <span>${formatMonthKey(p.plannedMonth)}</span>
+        </div>
+        ${linkHtml}
+        ${p.notes ? '<div class="p-item-notes" style="white-space:pre-wrap">' + esc(p.notes) + '</div>' : ''}
+        <div class="purchase-actions">${actions.join('')}</div>
+      </div>
+    </div>`;
+  };
+
+  const sections = [];
+  if (groups.overdue.length) {
+    sections.push('<h3 class="a-card-title" style="color:#f87171;margin:16px 0 8px">⚠ Прострочено (' + groups.overdue.length + ')</h3>');
+    sections.push(groups.overdue.map(p => renderItem(p, { isOverdue: true })).join(''));
+  }
+  if (groups.current.length) {
+    sections.push('<h3 class="a-card-title" style="margin:16px 0 8px">📅 ' + formatMonthKey(cm) + ' (' + groups.current.length + ')</h3>');
+    sections.push(groups.current.map(p => renderItem(p)).join(''));
+  }
+  if (groups.future.length) {
+    sections.push('<h3 class="a-card-title" style="color:#94a3b8;margin:16px 0 8px">🔜 На майбутнє (' + groups.future.length + ')</h3>');
+    sections.push(groups.future.map(p => renderItem(p)).join(''));
+  }
+  if (groups.done.length) {
+    sections.push('<h3 class="a-card-title" style="color:#4ade80;margin:16px 0 8px">✓ Здійснено (' + groups.done.length + ')</h3>');
+    sections.push(groups.done.slice(0, 20).map(p => renderItem(p)).join(''));
+    if (groups.done.length > 20) {
+      sections.push('<p style="text-align:center;color:#64748b;font-size:12px;margin-top:8px">Показано останні 20 з ' + groups.done.length + '</p>');
+    }
+  }
+
+  list.innerHTML = sanitize(sections.join(''));
+}
+
+async function savePurchasesToFirestore() {
+  if (!firebaseReady || !currentUser) return;
+  try {
+    const ref = db.collection('users').doc(effectiveUid(currentUser.uid)).collection('purchases');
+    const localIds = new Set(purchaseItems.map(p => String(p.id)));
+    const ops = [];
+    if (purchasesLoaded) {
+      const existing = await ref.get();
+      existing.forEach(doc => { if (!localIds.has(doc.id)) ops.push(doc.ref.delete()); });
+    }
+    const clean = (typeof stripUndefined === 'function') ? stripUndefined : (x => x);
+    purchaseItems.forEach(p => ops.push(ref.doc(String(p.id)).set(clean(p))));
+    if (ops.length) await Promise.all(ops);
+  } catch(e) { console.warn('Purchases save failed:', e); }
+}
+
+async function loadPurchasesFromFirestore() {
+  if (!firebaseReady || !currentUser) return;
+  try {
+    const ref = db.collection('users').doc(effectiveUid(currentUser.uid)).collection('purchases');
+    const snap = await ref.get();
+    const remote = [];
+    snap.forEach(doc => remote.push(doc.data()));
+    const remoteIds = new Set(remote.map(p => String(p.id)));
+    const localOnly = purchaseItems.filter(p => !remoteIds.has(String(p.id)));
+    purchaseItems = [...remote, ...localOnly];
+    purchasesLoaded = true;
+    renderPurchases();
+    if (localOnly.length) savePurchasesToFirestore();
+  } catch(e) { console.warn('Purchases load failed:', e); }
+}
+
+// Shared purchases live in a root collection /sharedPurchases and use the
+// REAL uid (not the dev suffix) because collaboration is cross-user.
+function startSharedPurchasesListener() {
+  if (!firebaseReady || !currentUser) return;
+  stopSharedPurchasesListener();
+  try {
+    const q = db.collection('sharedPurchases').where('members', 'array-contains', currentUser.uid);
+    sharedPurchasesUnsubscribe = q.onSnapshot(snap => {
+      sharedPurchaseItems = [];
+      snap.forEach(doc => sharedPurchaseItems.push({ ...doc.data(), id: doc.id }));
+      renderPurchases();
+    }, err => console.warn('Shared purchases listener failed:', err));
+  } catch(e) { console.warn('Shared purchases listener setup failed:', e); }
+}
+
+function stopSharedPurchasesListener() {
+  if (sharedPurchasesUnsubscribe) {
+    try { sharedPurchasesUnsubscribe(); } catch(_) {}
+    sharedPurchasesUnsubscribe = null;
+  }
+  sharedPurchaseItems = [];
+}
+
+// Convert a private purchase into a shared document. Returns share URL on success.
+async function makePurchaseShared(id) {
+  if (!firebaseReady || !currentUser) return null;
+  const idx = purchaseItems.findIndex(p => String(p.id) === String(id));
+  if (idx === -1) return null;
+  const item = purchaseItems[idx];
+  const myUid = currentUser.uid;
+  const myEmail = currentUser.email || '';
+  const newId = String(Date.now()) + '_' + Math.random().toString(36).slice(2, 8);
+  const sharedData = {
+    ...item,
+    id: newId,
+    members: [myUid],
+    memberEmails: { [myUid]: myEmail },
+    ownerUid: myUid,
+    sharedAt: new Date().toISOString()
+  };
+  try {
+    const clean = (typeof stripUndefined === 'function') ? stripUndefined(sharedData) : sharedData;
+    await db.collection('sharedPurchases').doc(newId).set(clean);
+    // Remove from private list and persist
+    purchaseItems.splice(idx, 1);
+    await savePurchasesToFirestore();
+    return window.location.origin + window.location.pathname + '?share=' + newId;
+  } catch(e) {
+    console.warn('Share failed:', e);
+    alert('Не вдалося створити спільну витрату: ' + e.message);
+    return null;
+  }
+}
+
+// Accept an invite from URL ?share=<id>
+async function acceptShareInvite(shareId) {
+  if (!firebaseReady || !currentUser) {
+    alert('Увійдіть у свій акаунт, щоб прийняти спільну витрату.');
+    return;
+  }
+  try {
+    const docRef = db.collection('sharedPurchases').doc(shareId);
+    const doc = await docRef.get();
+    if (!doc.exists) { alert('Посилання недійсне або спільну витрату видалено.'); return; }
+    const data = doc.data();
+    const members = data.members || [];
+    if (members.includes(currentUser.uid)) {
+      alert('Ви вже учасник цієї витрати.');
+    } else {
+      const ownerEmail = (data.memberEmails && data.memberEmails[data.ownerUid]) || 'іншого користувача';
+      if (!confirm(`${ownerEmail} запрошує вас до спільної витрати:\n\n${data.icon || '🛒'} ${data.name}\n\nПрийняти?`)) return;
+      const emailUpdate = {};
+      emailUpdate['memberEmails.' + currentUser.uid] = currentUser.email || '';
+      await docRef.update({
+        members: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
+        ...emailUpdate
+      });
+      alert('✓ Спільну витрату додано до вашого списку.');
+    }
+  } catch(e) {
+    console.warn('Accept invite failed:', e);
+    alert('Не вдалося прийняти: ' + e.message);
+  }
+  // Clean the URL
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('share');
+    window.history.replaceState({}, '', url.toString());
+  } catch(_) {}
+  // Switch to purchases tab
+  const btn = document.querySelector('.main-tab[onclick*="\'purchases\'"]');
+  if (btn && typeof switchMainTab === 'function') switchMainTab('purchases', btn);
+}
+
+// Process ?share= query param once on auth bootstrap.
+let _shareInviteProcessed = false;
+function processShareInviteOnBoot() {
+  if (_shareInviteProcessed) return;
+  try {
+    const url = new URL(window.location.href);
+    const shareId = url.searchParams.get('share');
+    if (!shareId) return;
+    _shareInviteProcessed = true;
+    // Delay slightly so auth + UI finish bootstrap
+    setTimeout(() => acceptShareInvite(shareId), 800);
+  } catch(_) {}
+}
+
+// Convert private → shared and open the invite dialog in one action.
+async function promptMakeShared(id) {
+  const found = _findPurchase(id);
+  if (!found || found.source !== 'private') return;
+  if (!confirm('Зробити "' + found.item.name + '" спільною витратою?\n\nІнші користувачі зможуть її бачити і редагувати за посиланням.')) return;
+  const shareUrl = await makePurchaseShared(id);
+  if (!shareUrl) return;
+  // Wait a moment for onSnapshot to deliver the new shared doc into the list.
+  setTimeout(() => {
+    const shareId = shareUrl.split('?share=')[1];
+    invitePurchaseByEmail(shareId);
+  }, 400);
+}
+
+// Invite flow: collect target email, call backend to dispatch via Telegram or email.
+async function invitePurchaseByEmail(shareId) {
+  const found = _findPurchase(shareId);
+  if (!found || found.source !== 'shared') { alert('Витрата не є спільною.'); return; }
+  const item = found.item;
+  const email = (prompt('Email учасника для запрошення:', '') || '').trim();
+  if (!email) return;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { alert('Некоректний email.'); return; }
+  const shareUrl = window.location.origin + window.location.pathname + '?share=' + shareId;
+  try {
+    const res = await adminlikeApiFetch('/invite/purchase', {
+      email,
+      share_url: shareUrl,
+      purchase_name: item.name,
+      purchase_icon: item.icon || '🛒',
+      sender_name: (currentUser && currentUser.displayName) || '',
+      sender_email: (currentUser && currentUser.email) || ''
+    });
+    const body = await res.json().catch(() => ({}));
+    if (body && body.ok) {
+      const ch = body.channel === 'telegram' ? 'Telegram' : 'Email';
+      alert('✓ Запрошення надіслано через ' + ch + '.');
+    } else {
+      const msg = (body && body.description) || 'Користувача з таким email не знайдено на платформі.';
+      if (confirm(msg + '\n\nСкопіювати посилання і надіслати вручну?')) {
+        _copyToClipboard(shareUrl);
+        alert('Посилання скопійовано.');
+      }
+    }
+  } catch(e) {
+    if (confirm('Сервер недоступний. Скопіювати посилання і надіслати вручну?')) {
+      _copyToClipboard(shareUrl);
+      alert('Посилання скопійовано.');
+    }
+  }
+}
+
+function adminlikeApiFetch(path, data) {
+  const apiBase = typeof NOTIFY_API_BASE !== 'undefined' ? NOTIFY_API_BASE : '';
+  const apiKey = typeof NOTIFY_API_KEY !== 'undefined' ? NOTIFY_API_KEY : '';
+  return fetch(apiBase + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+    body: JSON.stringify(data)
+  });
+}
+
+function _copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(() => {});
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch(_) {}
+    ta.remove();
+  }
 }
 
 // ==================== CREDIT CALCULATOR =========================
@@ -4811,6 +5706,10 @@ if (typeof FormDrafts !== 'undefined') {
   ]);
   FormDrafts.register('saving.form', [
     'savingName', 'savingAmount', 'savingCurrency', 'savingNotes', 'savingDreamId'
+  ]);
+  FormDrafts.register('purchase.form', [
+    'purchaseName', 'purchaseAmount', 'purchaseCurrency', 'purchaseMonth',
+    'purchaseMonthM', 'purchaseMonthY', 'purchaseLink', 'purchaseNotes', 'purchaseIcon'
   ]);
   FormDrafts.register('profile', [
     'profileDisplayName', 'profileContactEmail', 'profilePhone'

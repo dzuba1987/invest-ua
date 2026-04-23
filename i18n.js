@@ -14,6 +14,7 @@ const I18N = {
     'tab.portfolio': 'Портфель',
     'tab.dreams': 'Мрії',
     'tab.savings': 'Заощадження',
+    'tab.purchases': 'Витрати',
     'tab.updates': 'Оновлення',
     'tab.profile': 'Профіль',
 
@@ -219,6 +220,7 @@ const I18N = {
     'tab.portfolio': 'Portfolio',
     'tab.dreams': 'Dreams',
     'tab.savings': 'Savings',
+    'tab.purchases': 'Expenses',
     'tab.updates': 'Updates',
     'tab.profile': 'Profile',
 

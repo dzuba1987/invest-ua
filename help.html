@@ -106,6 +106,7 @@
       <a href="#uk-currencies">Валюти</a>
       <a href="#uk-dreams">Мрії</a>
       <a href="#uk-savings">Заощадження</a>
+      <a href="#uk-purchases">Витрати</a>
       <a href="#uk-search">Пошук</a>
       <a href="#uk-telegram">Telegram</a>
       <a href="#uk-export">Імпорт/Експорт</a>
@@ -124,6 +125,7 @@
           <div class="feature"><div class="feature-title">💼 Портфель</div><div class="feature-desc">Активні вкладення: ОВДП, депозити, страхування — з дохідністю</div></div>
           <div class="feature"><div class="feature-title">🎯 Мрії</div><div class="feature-desc">Фінансові цілі з іконками, валютою та автопрогнозом</div></div>
           <div class="feature"><div class="feature-title">💰 Заощадження</div><div class="feature-desc">Кошти, що не працюють — готівка, сейф, заначки</div></div>
+          <div class="feature"><div class="feature-title">🛒 Витрати</div><div class="feature-desc">Заплановані витрати на місяць (покупки, подорожі, послуги) з переносом та позначкою «здійснено»</div></div>
           <div class="feature"><div class="feature-title">🧮 Калькулятор</div><div class="feature-desc">Прибутковість, складний %, кредит</div></div>
           <div class="feature"><div class="feature-title">📈 Аналітика</div><div class="feature-desc">Рейтинг, комбінації, стратегії реінвесту</div></div>
           <div class="feature"><div class="feature-title">💱 Валюти</div><div class="feature-desc">НБУ + готівковий курс в реальному часі</div></div>
@@ -273,6 +275,36 @@
 
         <h3 class="help-h3">Дашборд</h3>
         <p>Загальна сума в грн (з $ еквівалентом), розбивка <strong>«Вільні / по мріях»</strong> та окремо по валютах.</p>
+      </div>
+    </details>
+
+    <details class="help-details" id="uk-purchases">
+      <summary><span class="help-emoji">🛒</span> Витрати</summary>
+      <div class="details-body">
+        <p>Вкладка для <strong>запланованих витрат</strong> на місяць — будь-що, що плануєш купити або витратити: речі, техніка, одяг, подорожі, відпочинок, послуги, подарунки. Не плутати з інвестиціями чи заощадженнями — це саме <em>план витрат</em>.</p>
+
+        <h3 class="help-h3">Створення</h3>
+        <p>Назва, іконка (~38 emoji), валюта (UAH/USD/EUR), сума, <strong>місяць витрати</strong> (українські селекти місяць+рік), посилання (опційно) і нотатки. Нотатки — повноцінний textarea з перенесенням рядків, щоб можна було вставити маршрут поїздки або перелік деталей.</p>
+
+        <h3 class="help-h3">Групування списку</h3>
+        <ul style="font-size:13px;color:#94a3b8;margin:8px 0 8px 20px">
+          <li><strong>⚠ Прострочено</strong> — попередні місяці, не здійснено</li>
+          <li><strong>📅 Поточний місяць</strong> — активні на зараз</li>
+          <li><strong>🔜 На майбутнє</strong> — заплановані на наступні місяці</li>
+          <li><strong>✓ Здійснено</strong> — історія (останні 20)</li>
+        </ul>
+
+        <h3 class="help-h3">Дії з витратою</h3>
+        <ul style="font-size:13px;color:#94a3b8;margin:8px 0 8px 20px">
+          <li><strong>✓ Здійснено</strong> — позначити, що витрата відбулась. Запитає фактичну суму (можна залишити порожньою — візьме заплановану).</li>
+          <li><strong>📅 Перенести</strong> — на наступний місяць. Показується бейдж <code>перенесено ×N</code>.</li>
+          <li><strong>↗ Поділитись</strong> — через Web Share API (мобільний) або меню з лінками на Telegram/WhatsApp/Viber/Email/копіювання.</li>
+          <li><strong>✎ Редагувати</strong> / <strong>✕ Видалити</strong></li>
+          <li><strong>↺</strong> на здійснених — скасувати позначку</li>
+        </ul>
+
+        <h3 class="help-h3">Дашборд</h3>
+        <p>Сума запланованого на поточний місяць, скільки витрачено, скільки залишилось, лічильники прострочених і майбутніх. Мультивалютні суми приводяться до грн за курсом НБУ.</p>
       </div>
     </details>
 

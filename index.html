@@ -100,6 +100,7 @@
     <button class="main-tab" onclick="switchMainTab('currencies', this)" data-i18n="tab.currencies">Валюти</button>
     <button class="main-tab" onclick="switchMainTab('dreams', this)" data-i18n="tab.dreams">Мрії</button>
     <button class="main-tab" onclick="switchMainTab('savings', this)" data-i18n="tab.savings">Заощадження</button>
+    <button class="main-tab" onclick="switchMainTab('purchases', this)" data-i18n="tab.purchases">Витрати</button>
     <button class="main-tab" onclick="switchMainTab('updates', this)" data-i18n="tab.updates" style="position:relative">Оновлення<span id="updatesBadge" class="tab-badge" style="display:none"></span></button>
   </div>
 
@@ -808,6 +809,99 @@
     <div id="dreamDetail" style="display:none">
       <button class="btn-clear" onclick="closeDreamDetail()" style="margin-bottom:12px;width:auto;padding:8px 16px">← Назад до мрій</button>
       <div id="dreamDetailContent"></div>
+    </div>
+  </div>
+
+  <!-- ====== TAB: PURCHASES ====== -->
+  <div class="tab-panel" id="panel-purchases">
+    <!-- Not logged in -->
+    <div id="purchasesAuth" class="a-empty" style="display:none">
+      <div style="font-size:48px;margin-bottom:12px">🛒</div>
+      <p style="color:#94a3b8;font-size:15px;margin-bottom:20px">Увійдіть щоб планувати витрати на місяць</p>
+      <button class="btn-auth btn-google" onclick="googleLogin()" style="display:inline-flex;width:auto;margin:0 auto">
+        <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        <span data-i18n="login">Увійти через Google</span>
+      </button>
+    </div>
+
+    <!-- Logged in -->
+    <div id="purchasesContent" style="display:none">
+      <button class="btn-save" id="btnTogglePurchaseForm" onclick="togglePurchaseForm()" style="width:100%;margin-bottom:16px">+ Нова витрата</button>
+
+      <div class="a-card" id="purchaseFormCard" style="display:none">
+        <h3>Запланована витрата</h3>
+        <div class="form-grid" style="margin-bottom:16px">
+          <div class="field field-full">
+            <label>Назва</label>
+            <input type="text" id="purchaseName" placeholder="Що купити?">
+          </div>
+          <div class="field field-full">
+            <label>Іконка</label>
+            <div id="purchaseIconPicker" class="dream-icon-picker"></div>
+            <input type="hidden" id="purchaseIcon" value="🛒">
+          </div>
+          <div class="field">
+            <label>Валюта</label>
+            <select id="purchaseCurrency" onchange="onPurchaseCurrencyChange()" style="width:100%;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none">
+              <option value="UAH">UAH (₴)</option>
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Сума <span id="purchaseAmountCurLabel" style="color:#64748b;font-weight:400">(грн)</span></label>
+            <input type="text" id="purchaseAmount" placeholder="5 000" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label>Місяць витрати</label>
+            <div style="display:flex;gap:8px">
+              <select id="purchaseMonthM" onchange="_syncPurchaseMonth()" style="flex:2;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none"></select>
+              <select id="purchaseMonthY" onchange="_syncPurchaseMonth()" style="flex:1;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none"></select>
+            </div>
+            <input type="hidden" id="purchaseMonth">
+          </div>
+          <div class="field field-full">
+            <label>Посилання</label>
+            <input type="url" id="purchaseLink" placeholder="https://...">
+          </div>
+          <div class="field field-full">
+            <label>Нотатки</label>
+            <textarea id="purchaseNotes" rows="4" placeholder="Деталі, маршрут, опис, перелік..." style="width:100%;min-height:96px;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:15px;font-family:inherit;line-height:1.5;outline:none;resize:vertical"></textarea>
+          </div>
+        </div>
+        <button class="btn-save" id="btnAddPurchase" onclick="addPurchase()">Додати витрату</button>
+        <p class="error" id="purchaseError"></p>
+      </div>
+      <p class="success-msg" id="purchaseSuccess"></p>
+
+      <!-- Dashboard -->
+      <div id="purchasesDashboard" style="display:none">
+        <div class="dash-hero">
+          <div class="dash-hero-label" id="purchasesHeroLabel">Заплановано на поточний місяць</div>
+          <div class="dash-hero-value" id="purchasesTotalPlanned">0 грн</div>
+          <div style="font-size:13px;color:#94a3b8;margin-top:4px" id="purchasesHeroHint"></div>
+        </div>
+        <div class="dash-grid">
+          <div class="dash-card">
+            <div class="dash-card-label">Витрачено цього місяця</div>
+            <div class="dash-card-value dash-green" id="purchasesBoughtValue">0 грн</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-label">Залишилось витратити</div>
+            <div class="dash-card-value" id="purchasesRemainingValue">0 грн</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-label">Прострочено</div>
+            <div class="dash-card-value" id="purchasesOverdueCount">0</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-label">На майбутнє</div>
+            <div class="dash-card-value" id="purchasesFutureCount">0</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="purchasesList"></div>
     </div>
   </div>
 
