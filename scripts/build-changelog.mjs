@@ -48,7 +48,9 @@ for (const sha of shas) {
 
   let perCommitIdx = 0;
   for (const line of msg.split('\n')) {
-    const m = line.match(/^\s*CHANGELOG:\s*(.+?)\s*$/i);
+    // Case-sensitive match so prose like "Changelog: add ..." in a subject
+    // line is NOT treated as a marker. Real markers use uppercase.
+    const m = line.match(/^\s*CHANGELOG:\s*(.+?)\s*$/);
     if (!m) continue;
     const raw = m[1].trim();
     if (!raw) continue;
