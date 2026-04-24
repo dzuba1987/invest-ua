@@ -442,6 +442,8 @@
 </div>
 
 <script src="config.js"></script>
+<script src="changelog-seed.js"></script>
+<script src="changelog.js"></script>
 <script>
   let db, currentUser, allUsers = [];
 
@@ -639,6 +641,9 @@
               ${u.isTester
                 ? '<button class="btn-sm danger" onclick="toggleTester(\'' + u.id + '\', false)">Зняти tester</button>'
                 : '<button class="btn-sm" onclick="toggleTester(\'' + u.id + '\', true)">Зробити tester</button>'}
+              ${tgLinked
+                ? '<button class="btn-sm" onclick="sendUpdatesToUser(\'' + u.id + '\')" style="background:#0ea5e9;color:#fff">📨 Оновлення в Telegram</button>'
+                : '<button class="btn-sm" disabled style="opacity:0.5;cursor:not-allowed" title="Telegram не підключено">📨 Оновлення (Telegram ✕)</button>'}
               ${isMe ? '' : (disabled
                 ? '<button class="btn-sm success" onclick="toggleDisabled(\'' + u.id + '\', false)">Розблокувати</button>'
                 : '<button class="btn-sm danger" onclick="toggleDisabled(\'' + u.id + '\', true)">Заблокувати</button>')}
@@ -714,6 +719,56 @@
       renderUsers(allUsers);
     } catch(e) {
       alert('Помилка: ' + e.message);
+    }
+  }
+
+  // ---- Push changelog to a specific user via Telegram ----
+  async function sendUpdatesToUser(uid) {
+    const user = allUsers.find(u => u.id === uid);
+    if (!user) return;
+    const chatId = user.profile?.telegramChatId || '';
+    if (!chatId) { alert('У цього користувача не підключено Telegram.'); return; }
+
+    // Merge seed + auto-generated + firestore, same as the Updates tab.
+    const seed = Array.isArray(window.CHANGELOG_SEED) ? window.CHANGELOG_SEED : [];
+    const auto = Array.isArray(window.BUILT_IN_CHANGELOG) ? window.BUILT_IN_CHANGELOG : [];
+    const merged = new Map();
+    [...seed, ...auto].forEach(e => { if (e && e.id) merged.set(String(e.id), e); });
+    changelogItems.forEach(e => { if (e && e.id) merged.set(String(e.id), e); });
+    const all = Array.from(merged.values())
+      .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+
+    const raw = prompt('Скільки останніх записів надіслати ' + (user.email || 'користувачу') + '?', '5');
+    if (raw === null) return;
+    const n = Math.max(1, Math.min(20, parseInt(raw, 10) || 5));
+    const picks = all.slice(0, n);
+    if (!picks.length) { alert('Немає записів для надсилання.'); return; }
+
+    const stripHtml = s => String(s || '').replace(/<[^>]*>/g, '').trim();
+    const subject = 'Нове в Invest UA';
+    const body = picks.map((e, i) => {
+      const d = e.createdAt ? new Date(e.createdAt).toLocaleDateString('uk-UA') : '';
+      return (i + 1) + '. ' + stripHtml(e.title) + (d ? ' (' + d + ')' : '') + '\n' + stripHtml(e.body);
+    }).join('\n\n');
+
+    if (!confirm('Надіслати ' + picks.length + ' запис(ів) у Telegram → ' + (user.email || uid) + '?')) return;
+
+    try {
+      const base = typeof NOTIFY_API_BASE !== 'undefined' ? NOTIFY_API_BASE : '';
+      const key = typeof NOTIFY_API_KEY !== 'undefined' ? NOTIFY_API_KEY : '';
+      const res = await fetch(base + '/telegram/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': key },
+        body: JSON.stringify({ chat_id: chatId, subject, body })
+      });
+      const json = await res.json().catch(() => ({}));
+      if (json && json.ok) {
+        alert('✓ Надіслано у Telegram (' + picks.length + ' запис(ів)).');
+      } else {
+        alert('Не вдалося: ' + (json.description || 'помилка сервера'));
+      }
+    } catch(e) {
+      alert('Мережева помилка: ' + e.message);
     }
   }
 
