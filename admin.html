@@ -444,6 +444,7 @@
 <script src="config.js"></script>
 <script src="changelog-seed.js"></script>
 <script src="changelog.js"></script>
+<script src="modules/ui-dialog.js"></script>
 <script>
   let db, currentUser, allUsers = [];
 
@@ -738,7 +739,12 @@
     const all = Array.from(merged.values())
       .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
 
-    const raw = prompt('Скільки останніх записів надіслати ' + (user.email || 'користувачу') + '?', '5');
+    const raw = await uiPrompt('Скільки останніх записів надіслати ' + (user.email || 'користувачу') + '?', {
+      title: '📨 Оновлення в Telegram',
+      defaultValue: '5',
+      type: 'number',
+      okText: 'Далі'
+    });
     if (raw === null) return;
     const n = Math.max(1, Math.min(20, parseInt(raw, 10) || 5));
     const picks = all.slice(0, n);
@@ -751,7 +757,7 @@
       return (i + 1) + '. ' + stripHtml(e.title) + (d ? ' (' + d + ')' : '') + '\n' + stripHtml(e.body);
     }).join('\n\n');
 
-    if (!confirm('Надіслати ' + picks.length + ' запис(ів) у Telegram → ' + (user.email || uid) + '?')) return;
+    if (!await uiConfirm('Надіслати ' + picks.length + ' запис(ів) у Telegram → ' + (user.email || uid) + '?', { okText: 'Надіслати' })) return;
 
     try {
       const base = typeof NOTIFY_API_BASE !== 'undefined' ? NOTIFY_API_BASE : '';
@@ -885,7 +891,7 @@
       return;
     }
 
-    if (!confirm('Надіслати повідомлення ' + targets.length + ' користувачам?')) return;
+    if (!await uiConfirm('Надіслати повідомлення ' + targets.length + ' користувачам?', { okText: 'Надіслати' })) return;
 
     if (typeof NOTIFY_API_BASE === 'undefined' || !NOTIFY_API_BASE) {
       status.textContent = 'NOTIFY_API_BASE не налаштовано';
@@ -1025,7 +1031,7 @@
   }
 
   async function deleteChangelogEntry(id) {
-    if (!confirm('Видалити цей запис?')) return;
+    if (!await uiConfirm('Видалити цей запис?', { danger: true, okText: 'Видалити' })) return;
     try {
       await db.collection('changelog').doc(id).delete();
       loadChangelog();
@@ -1114,7 +1120,7 @@
   }
 
   async function deleteFeedback(id) {
-    if (!confirm('Видалити цей відгук?')) return;
+    if (!await uiConfirm('Видалити цей відгук?', { danger: true, okText: 'Видалити' })) return;
     try {
       await db.collection('feedback').doc(id).delete();
       loadFeedback();

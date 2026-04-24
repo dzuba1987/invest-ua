@@ -191,9 +191,14 @@
      * @param {string} id
      * @param {string} [message]
      */
-    confirmDiscard(id, message) {
+    async confirmDiscard(id, message) {
       if (!this.isDirty(id)) return true;
-      const ok = confirm(message || 'У формі є незбережені зміни. Вийти без збереження?');
+      const prompt = message || 'У формі є незбережені зміни. Вийти без збереження?';
+      // Prefer the in-app dialog when available; fall back to native confirm
+      // so this module stays self-sufficient.
+      const ok = (typeof window !== 'undefined' && typeof window.uiConfirm === 'function')
+        ? await window.uiConfirm(prompt, { okText: 'Відкинути' })
+        : confirm(prompt);
       if (ok) this.clear(id);
       return ok;
     },

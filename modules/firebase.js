@@ -584,8 +584,8 @@ function exportAllUserData() {
 async function deleteAllUserData() {
   const resultEl = document.getElementById('dataActionResult');
 
-  if (!confirm('Ви впевнені? Це видалить ВСІ ваші дані з цього пристрою та хмари. Цю дію не можна скасувати.')) return;
-  if (!confirm('Останнє підтвердження. Видалити всі дані назавжди?')) return;
+  if (!await uiConfirm('Ви впевнені? Це видалить ВСІ ваші дані з цього пристрою та хмари. Цю дію не можна скасувати.', { danger: true, okText: 'Продовжити' })) return;
+  if (!await uiConfirm('Останнє підтвердження. Видалити всі дані назавжди?', { danger: true, okText: 'Видалити назавжди' })) return;
 
   try {
     // Delete from Firestore

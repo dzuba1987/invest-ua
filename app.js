@@ -239,7 +239,7 @@ async function hashPin(pin) {
 }
 
 // ============ TAB SWITCHING ============
-function switchMainTab(tab, btn) {
+async function switchMainTab(tab, btn) {
   // Guard: block leaving a tab while a form has unsaved edits
   if (typeof FormDrafts !== 'undefined') {
     const currentActive = document.querySelector('.main-tab.active');
@@ -247,7 +247,7 @@ function switchMainTab(tab, btn) {
     // Check only forms visible on the tab we are leaving
     const visible = dirtyFormsOnActiveTab();
     for (const id of visible) {
-      if (!FormDrafts.confirmDiscard(id, 'У формі є незбережені зміни. Перейти на іншу вкладку без збереження?')) {
+      if (!await FormDrafts.confirmDiscard(id, 'У формі є незбережені зміни. Перейти на іншу вкладку без збереження?')) {
         return;
       }
       // Discard confirmed — close the form so stale edit state (e.g. _editingDreamId)
@@ -2109,7 +2109,7 @@ async function toggleExcluded(scope, id, excluded) {
   } catch(e) { console.warn('Toggle excluded failed:', e); }
 }
 
-function togglePortfolioForm(forceOpen) {
+async function togglePortfolioForm(forceOpen) {
   const card = document.getElementById('portfolioFormCard');
   const toggleBtn = document.getElementById('btnTogglePortfolioForm');
   const isHidden = card.style.display === 'none';
@@ -2117,7 +2117,7 @@ function togglePortfolioForm(forceOpen) {
 
   // Closing — guard unsaved edits
   if (!shouldOpen && typeof FormDrafts !== 'undefined' && FormDrafts.isDirty('portfolio.form')) {
-    if (!FormDrafts.confirmDiscard('portfolio.form', 'У формі вкладення є незбережені зміни. Закрити без збереження?')) {
+    if (!await FormDrafts.confirmDiscard('portfolio.form', 'У формі вкладення є незбережені зміни. Закрити без збереження?')) {
       return;
     }
   }
@@ -2130,7 +2130,7 @@ function togglePortfolioForm(forceOpen) {
     togglePortfolioTypeFields();
     // Offer to restore an earlier unsaved draft (but only when opening a fresh "new" form).
     if (typeof FormDrafts !== 'undefined' && FormDrafts.hasDraft('portfolio.form') && !FormDrafts.isDirty('portfolio.form')) {
-      if (confirm('Знайдено незбережену чернетку. Відновити?')) {
+      if (await uiConfirm('Знайдено незбережену чернетку. Відновити?', { okText: 'Відновити' })) {
         FormDrafts.restore('portfolio.form');
         togglePortfolioTypeFields();
       } else {
@@ -2708,7 +2708,7 @@ function openInvestmentDetail(id) {
 
     <div class="detail-actions">
       <button class="btn-export" onclick="closeInvestmentDetail(); editPortfolioItem('${item.id}')">✎ Редагувати</button>
-      <button class="btn-clear" onclick="if(confirm('Видалити це вкладення?')){deletePortfolioItem('${item.id}'); closeInvestmentDetail();}">✕ Видалити</button>
+      <button class="btn-clear" onclick="confirmThen('Видалити це вкладення?', () => { deletePortfolioItem('${item.id}'); closeInvestmentDetail(); }, { danger: true, okText: 'Видалити' })">✕ Видалити</button>
     </div>
   `);
 
@@ -2961,7 +2961,7 @@ function renderPortfolio() {
           ${p.notes ? '<div class="p-item-notes">' + esc(p.notes) + '</div>' : ''}
           <div style="display:flex;gap:8px;margin-top:8px">
             <button class="btn-delete" onclick="event.stopPropagation();editPortfolioItem('${p.id}')" style="color:#60a5fa">✎</button>
-            <button class="btn-delete" onclick="event.stopPropagation();if(confirm('Видалити ' + ${JSON.stringify(p.name || 'запис')} + '?'))deletePortfolioItem('${p.id}')">✕</button>
+            <button class="btn-delete" onclick="event.stopPropagation();confirmThen('Видалити ' + ${JSON.stringify(p.name || 'запис')} + '?', () => deletePortfolioItem('${p.id}'), { danger: true, okText: 'Видалити' })">✕</button>
           </div>
         </div>
         <div class="p-item-actions">
@@ -3798,14 +3798,14 @@ document.getElementById('dreamDateEnd').addEventListener('change', calcDreamMont
 // Mark manual if user edits monthly
 document.getElementById('dreamMonthly').addEventListener('input', () => { dreamMonthlyManual = true; });
 
-function toggleDreamForm(forceOpen) {
+async function toggleDreamForm(forceOpen) {
   const card = document.getElementById('dreamFormCard');
   const btn = document.getElementById('btnToggleDreamForm');
   const isHidden = card.style.display === 'none';
   const shouldOpen = forceOpen !== undefined ? forceOpen : isHidden;
 
   if (!shouldOpen && typeof FormDrafts !== 'undefined' && FormDrafts.isDirty('dream.form')) {
-    if (!FormDrafts.confirmDiscard('dream.form', 'У формі мрії є незбережені зміни. Закрити без збереження?')) {
+    if (!await FormDrafts.confirmDiscard('dream.form', 'У формі мрії є незбережені зміни. Закрити без збереження?')) {
       return;
     }
   }
@@ -3820,7 +3820,7 @@ function toggleDreamForm(forceOpen) {
       document.getElementById('dreamDateStart').value = new Date().toISOString().split('T')[0];
     }
     if (typeof FormDrafts !== 'undefined' && FormDrafts.hasDraft('dream.form') && !FormDrafts.isDirty('dream.form')) {
-      if (confirm('Знайдено незбережену чернетку мрії. Відновити?')) {
+      if (await uiConfirm('Знайдено незбережену чернетку мрії. Відновити?', { okText: 'Відновити' })) {
         FormDrafts.restore('dream.form');
       } else {
         FormDrafts.clear('dream.form');
@@ -3987,10 +3987,10 @@ function saveDreamDepositEdit(dreamId, idx) {
   openDreamDetail(dreamId);
 }
 
-function deleteDreamDeposit(dreamId, idx) {
+async function deleteDreamDeposit(dreamId, idx) {
   const d = dreamItems.find(x => String(x.id) === String(dreamId));
   if (!d || !d.deposits || !d.deposits[idx]) return;
-  if (!confirm('Видалити цей внесок?')) return;
+  if (!await uiConfirm('Видалити цей внесок?', { danger: true, okText: 'Видалити' })) return;
   const dep = d.deposits[idx];
   d.saved = Math.max(0, (d.saved || 0) - (dep.amount || 0));
   d.deposits.splice(idx, 1);
@@ -4099,7 +4099,7 @@ function openDreamDetail(id) {
       <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap">
         <button class="btn-save" onclick="depositDreamFromDetail('${d.id}')" style="width:auto;padding:8px 16px;margin:0">+ Внести кошти</button>
         <button class="btn-export" onclick="editDreamFromDetail('${d.id}')" style="width:auto;padding:8px 16px;margin:0">✎ Редагувати</button>
-        <button class="btn-clear" onclick="if(confirm('Видалити мрію?')){deleteDream('${d.id}');closeDreamDetail();}" style="width:auto;padding:8px 16px;margin:0">✕ Видалити</button>
+        <button class="btn-clear" onclick="confirmThen('Видалити мрію?', () => { deleteDream('${d.id}'); closeDreamDetail(); }, { danger: true, okText: 'Видалити' })" style="width:auto;padding:8px 16px;margin:0">✕ Видалити</button>
       </div>
     </div>
 
@@ -4295,7 +4295,7 @@ function renderDreams() {
         <div style="display:flex;gap:8px;margin-top:8px">
           <button class="btn-delete" onclick="event.stopPropagation();showDreamDeposit('${d.id}')" style="color:#4ade80;font-size:16px" title="Внести кошти">+</button>
           <button class="btn-delete" onclick="event.stopPropagation();editDream('${d.id}')" style="color:#60a5fa">✎</button>
-          <button class="btn-delete" onclick="event.stopPropagation();if(confirm('Видалити мрію?'))deleteDream('${d.id}')">✕</button>
+          <button class="btn-delete" onclick="event.stopPropagation();confirmThen('Видалити мрію?', () => deleteDream('${d.id}'), { danger: true, okText: 'Видалити' })">✕</button>
         </div>
       </div>
       <div id="dreamDeposit-${d.id}" style="display:none;width:100%;margin-top:8px;padding-top:8px;border-top:1px solid #1e293b">
@@ -4585,14 +4585,14 @@ function _populateSavingDreamSelect(currentValue) {
   if (currentValue != null) sel.value = String(currentValue);
 }
 
-function toggleSavingsForm(forceOpen) {
+async function toggleSavingsForm(forceOpen) {
   const card = document.getElementById('savingsFormCard');
   const btn = document.getElementById('btnToggleSavingsForm');
   const isHidden = card.style.display === 'none';
   const shouldOpen = forceOpen !== undefined ? forceOpen : isHidden;
 
   if (!shouldOpen && typeof FormDrafts !== 'undefined' && FormDrafts.isDirty('saving.form')) {
-    if (!FormDrafts.confirmDiscard('saving.form', 'У формі заощадження є незбережені зміни. Закрити без збереження?')) return;
+    if (!await FormDrafts.confirmDiscard('saving.form', 'У формі заощадження є незбережені зміни. Закрити без збереження?')) return;
   }
 
   if (shouldOpen) {
@@ -4602,7 +4602,7 @@ function toggleSavingsForm(forceOpen) {
     btn.classList.add('btn-export');
     _populateSavingDreamSelect();
     if (typeof FormDrafts !== 'undefined' && FormDrafts.hasDraft('saving.form') && !FormDrafts.isDirty('saving.form')) {
-      if (confirm('Знайдено незбережену чернетку заощадження. Відновити?')) FormDrafts.restore('saving.form');
+      if (await uiConfirm('Знайдено незбережену чернетку заощадження. Відновити?', { okText: 'Відновити' })) FormDrafts.restore('saving.form');
       else FormDrafts.clear('saving.form');
     }
     onSavingCurrencyChange();
@@ -4685,8 +4685,8 @@ function editSaving(id) {
   if (typeof FormDrafts !== 'undefined') FormDrafts.setBaseline('saving.form');
 }
 
-function deleteSaving(id) {
-  if (!confirm('Видалити це заощадження?')) return;
+async function deleteSaving(id) {
+  if (!await uiConfirm('Видалити це заощадження?', { danger: true, okText: 'Видалити' })) return;
   savingItems = savingItems.filter(s => String(s.id) !== String(id));
   renderSavings();
   saveSavingsToFirestore();
@@ -5072,14 +5072,14 @@ function _setPurchaseMonthPicker(monthKey) {
   if (hidden) hidden.value = key;
 }
 
-function togglePurchaseForm(forceOpen) {
+async function togglePurchaseForm(forceOpen) {
   const card = document.getElementById('purchaseFormCard');
   const btn = document.getElementById('btnTogglePurchaseForm');
   const isHidden = card.style.display === 'none';
   const shouldOpen = forceOpen !== undefined ? forceOpen : isHidden;
 
   if (!shouldOpen && typeof FormDrafts !== 'undefined' && FormDrafts.isDirty('purchase.form')) {
-    if (!FormDrafts.confirmDiscard('purchase.form', 'У формі витрати є незбережені зміни. Закрити без збереження?')) return;
+    if (!await FormDrafts.confirmDiscard('purchase.form', 'У формі витрати є незбережені зміни. Закрити без збереження?')) return;
   }
 
   if (shouldOpen) {
@@ -5094,7 +5094,7 @@ function togglePurchaseForm(forceOpen) {
     renderPurchaseIconPicker();
     onPurchaseCurrencyChange();
     if (typeof FormDrafts !== 'undefined' && FormDrafts.hasDraft('purchase.form') && !FormDrafts.isDirty('purchase.form') && !_editingPurchaseId) {
-      if (confirm('Знайдено незбережену чернетку витрати. Відновити?')) FormDrafts.restore('purchase.form');
+      if (await uiConfirm('Знайдено незбережену чернетку витрати. Відновити?', { okText: 'Відновити' })) FormDrafts.restore('purchase.form');
       else FormDrafts.clear('purchase.form');
     }
     // Baseline the form so the "unsaved changes" confirm only fires if the
@@ -5213,17 +5213,17 @@ function editPurchase(id) {
   if (nameField) setTimeout(() => nameField.focus({ preventScroll: true }), 300);
 }
 
-function deletePurchase(id) {
+async function deletePurchase(id) {
   const found = _findPurchase(id);
   if (!found) return;
   const item = found.item;
   if (found.source === 'shared') {
     const members = item.members || [];
     if (members.length <= 1) {
-      if (!confirm('Видалити "' + item.name + '"? Ви єдиний учасник — витрата видалиться повністю.')) return;
+      if (!await uiConfirm('Видалити «' + item.name + '»? Ви єдиний учасник — витрата видалиться повністю.', { danger: true, okText: 'Видалити' })) return;
       db.collection('sharedPurchases').doc(String(id)).delete().catch(e => alert('Помилка: ' + e.message));
     } else {
-      if (!confirm('Покинути спільну витрату "' + item.name + '"? Інші учасники продовжать її бачити.')) return;
+      if (!await uiConfirm('Покинути спільну витрату «' + item.name + '»? Інші учасники продовжать її бачити.', { okText: 'Покинути' })) return;
       const emailUpdate = {};
       emailUpdate['memberEmails.' + currentUser.uid] = firebase.firestore.FieldValue.delete();
       db.collection('sharedPurchases').doc(String(id)).update({
@@ -5233,18 +5233,23 @@ function deletePurchase(id) {
     }
     return;
   }
-  if (!confirm('Видалити ' + item.name + '?')) return;
+  if (!await uiConfirm('Видалити ' + item.name + '?', { danger: true, okText: 'Видалити' })) return;
   purchaseItems = purchaseItems.filter(p => String(p.id) !== String(id));
   renderPurchases();
   savePurchasesToFirestore();
 }
 
-function markPurchaseBought(id) {
+async function markPurchaseBought(id) {
   const found = _findPurchase(id);
   if (!found) return;
   const item = found.item;
   const sym = item.currency === 'USD' ? '$' : item.currency === 'EUR' ? '€' : 'грн';
-  const raw = prompt('Фактична сума витрати (' + sym + '). Залиште порожнім щоб зберегти заплановану:', '');
+  const raw = await uiPrompt('Фактична сума витрати (' + sym + '). Залиште порожнім, щоб зберегти заплановану:', {
+    title: '✓ Відмітити як здійснену',
+    placeholder: formatShort(item.amount || 0),
+    okText: 'Зберегти'
+  });
+  if (raw === null) return;
   let actual = item.amount;
   if (raw && raw.trim()) {
     const parsed = parseNum(raw);
@@ -5285,10 +5290,10 @@ function markPurchaseBought(id) {
   }
 }
 
-function unmarkPurchaseBought(id) {
+async function unmarkPurchaseBought(id) {
   const found = _findPurchase(id);
   if (!found) return;
-  if (!confirm('Скасувати позначку «здійснено»?')) return;
+  if (!await uiConfirm('Скасувати позначку «здійснено»?', { okText: 'Скасувати' })) return;
   const { boughtAt, boughtAmount, ...rest } = found.item;
   // For Firestore, explicitly clear the fields in shared documents.
   if (found.source === 'shared' && firebaseReady) {
@@ -6067,7 +6072,7 @@ async function acceptShareInvite(shareId) {
       alert('Ви вже учасник цієї витрати.');
     } else {
       const ownerEmail = (data.memberEmails && data.memberEmails[data.ownerUid]) || 'іншого користувача';
-      if (!confirm(`${ownerEmail} запрошує вас до спільної витрати:\n\n${data.icon || '🛒'} ${data.name}\n\nПрийняти?`)) return;
+      if (!await uiConfirm(`${ownerEmail} запрошує вас до спільної витрати:\n\n${data.icon || '🛒'} ${data.name}\n\nПрийняти?`, { okText: 'Прийняти' })) return;
       const update = {
         members: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
       };
@@ -6109,7 +6114,7 @@ function processShareInviteOnBoot() {
 async function promptMakeShared(id) {
   const found = _findPurchase(id);
   if (!found || found.source !== 'private') return;
-  if (!confirm('Зробити "' + found.item.name + '" спільною витратою?\n\nІнші користувачі зможуть її бачити і редагувати за посиланням.')) return;
+  if (!await uiConfirm('Зробити «' + found.item.name + '» спільною витратою?\n\nІнші користувачі зможуть її бачити і редагувати за посиланням.', { okText: 'Зробити спільною' })) return;
   const shareUrl = await makePurchaseShared(id);
   if (!shareUrl) return;
   // Wait a moment for onSnapshot to deliver the new shared doc into the list.
@@ -6124,7 +6129,13 @@ async function invitePurchaseByEmail(shareId) {
   const found = _findPurchase(shareId);
   if (!found || found.source !== 'shared') { alert('Витрата не є спільною.'); return; }
   const item = found.item;
-  const email = (prompt('Email учасника для запрошення:', '') || '').trim();
+  const emailRaw = await uiPrompt('Email учасника для запрошення:', {
+    title: '👥 Запросити до спільної витрати',
+    placeholder: 'name@example.com',
+    okText: 'Запросити'
+  });
+  if (emailRaw === null) return;
+  const email = String(emailRaw).trim();
   if (!email) return;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { alert('Некоректний email.'); return; }
   const shareUrl = window.location.origin + window.location.pathname + '?share=' + shareId;
@@ -6144,14 +6155,14 @@ async function invitePurchaseByEmail(shareId) {
       alert('✓ Запрошення надіслано через ' + ch + '.');
     } else {
       const msg = (body && body.description) || 'Користувача з таким email не знайдено на платформі.';
-      if (confirm(msg + '\n\nСкопіювати посилання і надіслати вручну?')) {
+      if (await uiConfirm(msg + '\n\nСкопіювати посилання і надіслати вручну?', { okText: 'Копіювати' })) {
         await _recordPurchaseInvitation(shareId, email, 'manual');
         _copyToClipboard(shareUrl);
         alert('Посилання скопійовано.');
       }
     }
   } catch(e) {
-    if (confirm('Сервер недоступний. Скопіювати посилання і надіслати вручну?')) {
+    if (await uiConfirm('Сервер недоступний. Скопіювати посилання і надіслати вручну?', { okText: 'Копіювати' })) {
       await _recordPurchaseInvitation(shareId, email, 'manual');
       _copyToClipboard(shareUrl);
       alert('Посилання скопійовано.');
@@ -6318,7 +6329,7 @@ function openPurchaseDetail(id) {
   if (!p.bought) {
     actions.push('<button class="btn-export" onclick="editPurchaseFromDetail(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0">✎ Редагувати</button>');
   }
-  actions.push('<button class="btn-clear" onclick="if(confirm(\'' + (isShared ? 'Покинути спільну витрату?' : 'Видалити витрату?') + '\')){deletePurchase(\'' + p.id + '\');closePurchaseDetail();}" style="width:auto;padding:8px 16px;margin:0">✕ ' + (isShared ? 'Покинути' : 'Видалити') + '</button>');
+  actions.push('<button class="btn-clear" onclick="confirmThen(\'' + (isShared ? 'Покинути спільну витрату?' : 'Видалити витрату?') + '\', () => { deletePurchase(\'' + p.id + '\'); closePurchaseDetail(); }, { danger: true, okText: \'' + (isShared ? 'Покинути' : 'Видалити') + '\' })" style="width:auto;padding:8px 16px;margin:0">✕ ' + (isShared ? 'Покинути' : 'Видалити') + '</button>');
 
   _openPurchaseDetailId = String(p.id);
   document.getElementById('purchasesContent').style.display = 'none';

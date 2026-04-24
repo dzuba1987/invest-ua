@@ -610,6 +610,171 @@ button:hover { opacity: 0.9; }
   }
 }
 
+/* ──────────────────────────────────────────────────────────
+   In-app dialogs (modules/ui-dialog.js): toasts + modals that
+   replace native alert / confirm / prompt.
+   ────────────────────────────────────────────────────────── */
+.ui-toast-layer {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  max-width: 90vw;
+}
+.ui-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  font-size: 13px;
+  max-width: 380px;
+  min-width: 200px;
+  transform: translateX(420px);
+  opacity: 0;
+  transition: transform 0.22s ease, opacity 0.22s ease;
+}
+.ui-toast.ui-toast-show { transform: translateX(0); opacity: 1; }
+.ui-toast-msg { flex: 1; line-height: 1.4; }
+.ui-toast-close {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 4px;
+  width: auto;
+  margin: 0;
+  line-height: 1;
+}
+.ui-toast-close:hover { color: #e2e8f0; }
+.ui-toast-ok   { border-color: rgba(74,222,128,0.4);  background: linear-gradient(135deg,#0f2b1a 0%,#1e293b 100%); }
+.ui-toast-err  { border-color: rgba(248,113,113,0.4); background: linear-gradient(135deg,#3a1212 0%,#1e293b 100%); }
+.ui-toast-info { border-color: rgba(59,130,246,0.4);  background: linear-gradient(135deg,#0f1e3a 0%,#1e293b 100%); }
+
+@media (max-width: 500px) {
+  .ui-toast-layer { top: 10px; right: 10px; left: 10px; align-items: stretch; }
+  .ui-toast { max-width: none; transform: translateY(-24px); }
+  .ui-toast.ui-toast-show { transform: translateY(0); }
+}
+
+.ui-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4,9,20,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  backdrop-filter: blur(2px);
+}
+.ui-dialog-backdrop.ui-dialog-show { opacity: 1; }
+.ui-dialog {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 14px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+  transform: translateY(8px) scale(0.98);
+  transition: transform 0.18s ease;
+  overflow: hidden;
+}
+.ui-dialog-backdrop.ui-dialog-show .ui-dialog { transform: translateY(0) scale(1); }
+.ui-dialog-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #f1f5f9;
+  padding: 14px 18px 0;
+}
+.ui-dialog-body {
+  padding: 14px 18px;
+  color: #e2e8f0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.ui-dialog-body .ui-dialog-text { margin: 0; color: #cbd5e1; }
+.ui-dialog-label {
+  display: block;
+  font-size: 12px;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}
+.ui-dialog-input {
+  width: 100%;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #f1f5f9;
+  font-size: 15px;
+  padding: 10px 12px;
+  outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.ui-dialog-input:focus { border-color: #3b82f6; }
+.ui-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  border-top: 1px solid rgba(148,163,184,0.1);
+  background: rgba(15,23,42,0.4);
+}
+.ui-dialog-btn {
+  width: auto;
+  margin: 0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid #334155;
+  background: transparent;
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.ui-dialog-btn:hover { background: rgba(148,163,184,0.1); }
+.ui-dialog-btn-primary {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+}
+.ui-dialog-btn-primary:hover { background: #2563eb; border-color: #2563eb; }
+.ui-dialog-btn-danger {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+.ui-dialog-btn-danger:hover { background: #b91c1c; border-color: #b91c1c; }
+.ui-dialog-btn-secondary { color: #94a3b8; }
+
+html[data-theme-effective="light"] .ui-toast { background: #fff; border-color: #e2e8f0; color: #0f172a; }
+html[data-theme-effective="light"] .ui-toast-close { color: #64748b; }
+html[data-theme-effective="light"] .ui-toast-ok   { background: linear-gradient(135deg,#dcfce7 0%,#fff 100%); }
+html[data-theme-effective="light"] .ui-toast-err  { background: linear-gradient(135deg,#fee2e2 0%,#fff 100%); }
+html[data-theme-effective="light"] .ui-toast-info { background: linear-gradient(135deg,#dbeafe 0%,#fff 100%); }
+html[data-theme-effective="light"] .ui-dialog-backdrop { background: rgba(15,23,42,0.45); }
+html[data-theme-effective="light"] .ui-dialog { background: #fff; border-color: #e2e8f0; }
+html[data-theme-effective="light"] .ui-dialog-title { color: #0f172a; }
+html[data-theme-effective="light"] .ui-dialog-body { color: #1e293b; }
+html[data-theme-effective="light"] .ui-dialog-body .ui-dialog-text { color: #334155; }
+html[data-theme-effective="light"] .ui-dialog-input { background: #f8fafc; border-color: #e2e8f0; color: #0f172a; }
+html[data-theme-effective="light"] .ui-dialog-btn { color: #0f172a; border-color: #e2e8f0; }
+html[data-theme-effective="light"] .ui-dialog-footer { background: #f8fafc; border-color: #e2e8f0; }
+
 /* Budget / income card */
 .budget-card { margin-top: 12px; }
 .budget-header { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom: 10px; flex-wrap:wrap; }
