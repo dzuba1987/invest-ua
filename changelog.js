@@ -6,6 +6,12 @@
 //
 window.BUILT_IN_CHANGELOG = [
   {
+    "id": "cl-43d5eb192c",
+    "title": "add user-facing entries for the April 24 UX batch",
+    "createdAt": "2026-04-24T19:53:39+03:00",
+    "body": "add user-facing entries for the April 24 UX batch"
+  },
+  {
     "id": "cl-bde93b52d5",
     "title": "🏛 Страхування: правильний відсоток з першого дня",
     "createdAt": "2026-04-24T15:43:16+03:00",
