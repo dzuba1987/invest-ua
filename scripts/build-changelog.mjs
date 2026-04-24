@@ -46,6 +46,7 @@ for (const sha of shas) {
   const iso = isoLine.trim();
   const msg = rest.join('\n--__SEP__--\n');
 
+  let perCommitIdx = 0;
   for (const line of msg.split('\n')) {
     const m = line.match(/^\s*CHANGELOG:\s*(.+?)\s*$/i);
     if (!m) continue;
@@ -54,8 +55,10 @@ for (const sha of shas) {
     const [titleRaw, ...bodyParts] = raw.split('|');
     const title = titleRaw.trim();
     const body = bodyParts.length ? bodyParts.join('|').trim() : title;
-    const id = `cl-${sha.slice(0, 10)}`;
-    // Skip duplicates (e.g. the same line accidentally written twice in one commit).
+    // Append index so multiple CHANGELOG lines in one commit each get a unique id.
+    const suffix = perCommitIdx === 0 ? '' : `-${perCommitIdx}`;
+    const id = `cl-${sha.slice(0, 10)}${suffix}`;
+    perCommitIdx += 1;
     if (seenIds.has(id)) continue;
     seenIds.add(id);
     entries.push({ id, title, createdAt: iso, body });
