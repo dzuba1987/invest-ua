@@ -47,11 +47,19 @@ for (const sha of shas) {
   const msg = rest.join('\n--__SEP__--\n');
 
   let perCommitIdx = 0;
-  for (const line of msg.split('\n')) {
-    // Case-sensitive match so prose like "Changelog: add ..." in a subject
-    // line is NOT treated as a marker. Real markers use uppercase.
-    const m = line.match(/^\s*CHANGELOG:\s*(.+?)\s*$/);
+  const lines = msg.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // Case-sensitive + paragraph-start: `CHANGELOG:` must begin a new paragraph
+    // (preceded by a blank line or another CHANGELOG line, or be at the very
+    // top of the message). This prevents wrapped prose like
+    //   "... only lines starting with literal
+    //    CHANGELOG: contribute an entry."
+    // from being misread as a marker.
+    const m = line.match(/^CHANGELOG:\s*(.+?)\s*$/);
     if (!m) continue;
+    const prev = i > 0 ? lines[i - 1] : '';
+    if (prev.trim() !== '' && !/^CHANGELOG:/.test(prev)) continue;
     const raw = m[1].trim();
     if (!raw) continue;
     const [titleRaw, ...bodyParts] = raw.split('|');
