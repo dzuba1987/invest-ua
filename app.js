@@ -2134,8 +2134,8 @@ function togglePortfolioTypeFields() {
   document.getElementById('pDateStartField').style.display = isCash ? 'none' : '';
   document.getElementById('pDateEndField').style.display = isCash ? 'none' : '';
 
-  // Tax — deposit and other
-  document.getElementById('pTaxField').style.display = (isDeposit || type === 'other') ? '' : 'none';
+  // Tax — deposit, insurance, and other
+  document.getElementById('pTaxField').style.display = (isDeposit || isInsurance || type === 'other') ? '' : 'none';
 
   // Indexation — only insurance
   document.getElementById('pIndexField').style.display = isInsurance ? '' : 'none';
@@ -2299,34 +2299,50 @@ function openInvestmentDetail(id) {
       const taxRate = (item.tax || 0) / 100;
       const effRate = ratePct * (1 - taxRate);
 
-      if (isIns || item.compound) {
-        let balance = 0, totalInterest = 0, totalPaid = 0;
-        let yearlyPayment = item.invested;
-
+      if (isIns) {
+        // Premium paid at START of each year, interest accrues DURING the year
+        // on (prior balance + new premium). Matches user intuition that a 100k
+        // deposit earns 100k × rate in year 1.
+        const schedule = [];
+        let balance = 0, totalInterest = 0, yp = item.invested;
         for (let y = 1; y <= totalYears; y++) {
-          if (isIns) {
-            if (y > 1 && idxPct > 0) yearlyPayment = item.invested * Math.pow(1 + idxPct, y - 1);
-            const netInt = balance * effRate;
-            balance += yearlyPayment + netInt;
-            totalPaid += yearlyPayment;
-            totalInterest += netInt;
-          } else {
-            if (y === 1) balance = item.invested;
-            const netInt = balance * effRate;
-            balance += netInt;
-            totalInterest += netInt;
-          }
+          if (y > 1 && idxPct > 0) yp = item.invested * Math.pow(1 + idxPct, y - 1);
+          balance += yp;
+          const preInt = balance;
+          const netInt = balance * effRate;
+          balance += netInt;
+          totalInterest += netInt;
+          schedule.push({ preInt, netInt });
         }
-
         expectedProfit = totalInterest;
-        // Fractional proration — day 1 earnedSoFar ≈ 0, not a full year's interest.
+        // Earned-so-far: completed years' interest + proportional current year.
         const yearsE = Math.min(elapsed, days) / 365.25;
-        if (item.compound && !isIns) {
-          earnedSoFar = item.invested * (Math.pow(1 + effRate, yearsE) - 1);
-        } else {
-          earnedSoFar = totalYears > 0 ? totalInterest * Math.min(yearsE / totalYears, 1) : 0;
+        const fullYears = Math.floor(yearsE);
+        const frac = yearsE - fullYears;
+        let earnedNet = 0;
+        for (let i = 0; i < fullYears && i < schedule.length; i++) earnedNet += schedule[i].netInt;
+        if (frac > 0 && fullYears < schedule.length) {
+          earnedNet += schedule[fullYears].preInt * effRate * frac;
         }
+        earnedSoFar = Math.min(earnedNet, expectedProfit);
+        // Daily rate reflects the CURRENT year's accrual pace, not the first.
+        const curIdx = Math.min(fullYears, schedule.length - 1);
+        const curPre = schedule[curIdx] ? schedule[curIdx].preInt : item.invested;
+        dailyGross = (curPre * (item.rate / 100)) / 365.25;
+        dailyNet = dailyGross * (1 - taxRate);
+      } else if (item.compound) {
+        let balance = item.invested, totalInterest = 0;
+        for (let y = 1; y <= totalYears; y++) {
+          const netInt = balance * effRate;
+          balance += netInt;
+          totalInterest += netInt;
+        }
+        expectedProfit = totalInterest;
+        const yearsE = Math.min(elapsed, days) / 365.25;
+        earnedSoFar = item.invested * (Math.pow(1 + effRate, yearsE) - 1);
         earnedSoFar = Math.min(earnedSoFar, expectedProfit);
+        dailyGross = item.invested * (item.rate / 100) / 365.25;
+        dailyNet = dailyGross * (1 - taxRate);
       } else if (item.rate) {
         // Simple interest — single tax deduction at the end.
         const ty = days / 365.25;
@@ -2335,9 +2351,9 @@ function openInvestmentDetail(id) {
         const grossEarned = item.invested * ratePct * ey;
         expectedProfit = grossExpected * (1 - taxRate);
         earnedSoFar = Math.min(grossEarned * (1 - taxRate), expectedProfit);
+        dailyGross = item.invested * (item.rate / 100) / 365.25;
+        dailyNet = dailyGross * (1 - taxRate);
       }
-      dailyGross = item.invested * (item.rate / 100) / 365.25;
-      dailyNet = dailyGross * (1 - taxRate);
     }
   }
 
@@ -2450,7 +2466,8 @@ function openInvestmentDetail(id) {
       let rows = '', balance = 0, totalPaid = 0, totalInterest = 0;
 
       if (isIns) {
-        // Insurance: yearly with indexation; tax withheld on each interest accrual.
+        // Insurance: premium paid at START of each year; interest accrues during
+        // the year on (prior balance + new premium). Tax withheld at each accrual.
         const hasIdx = idxPct > 0;
         const taxRate = (item.tax || 0) / 100;
         const effRate = ratePct * (1 - taxRate);
@@ -2458,8 +2475,9 @@ function openInvestmentDetail(id) {
         for (let y = 1; y <= totalYears; y++) {
           if (y > 1 && hasIdx) yearlyPayment = item.invested * Math.pow(1 + idxPct, y - 1);
           const idxAmount = y > 1 && hasIdx ? yearlyPayment - item.invested * Math.pow(1 + idxPct, y - 2) : 0;
+          balance += yearlyPayment;
           const netInt = balance * effRate;
-          balance += yearlyPayment + netInt;
+          balance += netInt;
           totalPaid += yearlyPayment;
           totalInterest += netInt;
           rows += '<tr><td>' + y + '</td><td>' + (startYear + y - 1) + '</td><td>' + formatNum(yearlyPayment) + '</td>' +
@@ -2757,6 +2775,7 @@ function renderPortfolio() {
     let days = 0, elapsed = 0, progress = 0, daysLeft = 0;
     let expectedProfit = 0, expectedProfitNet = 0;
     let dailyGross = 0, dailyNet = 0, earnedSoFar = 0, earnedSoFarNet = 0;
+    let insCurPreBal = 0;
     if (p.dateStart && p.dateEnd) {
       days = Math.round((new Date(p.dateEnd) - new Date(p.dateStart)) / 86400000);
       elapsed = Math.max(0, Math.round((now - new Date(p.dateStart)) / 86400000));
@@ -2778,32 +2797,46 @@ function renderPortfolio() {
           expectedProfitNet = expectedProfit * (1 - taxRate);
           earnedSoFar = expectedProfit * Math.min(elapsed, days) / days;
           earnedSoFarNet = earnedSoFar * (1 - taxRate);
-        } else if (isIns || p.compound) {
-          // Year-by-year with yearly tax withholding — balance compounds on NET.
-          let bal = 0, totalNetInt = 0;
-          let yPayment = p.invested;
+        } else if (isIns) {
+          // Premium paid at START of each year; interest accrues during the year
+          // on (prior balance + new premium). Tax withheld on NET interest.
+          const schedule = [];
+          let bal = 0, totalNetInt = 0, yPayment = p.invested;
           for (let y = 1; y <= totalYearsN; y++) {
-            if (isIns) {
-              if (y > 1 && idxPct > 0) yPayment = p.invested * Math.pow(1 + idxPct, y - 1);
-              const netI = bal * effRate;
-              bal += yPayment + netI;
-              totalNetInt += netI;
-            } else {
-              if (y === 1) bal = p.invested;
-              const netI = bal * effRate;
-              bal += netI;
-              totalNetInt += netI;
-            }
+            if (y > 1 && idxPct > 0) yPayment = p.invested * Math.pow(1 + idxPct, y - 1);
+            bal += yPayment;
+            const preInt = bal;
+            const netI = bal * effRate;
+            bal += netI;
+            totalNetInt += netI;
+            schedule.push({ preInt, netI });
           }
           expectedProfitNet = totalNetInt;
           expectedProfit = taxRate > 0 ? totalNetInt / (1 - taxRate) : totalNetInt;
-          // Fractional elapsed years — day 1 earnedSoFar ≈ 0.
           const yearsE = Math.min(elapsed, days) / 365.25;
-          if (p.compound && !isIns) {
-            earnedSoFarNet = p.invested * (Math.pow(1 + effRate, yearsE) - 1);
-          } else {
-            earnedSoFarNet = totalYearsN > 0 ? totalNetInt * Math.min(yearsE / totalYearsN, 1) : 0;
+          const fullYears = Math.floor(yearsE);
+          const frac = yearsE - fullYears;
+          let earnedNet = 0;
+          for (let i = 0; i < fullYears && i < schedule.length; i++) earnedNet += schedule[i].netI;
+          if (frac > 0 && fullYears < schedule.length) {
+            earnedNet += schedule[fullYears].preInt * effRate * frac;
           }
+          earnedSoFarNet = Math.min(earnedNet, expectedProfitNet);
+          earnedSoFar = taxRate > 0 ? earnedSoFarNet / (1 - taxRate) : earnedSoFarNet;
+          const curIdx = Math.min(fullYears, schedule.length - 1);
+          insCurPreBal = schedule[curIdx] ? schedule[curIdx].preInt : 0;
+        } else if (p.compound) {
+          // Compound deposit — NET interest reinvested annually.
+          let bal = p.invested, totalNetInt = 0;
+          for (let y = 1; y <= totalYearsN; y++) {
+            const netI = bal * effRate;
+            bal += netI;
+            totalNetInt += netI;
+          }
+          expectedProfitNet = totalNetInt;
+          expectedProfit = taxRate > 0 ? totalNetInt / (1 - taxRate) : totalNetInt;
+          const yearsE = Math.min(elapsed, days) / 365.25;
+          earnedSoFarNet = p.invested * (Math.pow(1 + effRate, yearsE) - 1);
           earnedSoFarNet = Math.min(earnedSoFarNet, expectedProfitNet);
           earnedSoFar = taxRate > 0 ? earnedSoFarNet / (1 - taxRate) : earnedSoFarNet;
         } else if (p.rate) {
@@ -2821,9 +2854,14 @@ function renderPortfolio() {
         // Daily earnings (only for active investments)
         if (isActive && new Date(p.dateStart) <= now) {
           const useReceivedAtMaturity = p.type === 'ovdp' && p.receivedAtMaturity && p.receivedAtMaturity > 0;
-          dailyGross = useReceivedAtMaturity
-            ? (days > 0 ? expectedProfit / days : 0)
-            : ((p.rate || 0) > 0 ? p.invested * (p.rate / 100) / 365.25 : 0);
+          if (useReceivedAtMaturity) {
+            dailyGross = days > 0 ? expectedProfit / days : 0;
+          } else if (isIns && insCurPreBal) {
+            // Insurance daily pace tracks current-year balance.
+            dailyGross = (insCurPreBal * (p.rate / 100)) / 365.25;
+          } else {
+            dailyGross = (p.rate || 0) > 0 ? p.invested * (p.rate / 100) / 365.25 : 0;
+          }
           dailyNet = dailyGross * (1 - taxRate);
           totalDailyGross += dailyGross;
           totalDailyNet += dailyNet;
@@ -2976,6 +3014,58 @@ let portfolioChartInstance = null;
 
 let portfolioChartYear = null; // null = auto (latest dateEnd)
 
+// Snapshot of a portfolio item at a specific time, using the same model the
+// detail view uses. Returns cumulative paid-in amount and NET balance/value.
+function _portfolioItemSnapshot(p, curTime) {
+  const s = new Date(p.dateStart).getTime();
+  const e = new Date(p.dateEnd).getTime();
+  if (curTime < s) return { invested: 0, value: 0 };
+  const effTime = Math.min(curTime, e);
+  const elapsedDays = (effTime - s) / 86400000;
+  const elapsedYears = elapsedDays / 365.25;
+  const ratePct = (p.rate || 0) / 100;
+  const taxRate = (p.tax || 0) / 100;
+  const effRate = ratePct * (1 - taxRate);
+  const idxPct = (p.indexation || 0) / 100;
+
+  if (p.type === 'insurance') {
+    // Annual premium paid at start of each year, with indexation; NET interest
+    // accrues on balance during the year.
+    let balance = 0, paid = 0, yp = p.invested;
+    const fullYears = Math.floor(elapsedYears);
+    for (let y = 1; y <= fullYears; y++) {
+      if (y > 1 && idxPct > 0) yp = p.invested * Math.pow(1 + idxPct, y - 1);
+      balance += yp;
+      paid += yp;
+      balance += balance * effRate;
+    }
+    const frac = elapsedYears - fullYears;
+    if (frac > 0) {
+      const curY = fullYears + 1;
+      const curYp = (curY === 1 || idxPct === 0) ? p.invested : p.invested * Math.pow(1 + idxPct, curY - 1);
+      balance += curYp;
+      paid += curYp;
+      balance += balance * effRate * frac;
+    }
+    return { invested: paid, value: balance };
+  }
+
+  if (p.type === 'ovdp' && p.receivedAtMaturity && p.receivedAtMaturity > 0) {
+    const totalDays = (e - s) / 86400000;
+    const frac = totalDays > 0 ? Math.min(elapsedDays / totalDays, 1) : 0;
+    return { invested: p.invested, value: p.invested + (p.receivedAtMaturity - p.invested) * frac };
+  }
+
+  if (p.compound) {
+    // Compound deposit — NET interest reinvested yearly.
+    return { invested: p.invested, value: p.invested * Math.pow(1 + effRate, elapsedYears) };
+  }
+
+  // Simple interest (deposit/OVDP/other) — NET profit.
+  const profit = p.invested * ratePct * elapsedYears * (1 - taxRate);
+  return { invested: p.invested, value: p.invested + Math.max(0, profit) };
+}
+
 function renderPortfolioChart(items) {
   const canvas = document.getElementById('portfolioChart');
   if (!canvas || typeof Chart === 'undefined') return;
@@ -3042,16 +3132,9 @@ function renderPortfolioChart(items) {
 
     let inv = 0, val = 0;
     activeItems.forEach(p => {
-      const s = new Date(p.dateStart).getTime();
-      const e = new Date(p.dateEnd).getTime();
-      const curTime = date.getTime();
-      if (curTime >= s) {
-        inv += p.invested;
-        const elapsed = Math.min(curTime, e) - s;
-        const elapsedDays = elapsed / dayMs;
-        const profit = p.invested * (p.rate / 100) * (elapsedDays / 365.25);
-        val += p.invested + Math.max(0, profit);
-      }
+      const snap = _portfolioItemSnapshot(p, date.getTime());
+      inv += snap.invested;
+      val += snap.value;
     });
 
     const isPast = date <= now;
