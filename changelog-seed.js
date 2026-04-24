@@ -5,6 +5,12 @@
 // Keep bodies short (1 sentence). User-facing changes only.
 window.CHANGELOG_SEED = [
   {
+    id: 'seed-2026-04-24-nice-dialogs',
+    title: '✨ Нові діалоги замість «системних»',
+    createdAt: '2026-04-24T22:00:00Z',
+    body: 'Замість стандартних браузерних вікон (alert/confirm/prompt) тепер використовуємо акуратні сповіщення у стилі додатку. Зручніше на мобільних і виглядає чистіше.'
+  },
+  {
     id: 'seed-2026-04-24-header-compact',
     title: '🪪 Компактніша шапка',
     createdAt: '2026-04-24T18:00:00Z',
