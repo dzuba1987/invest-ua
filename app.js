@@ -262,6 +262,17 @@ function switchMainTab(tab, btn) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   if (btn && btn.classList && btn.classList.contains('main-tab')) btn.classList.add('active');
   document.getElementById('panel-' + tab).classList.add('active');
+  // Sync the header "Профіль" button with active state when we're on the profile tab.
+  const profileBtn = document.getElementById('btnProfile');
+  if (profileBtn) profileBtn.classList.toggle('active', tab === 'profile');
+  // On narrow screens the tab strip scrolls horizontally — bring the active
+  // tab into view so the user always sees which section they're on.
+  const activeBtn = btn && btn.classList && btn.classList.contains('main-tab')
+    ? btn
+    : document.querySelector('.main-tab.active');
+  if (activeBtn && typeof activeBtn.scrollIntoView === 'function') {
+    try { activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } catch(_) {}
+  }
   localStorage.setItem('activeTab', tab);
   if (tab === 'analytics') checkAnalyticsReady();
   if (tab === 'portfolio') updatePortfolioUI();
@@ -399,7 +410,7 @@ document.getElementById('bondName').addEventListener('input', () => calculate())
 ['pBondPrice', 'pBondCount', 'pInvested', 'pRate', 'pTax', 'pIndex',
  'pCompoundRate', 'pCompoundIndex',
  'dreamTarget', 'dreamSaved', 'dreamMonthly', 'dreamExpenses',
- 'savingAmount', 'purchaseAmount',
+ 'savingAmount', 'purchaseAmount', 'budgetAmountInput',
  'creditAmount', 'creditRate', 'creditDown'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('input', () => formatInput(el));
@@ -2060,6 +2071,44 @@ function findAndRenderReinvest() {
 let portfolioItems = [];
 let _editingPortfolioId = null;
 
+// ── Tester role: exclusion flag on records ──
+// `excluded: true` means the item is hidden from totals/charts/dashboards but
+// visible in lists (greyed out). Checkbox shown only to users with meta.isTester.
+function isTester() { return !!window._isTester; }
+function isExcluded(item) { return !!(item && item.excluded); }
+function activeOnly(list) { return (list || []).filter(p => !isExcluded(p)); }
+
+function _exclusionCheckboxHtml(scope, id, checked) {
+  if (!isTester()) return '';
+  const title = checked ? 'Не враховується в сумах (клік щоб повернути)' : 'Виключити з сум (тест)';
+  return '<label class="exclude-toggle" title="' + esc(title) + '" onclick="event.stopPropagation()">' +
+    '<input type="checkbox" ' + (checked ? '' : 'checked') + ' onchange="toggleExcluded(\'' + scope + '\',\'' + id + '\',!this.checked)"> <span>враховувати</span></label>';
+}
+
+async function toggleExcluded(scope, id, excluded) {
+  try {
+    if (scope === 'portfolio') {
+      const it = portfolioItems.find(p => String(p.id) === String(id));
+      if (it) { it.excluded = !!excluded; await savePortfolioToFirestore(); renderPortfolio(); }
+    } else if (scope === 'dream') {
+      const it = dreamItems.find(p => String(p.id) === String(id));
+      if (it) { it.excluded = !!excluded; await saveDreamsToFirestore(); renderDreams(); }
+    } else if (scope === 'saving') {
+      const it = savingItems.find(p => String(p.id) === String(id));
+      if (it) { it.excluded = !!excluded; await saveSavingsToFirestore(); renderSavings(); }
+    } else if (scope === 'purchase') {
+      const found = typeof _findPurchase === 'function' ? _findPurchase(id) : null;
+      if (found && found.source === 'private') {
+        found.item.excluded = !!excluded;
+        await savePurchasesToFirestore();
+        renderPurchases();
+      } else if (found && found.source === 'shared') {
+        await db.collection('sharedPurchases').doc(String(id)).update({ excluded: !!excluded });
+      }
+    }
+  } catch(e) { console.warn('Toggle excluded failed:', e); }
+}
+
 function togglePortfolioForm(forceOpen) {
   const card = document.getElementById('portfolioFormCard');
   const toggleBtn = document.getElementById('btnTogglePortfolioForm');
@@ -2768,9 +2817,10 @@ function renderPortfolio() {
   list.innerHTML = sanitize(portfolioItems.map(p => {
     const isCash = p.type === 'cash';
     const isActive = isCash ? false : (p.dateEnd ? new Date(p.dateEnd) > now : true);
-    if (isActive) activeCount++;
+    const include = !isExcluded(p);
+    if (include && isActive) activeCount++;
     // Cash can be in different currencies — convert to UAH for aggregation.
-    totalInvested += isCash ? portfolioToUah(p.invested, portfolioCurOf(p)) : p.invested;
+    if (include) totalInvested += isCash ? portfolioToUah(p.invested, portfolioCurOf(p)) : p.invested;
 
     let days = 0, elapsed = 0, progress = 0, daysLeft = 0;
     let expectedProfit = 0, expectedProfitNet = 0;
@@ -2849,10 +2899,10 @@ function renderPortfolio() {
           earnedSoFar = Math.min(earnedSoFar, expectedProfit);
           earnedSoFarNet = earnedSoFar * (1 - taxRate);
         }
-        totalExpectedProfit += expectedProfit;
+        if (include) totalExpectedProfit += expectedProfit;
 
         // Daily earnings (only for active investments)
-        if (isActive && new Date(p.dateStart) <= now) {
+        if (include && isActive && new Date(p.dateStart) <= now) {
           const useReceivedAtMaturity = p.type === 'ovdp' && p.receivedAtMaturity && p.receivedAtMaturity > 0;
           if (useReceivedAtMaturity) {
             dailyGross = days > 0 ? expectedProfit / days : 0;
@@ -2885,14 +2935,16 @@ function renderPortfolio() {
       }
     }
 
+    const excludedCls = !include ? ' excluded-item' : '';
     return `
-      <div class="p-item" onclick="if(!event.target.closest('.btn-delete'))openInvestmentDetail('${p.id}')" style="cursor:pointer">
+      <div class="p-item${excludedCls}" onclick="if(!event.target.closest('.btn-delete')&&!event.target.closest('.exclude-toggle'))openInvestmentDetail('${p.id}')" style="cursor:pointer">
         <div class="p-item-info">
           <div class="p-item-name">
             ${esc(p.name)}
             <span class="p-item-type p-type-${esc(p.type)}">${esc(typeLabels[p.type] || p.type)}</span>
             ${isCash ? '' : '<span class="' + (isActive ? 'p-status-active' : 'p-status-ended') + '" style="font-size:11px">' + (isActive ? '● Активна' : '○ Завершена') + '</span>'}
             ${p.compound ? '<span class="p-item-type p-type-compound" style="font-size:10px">реінвест.</span>' : ''}
+            ${_exclusionCheckboxHtml('portfolio', p.id, !include)}
           </div>
           ${days > 0 ? '<div class="detail-progress" style="margin:6px 0"><div class="detail-progress-bar" style="width:' + progress.toFixed(1) + '%"></div></div><div style="display:flex;justify-content:space-between;font-size:10px;color:#475569;margin-bottom:4px"><span>' + (isActive ? elapsed + ' з ' + days + ' дн. (' + progress.toFixed(0) + '%)' : 'Завершено') + '</span><span>' + (daysLeft > 0 ? daysLeft + ' дн. залишилось' : '') + '</span></div>' : ''}
           <div class="p-item-details p-row">
@@ -2965,7 +3017,7 @@ function renderPortfolio() {
     `).join('');
   }
 
-  renderPortfolioChart(portfolioItems);
+  renderPortfolioChart(activeOnly(portfolioItems));
   loadCurrencyRates(totalInvested, totalExpectedProfit, totalProfitToEOY);
   renderExpiryAlerts(portfolioItems);
 }
@@ -4201,8 +4253,9 @@ function renderDreams() {
     const progress = target > 0 ? Math.min(100, (saved / target) * 100) : 0;
     const targetUah = dreamToUah(target, cc);
     const savedUah = dreamToUah(saved, cc);
-    if (targetUah !== null) totalTargetUah += targetUah;
-    if (savedUah !== null) totalSavedUah += savedUah;
+    const include = !isExcluded(d);
+    if (include && targetUah !== null) totalTargetUah += targetUah;
+    if (include && savedUah !== null) totalSavedUah += savedUah;
 
     // Months to goal
     const netMonthly = d.monthly || 0;
@@ -4220,13 +4273,16 @@ function renderDreams() {
       else deadlineInfo = Math.ceil(daysLeft / 30) + ' міс. залишилось';
     }
 
-    pieLabels.push(d.name);
-    pieData.push(targetUah !== null ? targetUah : target);
-    pieColors.push(colors[i % colors.length]);
+    if (include) {
+      pieLabels.push(d.name);
+      pieData.push(targetUah !== null ? targetUah : target);
+      pieColors.push(colors[i % colors.length]);
+    }
 
-    return `<div class="p-item" style="flex-wrap:wrap;cursor:pointer" onclick="if(!event.target.closest('.btn-delete')&&!event.target.closest('#dreamDeposit-${d.id}')&&!event.target.closest('input'))openDreamDetail('${d.id}')">
+    const excludedCls = !include ? ' excluded-item' : '';
+    return `<div class="p-item${excludedCls}" style="flex-wrap:wrap;cursor:pointer" onclick="if(!event.target.closest('.btn-delete')&&!event.target.closest('#dreamDeposit-${d.id}')&&!event.target.closest('input')&&!event.target.closest('.exclude-toggle'))openDreamDetail('${d.id}')">
       <div class="p-item-info" style="width:100%">
-        <div class="p-item-name"><span class="dream-icon">${dreamIconOf(d)}</span>${esc(d.name)}</div>
+        <div class="p-item-name"><span class="dream-icon">${dreamIconOf(d)}</span>${esc(d.name)}${_exclusionCheckboxHtml('dream', d.id, !include)}</div>
         <div class="detail-progress" style="margin:8px 0"><div class="detail-progress-bar" style="width:${progress.toFixed(1)}%"></div></div>
         <div class="p-item-details">
           <span>${fmtDreamAmount(saved, cc)} з ${fmtDreamAmount(target, cc)} (${progress.toFixed(0)}%)</span>
@@ -4670,6 +4726,7 @@ function renderSavings() {
   };
 
   savingItems.forEach(s => {
+    if (isExcluded(s)) return;
     const cc = (s.currency || 'UAH').toUpperCase();
     byCurrency[cc] = (byCurrency[cc] || 0) + (s.amount || 0);
     const uah = toUah(s.amount || 0, cc);
@@ -4692,10 +4749,12 @@ function renderSavings() {
     const dreamBadge = linkedDream
       ? '<span class="p-item-type saving-badge-linked">' + (linkedDream.icon || '🎯') + ' ' + esc(linkedDream.name) + '</span>'
       : '<span class="p-item-type saving-badge-free">🆓 Вільні</span>';
+    const include = !isExcluded(s);
+    const excludedCls = !include ? ' excluded-item' : '';
     return `
-      <div class="p-item" style="flex-wrap:wrap">
+      <div class="p-item${excludedCls}" style="flex-wrap:wrap">
         <div class="p-item-info" style="width:100%">
-          <div class="p-item-name">${esc(s.name)} <span class="p-item-type p-type-cash">${esc(cc)}</span> ${dreamBadge}</div>
+          <div class="p-item-name">${esc(s.name)} <span class="p-item-type p-type-cash">${esc(cc)}</span> ${dreamBadge}${_exclusionCheckboxHtml('saving', s.id, !include)}</div>
           <div class="p-item-details p-row">
             <span><strong>${_savingFmtAmount(s.amount, cc)}</strong>${uahEq}${usdEq}</span>
           </div>
@@ -4772,10 +4831,89 @@ let sharedPurchaseItems = [];        // loaded from root /sharedPurchases collec
 let sharedPurchasesUnsubscribe = null;
 let _openPurchaseDetailId = null;    // id of purchase currently shown on detail page
 // List filter / search / collapse state (persisted across renders in-memory).
-let _purchasesFilter = 'all';        // 'all'|'overdue'|'current'|'future'|'done'|'shared'
+let _purchasesFilter = 'all';        // 'all'|'overdue'|'current'|'future'|'done'|'shared'|'recurring'
 let _purchasesSearchQuery = '';
+let _purchasesCategory = 'all';      // 'all' | category label from PURCHASE_CATEGORY_LABELS
+let _purchasesCategoryExpanded = false; // whether the category chip list is expanded
+
+// Per-month income: map 'YYYY-MM' → { amount, currency }. Loaded from /users/{uid}/income.
+let _monthlyIncome = {};
+let _monthlyIncomeLoaded = false;
+
+async function loadMonthlyIncome() {
+  if (!firebaseReady || !currentUser) return;
+  try {
+    const ref = db.collection('users').doc(effectiveUid(currentUser.uid)).collection('income');
+    const snap = await ref.get();
+    _monthlyIncome = {};
+    snap.forEach(doc => {
+      const d = doc.data() || {};
+      if (typeof d.amount === 'number' && d.amount >= 0) {
+        _monthlyIncome[doc.id] = { amount: d.amount, currency: (d.currency || 'UAH').toUpperCase() };
+      }
+    });
+    _monthlyIncomeLoaded = true;
+    renderPurchases();
+  } catch(e) { console.warn('Income load failed:', e); }
+}
+
+async function saveBudget() {
+  const input = document.getElementById('budgetAmountInput');
+  const curEl = document.getElementById('budgetCurrency');
+  if (!input) return;
+  const val = parseNum(input.value);
+  const currency = (curEl && curEl.value) || 'UAH';
+  const cm = currentMonthKey();
+  if (!firebaseReady || !currentUser) return;
+  try {
+    const ref = db.collection('users').doc(effectiveUid(currentUser.uid)).collection('income').doc(cm);
+    if (!(val > 0)) {
+      await ref.delete().catch(() => {});
+      delete _monthlyIncome[cm];
+    } else {
+      await ref.set({ amount: val, currency, updatedAt: new Date().toISOString() });
+      _monthlyIncome[cm] = { amount: val, currency };
+    }
+    closeBudgetEditor();
+    renderPurchases();
+  } catch(e) { alert('Не вдалося зберегти: ' + e.message); }
+}
+
+function openBudgetEditor() {
+  const view = document.getElementById('budgetView');
+  const form = document.getElementById('budgetForm');
+  const input = document.getElementById('budgetAmountInput');
+  const curEl = document.getElementById('budgetCurrency');
+  if (!view || !form || !input) return;
+  const cm = currentMonthKey();
+  const rec = _monthlyIncome[cm];
+  input.value = rec && rec.amount ? formatShort(rec.amount) : '';
+  if (curEl) curEl.value = (rec && rec.currency) || 'UAH';
+  view.style.display = 'none';
+  form.style.display = 'block';
+  setTimeout(() => input.focus(), 50);
+}
+
+function closeBudgetEditor() {
+  const view = document.getElementById('budgetView');
+  const form = document.getElementById('budgetForm');
+  if (view) view.style.display = 'block';
+  if (form) form.style.display = 'none';
+}
+
+// Income in UAH (converted from stored currency if needed).
+function _incomeUahFor(month) {
+  const rec = _monthlyIncome[month];
+  if (!rec || !(rec.amount > 0)) return 0;
+  const cc = (rec.currency || 'UAH').toUpperCase();
+  if (cc === 'UAH') return rec.amount;
+  if (typeof cachedRates !== 'undefined' && cachedRates && cachedRates[cc]) {
+    return rec.amount * cachedRates[cc];
+  }
+  return 0; // rate unknown yet — treat as no budget until rates load
+}
 let _purchasesSearchDebounce = null;
-let _purchasesCollapsed = { overdue: false, current: false, future: true, done: true };
+let _purchasesCollapsed = { overdue: false, current: false, future: false, done: true };
 let _purchasesDoneMonthsOpen = {};   // { 'YYYY-MM': true }  defaults: current month open
 let purchasesLoaded = false;
 let _editingPurchaseId = null;
@@ -4813,7 +4951,28 @@ const PURCHASE_ICONS = [
 ];
 const DEFAULT_PURCHASE_ICON = '🛒';
 
+// Readable category labels tied to each purchase icon. Used for filter chips
+// and the per-category breakdown on the purchases dashboard.
+const PURCHASE_CATEGORY_LABELS = {
+  '🛒': 'Продукти', '🛍️': 'Покупки', '🎁': 'Подарунки',
+  '👕': 'Одяг', '👗': 'Одяг', '👠': 'Взуття', '👟': 'Взуття', '👜': 'Аксесуари',
+  '⌚': 'Аксесуари', '💍': 'Прикраси',
+  '📱': 'Техніка', '💻': 'Техніка', '🖥️': 'Техніка', '🎧': 'Техніка', '📷': 'Техніка', '🎮': 'Розваги',
+  '🎸': 'Хобі', '📚': 'Освіта', '✏️': 'Освіта', '🖌️': 'Хобі',
+  '🏠': 'Житло', '🛋️': 'Меблі', '🛏️': 'Меблі', '🍳': 'Кухня',
+  '🧹': 'Побут',
+  '🚗': 'Автомобіль', '🛵': 'Автомобіль', '🚲': 'Транспорт', '⛽': 'Паливо',
+  '✈️': 'Відпустка', '🏖️': 'Відпустка', '🍔': 'Ресторани',
+  '💊': 'Здоров\'я', '🪥': 'Здоров\'я',
+  '🐶': 'Тварини', '🌱': 'Сад',
+  '💡': 'Комуналка', '🔧': 'Побут'
+};
+const DEFAULT_PURCHASE_CATEGORY = 'Інше';
+
 function purchaseIconOf(p) { return (p && p.icon) || DEFAULT_PURCHASE_ICON; }
+function purchaseCategoryOf(p) {
+  return PURCHASE_CATEGORY_LABELS[purchaseIconOf(p)] || DEFAULT_PURCHASE_CATEGORY;
+}
 
 function renderPurchaseIconPicker() {
   const container = document.getElementById('purchaseIconPicker');
@@ -4961,6 +5120,7 @@ function _clearPurchaseForm() {
   _setPurchaseMonthPicker(currentMonthKey());
   document.getElementById('purchaseLink').value = '';
   document.getElementById('purchaseNotes').value = '';
+  document.getElementById('purchaseRecurring').checked = false;
   document.getElementById('purchaseIcon').value = DEFAULT_PURCHASE_ICON;
   renderPurchaseIconPicker();
   onPurchaseCurrencyChange();
@@ -4975,6 +5135,7 @@ function addPurchase() {
   const link = document.getElementById('purchaseLink').value.trim();
   const notes = document.getElementById('purchaseNotes').value.trim();
   const icon = document.getElementById('purchaseIcon').value || DEFAULT_PURCHASE_ICON;
+  const recurring = !!document.getElementById('purchaseRecurring').checked;
   const err = document.getElementById('purchaseError');
   err.textContent = '';
 
@@ -4982,7 +5143,7 @@ function addPurchase() {
   if (!(amount > 0)) { err.textContent = 'Вкажіть суму більше 0'; return; }
   if (link && !/^https?:\/\//i.test(link)) { err.textContent = 'Посилання має починатися з http:// або https://'; return; }
 
-  const payload = { name, icon, amount, currency, plannedMonth: month, link, notes };
+  const payload = { name, icon, amount, currency, plannedMonth: month, link, notes, recurring };
 
   if (_editingPurchaseId) {
     const found = _findPurchase(_editingPurchaseId);
@@ -5039,6 +5200,7 @@ function editPurchase(id) {
   _setPurchaseMonthPicker(item.plannedMonth || currentMonthKey());
   document.getElementById('purchaseLink').value = item.link || '';
   document.getElementById('purchaseNotes').value = item.notes || '';
+  document.getElementById('purchaseRecurring').checked = !!item.recurring;
   document.getElementById('purchaseIcon').value = item.icon || DEFAULT_PURCHASE_ICON;
   renderPurchaseIconPicker();
   onPurchaseCurrencyChange();
@@ -5097,6 +5259,30 @@ function markPurchaseBought(id) {
   found.list[found.index] = updated;
   renderPurchases();
   _persistPurchase(updated, found.source);
+  // Recurring: spawn a clean copy for the next month (if not already present).
+  if (item.recurring && found.source === 'private') {
+    const nextMonth = addMonths(item.plannedMonth || currentMonthKey(), 1);
+    const alreadyExists = purchaseItems.some(p =>
+      !p.bought
+      && (p.plannedMonth || '') === nextMonth
+      && String(p.name || '').trim() === String(item.name || '').trim()
+      && p.recurring
+    );
+    if (!alreadyExists) {
+      const { id, bought, boughtAt, boughtAmount, deferCount, ...rest } = item;
+      purchaseItems.push({
+        ...rest,
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        plannedMonth: nextMonth,
+        bought: false,
+        deferCount: 0,
+        createdAt: new Date().toISOString(),
+        recurring: true
+      });
+      renderPurchases();
+      savePurchasesToFirestore();
+    }
+  }
 }
 
 function unmarkPurchaseBought(id) {
@@ -5276,11 +5462,16 @@ function renderPurchases() {
     else groups.future.push(p);
   });
 
-  // Dashboard totals (in UAH for aggregation)
+  // Dashboard totals (in UAH for aggregation) — excluded items skipped.
   let totalPlannedCmUah = 0;
   let totalBoughtCmUah = 0;
-  groups.current.forEach(p => { const v = purchaseToUah(p.amount, purchaseCurOf(p)); if (v != null) totalPlannedCmUah += v; });
+  groups.current.forEach(p => {
+    if (isExcluded(p)) return;
+    const v = purchaseToUah(p.amount, purchaseCurOf(p));
+    if (v != null) totalPlannedCmUah += v;
+  });
   groups.done.forEach(p => {
+    if (isExcluded(p)) return;
     if ((p.plannedMonth || '').slice(0, 7) !== cm && (p.boughtAt || '').slice(0, 7) !== cm) return;
     const v = purchaseToUah(p.boughtAmount || p.amount, purchaseCurOf(p));
     if (v != null) totalBoughtCmUah += v;
@@ -5295,6 +5486,11 @@ function renderPurchases() {
   document.getElementById('purchasesOverdueCount').textContent = String(groups.overdue.length);
   document.getElementById('purchasesFutureCount').textContent = String(groups.future.length);
   dashboard.style.display = 'block';
+
+  // Budget (income) indicator for current month.
+  _renderBudget(cm, totalPlannedCmUah, totalBoughtCmUah);
+  // Category breakdown for current month.
+  _renderCategoryBreakdown(cm, groups.current, groups.done);
 
   const sortByMonthAsc = (a, b) => (a.plannedMonth || '').localeCompare(b.plannedMonth || '');
   const sortByBoughtDesc = (a, b) => (b.boughtAt || '').localeCompare(a.boughtAt || '');
@@ -5319,21 +5515,27 @@ function renderPurchases() {
     const sharedBadge = isShared
       ? '<span class="p-item-type" style="background:rgba(168,85,247,0.15);color:#c084fc" title="' + esc(memberEmails) + '">👥 Спільна (' + memberCount + ')</span>'
       : '';
+    const recurringBadge = p.recurring
+      ? '<span class="p-item-type" style="background:rgba(96,165,250,0.15);color:#60a5fa" title="Повторюється щомісяця">🔁 щомісяця</span>'
+      : '';
     if (p.bought) {
       const boughtStr = p.boughtAmount && p.boughtAmount !== p.amount
         ? 'Здійснено за ' + fmtPurchaseAmount(p.boughtAmount, cc)
         : 'Здійснено';
       actions.push('<button class="btn-delete purchase-action-icon" title="Деталі" onclick="event.stopPropagation();openPurchaseDetail(\'' + p.id + '\')" style="color:#60a5fa">📋</button>');
-      if (isShared) actions.push('<button class="btn-delete purchase-action-icon" title="Запросити ще учасника" onclick="event.stopPropagation();invitePurchaseByEmail(\'' + p.id + '\')" style="color:#c084fc">👥</button>');
-      actions.push('<button class="btn-delete purchase-action-icon" title="Поділитись" onclick="event.stopPropagation();sharePurchase(\'' + p.id + '\')" style="color:#a855f7">↗</button>');
+      if (isShared) actions.push('<button class="btn-delete purchase-action-icon" title="Запросити ще учасника" onclick="event.stopPropagation();invitePurchaseByEmail(\'' + p.id + '\')" style="color:#60a5fa">👥</button>');
+      actions.push('<button class="btn-delete purchase-action-icon" title="Поділитись" onclick="event.stopPropagation();sharePurchase(\'' + p.id + '\')" style="color:#60a5fa">↗</button>');
       actions.push('<button class="btn-delete purchase-action-icon" title="Скасувати позначку" onclick="event.stopPropagation();unmarkPurchaseBought(\'' + p.id + '\')" style="color:#f59e0b">↺</button>');
       actions.push('<button class="btn-delete purchase-action-icon" title="' + (isShared ? 'Покинути спільну' : 'Видалити') + '" onclick="event.stopPropagation();deletePurchase(\'' + p.id + '\')">✕</button>');
-      return `<div class="p-item" style="opacity:0.75;cursor:pointer" onclick="if(!event.target.closest('button')&&!event.target.closest('a'))openPurchaseDetail('${p.id}')">
+      const excludedClsDone = isExcluded(p) ? ' excluded-item' : '';
+      return `<div class="p-item${excludedClsDone}" style="opacity:0.75;cursor:pointer" onclick="if(!event.target.closest('button')&&!event.target.closest('a')&&!event.target.closest('.exclude-toggle'))openPurchaseDetail('${p.id}')">
         <div class="p-item-info" style="width:100%">
           <div class="p-item-name">
             <span class="dream-icon">${purchaseIconOf(p)}</span>${esc(p.name)}
             ${sharedBadge}
+            ${recurringBadge}
             <span class="p-item-type" style="background:rgba(74,222,128,0.15);color:#4ade80">✓ ${boughtStr}</span>
+            ${_exclusionCheckboxHtml('purchase', p.id, isExcluded(p))}
           </div>
           <div class="p-item-details">
             <span>${amountStr}${uahEq}</span>
@@ -5354,21 +5556,24 @@ function renderPurchases() {
     actions.push('<button class="btn-clear purchase-action" onclick="event.stopPropagation();deferPurchase(\'' + p.id + '\')" title="Перенести на ' + nextMonthName + '">📅 +міс</button>');
     actions.push('<button class="btn-delete purchase-action-icon" title="Деталі" onclick="event.stopPropagation();openPurchaseDetail(\'' + p.id + '\')" style="color:#60a5fa">📋</button>');
     if (isShared) {
-      actions.push('<button class="btn-delete purchase-action-icon" title="Запросити ще учасника" onclick="event.stopPropagation();invitePurchaseByEmail(\'' + p.id + '\')" style="color:#c084fc">👥</button>');
+      actions.push('<button class="btn-delete purchase-action-icon" title="Запросити ще учасника" onclick="event.stopPropagation();invitePurchaseByEmail(\'' + p.id + '\')" style="color:#60a5fa">👥</button>');
     } else {
-      actions.push('<button class="btn-delete purchase-action-icon" title="Зробити спільною (поділитись з іншим користувачем)" onclick="event.stopPropagation();promptMakeShared(\'' + p.id + '\')" style="color:#c084fc">👥</button>');
+      actions.push('<button class="btn-delete purchase-action-icon" title="Зробити спільною (поділитись з іншим користувачем)" onclick="event.stopPropagation();promptMakeShared(\'' + p.id + '\')" style="color:#60a5fa">👥</button>');
     }
-    actions.push('<button class="btn-delete purchase-action-icon" title="Поділитись" onclick="event.stopPropagation();sharePurchase(\'' + p.id + '\')" style="color:#a855f7">↗</button>');
+    actions.push('<button class="btn-delete purchase-action-icon" title="Поділитись" onclick="event.stopPropagation();sharePurchase(\'' + p.id + '\')" style="color:#60a5fa">↗</button>');
     actions.push('<button class="btn-delete purchase-action-icon" title="Редагувати" onclick="event.stopPropagation();editPurchase(\'' + p.id + '\')" style="color:#60a5fa">✎</button>');
     actions.push('<button class="btn-delete purchase-action-icon" title="' + (isShared ? 'Покинути спільну' : 'Видалити') + '" onclick="event.stopPropagation();deletePurchase(\'' + p.id + '\')">✕</button>');
 
-    return `<div class="p-item" style="flex-wrap:wrap;cursor:pointer${isOverdue ? ';border-color:#7f1d1d' : ''}" onclick="if(!event.target.closest('button')&&!event.target.closest('a'))openPurchaseDetail('${p.id}')">
+    const excludedClsActive = isExcluded(p) ? ' excluded-item' : '';
+    return `<div class="p-item${excludedClsActive}" style="flex-wrap:wrap;cursor:pointer${isOverdue ? ';border-color:#7f1d1d' : ''}" onclick="if(!event.target.closest('button')&&!event.target.closest('a')&&!event.target.closest('.exclude-toggle'))openPurchaseDetail('${p.id}')">
       <div class="p-item-info" style="width:100%">
         <div class="p-item-name">
           <span class="dream-icon">${purchaseIconOf(p)}</span>${esc(p.name)}
           ${sharedBadge}
+          ${recurringBadge}
           ${isOverdue ? '<span class="p-item-type" style="background:rgba(248,113,113,0.15);color:#f87171">прострочено</span>' : ''}
           ${deferBadge}
+          ${_exclusionCheckboxHtml('purchase', p.id, isExcluded(p))}
         </div>
         <div class="p-item-details">
           <span><strong>${amountStr}</strong>${uahEq}</span>
@@ -5384,16 +5589,24 @@ function renderPurchases() {
   // Toolbar chips — counts reflect raw category sizes (ignoring search),
   // so the user sees the real distribution when switching filters.
   const sharedCount = allItems.filter(p => p._source === 'shared').length;
+  const recurringCount = allItems.filter(p => p.recurring).length;
+  // Per-category counts across ALL items (so chips show the full picture).
+  const categoryCounts = {};
+  allItems.forEach(p => {
+    const c = purchaseCategoryOf(p);
+    categoryCounts[c] = (categoryCounts[c] || 0) + 1;
+  });
   _renderPurchasesToolbar({
     all: allItems.length,
     overdue: groups.overdue.length,
     current: groups.current.length,
     future: groups.future.length,
     done: groups.done.length,
-    shared: sharedCount
-  });
+    shared: sharedCount,
+    recurring: recurringCount
+  }, categoryCounts);
 
-  // Apply filter + search to produce the visible set per group.
+  // Apply filter + search + category to produce the visible set per group.
   const q = _purchasesSearchQuery.trim().toLowerCase();
   const matchesQuery = p => {
     if (!q) return true;
@@ -5404,13 +5617,16 @@ function renderPurchases() {
   const matchesFilter = (p, groupKey) => {
     if (_purchasesFilter === 'all') return true;
     if (_purchasesFilter === 'shared') return p._source === 'shared';
+    if (_purchasesFilter === 'recurring') return !!p.recurring;
     return _purchasesFilter === groupKey;
   };
+  const matchesCategory = p => _purchasesCategory === 'all' || purchaseCategoryOf(p) === _purchasesCategory;
+  const keep = (p, groupKey) => matchesFilter(p, groupKey) && matchesQuery(p) && matchesCategory(p);
   const vis = {
-    overdue: groups.overdue.filter(p => matchesFilter(p, 'overdue') && matchesQuery(p)),
-    current: groups.current.filter(p => matchesFilter(p, 'current') && matchesQuery(p)),
-    future:  groups.future.filter(p => matchesFilter(p, 'future') && matchesQuery(p)),
-    done:    groups.done.filter(p => matchesFilter(p, 'done') && matchesQuery(p))
+    overdue: groups.overdue.filter(p => keep(p, 'overdue')),
+    current: groups.current.filter(p => keep(p, 'current')),
+    future:  groups.future.filter(p => keep(p, 'future')),
+    done:    groups.done.filter(p => keep(p, 'done'))
   };
 
   // If search is active, auto-open groups so results aren't hidden behind a caret.
@@ -5418,23 +5634,26 @@ function renderPurchases() {
 
   const sections = [];
 
-  const pushGroup = (key, label, color, items, body) => {
-    if (!items.length) return;
+  const pushGroup = (key, label, color, items, body, opts = {}) => {
+    if (!items.length && !opts.alwaysShow) return;
     const collapsed = !forceOpen && _purchasesCollapsed[key];
+    const effectiveBody = body || '<div class="p-group-empty">Цього місяця ще немає витрат. Додайте першу вище.</div>';
     sections.push(
-      '<div class="p-group-header' + (collapsed ? ' collapsed' : '') + '" onclick="_togglePurchaseGroup(\'' + key + '\')">' +
+      '<div class="p-group-header' + (collapsed ? ' collapsed' : '') + '" onclick="_togglePurchaseGroup(\'' + key + '\')" title="Натисніть, щоб згорнути/розгорнути">' +
         '<span class="p-group-title"' + (color ? ' style="color:' + color + '"' : '') + '>' + label + ' (' + items.length + ')</span>' +
+        '<span class="p-group-hint"></span>' +
         '<span class="caret">▾</span>' +
       '</div>' +
-      '<div class="p-group-body' + (collapsed ? ' collapsed' : '') + '">' + body + '</div>'
+      '<div class="p-group-body' + (collapsed ? ' collapsed' : '') + '">' + effectiveBody + '</div>'
     );
   };
 
+  // Current month — always on top, always visible even when empty (primary view).
+  pushGroup('current', '📅 Цей місяць · ' + formatMonthKey(cm), '', vis.current,
+    vis.current.map(p => renderItem(p)).join(''), { alwaysShow: true });
+
   pushGroup('overdue', '⚠ Прострочено', '#f87171', vis.overdue,
     vis.overdue.map(p => renderItem(p, { isOverdue: true })).join(''));
-
-  pushGroup('current', '📅 ' + formatMonthKey(cm), '', vis.current,
-    vis.current.map(p => renderItem(p)).join(''));
 
   pushGroup('future', '🔜 На майбутнє', '#94a3b8', vis.future,
     vis.future.map(p => renderItem(p)).join(''));
@@ -5451,7 +5670,7 @@ function renderPurchases() {
       const items = byMonth[mk];
       // Current month expanded by default; older months collapsed unless user opened them.
       const opened = forceOpen || (_purchasesDoneMonthsOpen[mk] !== undefined ? _purchasesDoneMonthsOpen[mk] : mk === cm);
-      const header = '<div class="p-done-month-header' + (opened ? '' : ' collapsed') + '" onclick="_toggleDoneMonth(\'' + mk + '\')">' +
+      const header = '<div class="p-done-month-header' + (opened ? '' : ' collapsed') + '" onclick="_toggleDoneMonth(\'' + mk + '\')" title="Натисніть, щоб згорнути/розгорнути">' +
         '<span>📆 ' + (mk === '—' ? 'Без дати' : formatMonthKey(mk)) + ' (' + items.length + ')</span>' +
         '<span class="caret">▾</span>' +
         '</div>';
@@ -5475,18 +5694,129 @@ function renderPurchases() {
   list.innerHTML = sanitize(sections.join(''));
 }
 
-function _renderPurchasesToolbar(counts) {
+function _renderBudget(cm, totalPlannedUah, totalBoughtUah) {
+  const monthLabel = document.getElementById('budgetMonthLabel');
+  const amountEl = document.getElementById('budgetAmount');
+  const wrap = document.getElementById('budgetProgressWrap');
+  const hint = document.getElementById('budgetHint');
+  const bar = document.getElementById('budgetProgressBar');
+  const stats = document.getElementById('budgetStats');
+  if (!monthLabel || !amountEl) return;
+  monthLabel.textContent = formatMonthKey(cm).toLowerCase();
+  const rec = _monthlyIncome[cm];
+  const incomeUah = _incomeUahFor(cm);
+  if (!rec || rec.amount <= 0) {
+    amountEl.textContent = '— не вказано —';
+    amountEl.style.color = '#64748b';
+    wrap.style.display = 'none';
+    hint.style.display = 'block';
+    return;
+  }
+  const cc = (rec.currency || 'UAH').toUpperCase();
+  const sym = cc === 'USD' ? '$' : cc === 'EUR' ? '€' : '';
+  const native = sym ? (sym + formatNum(rec.amount)) : (formatNum(rec.amount) + ' грн');
+  const uahEq = (cc !== 'UAH' && incomeUah > 0)
+    ? ' <span style="color:#94a3b8;font-size:14px;font-weight:500">≈ ' + formatNum(incomeUah) + ' грн</span>'
+    : '';
+  amountEl.innerHTML = native + uahEq;
+  amountEl.style.color = '#4ade80';
+  hint.style.display = 'none';
+  wrap.style.display = 'block';
+
+  // If rate unknown yet for non-UAH currency, show warning instead of wrong %.
+  if (incomeUah <= 0) {
+    bar.style.width = '0%';
+    bar.classList.remove('warn', 'danger');
+    stats.innerHTML = '<span style="color:#94a3b8">Курс НБУ завантажується…</span>';
+    return;
+  }
+
+  // Total "consumed" = already bought + still planned for this month.
+  // Both reduce the available budget, so the bar must reflect their sum.
+  const consumedUah = totalPlannedUah + totalBoughtUah;
+  const consumedPct = incomeUah > 0 ? Math.min(150, (consumedUah / incomeUah) * 100) : 0;
+  const remaining = incomeUah - consumedUah;
+  bar.style.width = Math.min(100, consumedPct) + '%';
+  bar.classList.remove('warn', 'danger');
+  if (consumedPct >= 95) bar.classList.add('danger');
+  else if (consumedPct >= 75) bar.classList.add('warn');
+  stats.innerHTML =
+    '<span>Використано: <strong>' + formatNum(consumedUah) + ' грн</strong> (' + consumedPct.toFixed(0) + '%)</span>' +
+    '<span>Витрачено: <strong style="color:#4ade80">' + formatNum(totalBoughtUah) + ' грн</strong> · Заплановано: <strong>' + formatNum(totalPlannedUah) + ' грн</strong></span>' +
+    '<span>' + (remaining >= 0 ? 'Залишиться: <strong>' : 'Перевищення: <strong style="color:#f87171">') +
+      formatNum(Math.abs(remaining)) + ' грн</strong></span>';
+}
+
+function _renderCategoryBreakdown(cm, currentItems, doneItems) {
+  const card = document.getElementById('categoryBreakdownCard');
+  const list = document.getElementById('categoryBreakdownList');
+  const monthEl = document.getElementById('categoryBreakdownMonth');
+  if (!card || !list) return;
+  monthEl.textContent = '· ' + formatMonthKey(cm);
+
+  const by = {}; // category → { icon, planned, bought }
+  const pickIcon = catName => {
+    for (const [ico, lbl] of Object.entries(PURCHASE_CATEGORY_LABELS)) {
+      if (lbl === catName) return ico;
+    }
+    return '🏷';
+  };
+  const addPlanned = p => {
+    if (isExcluded(p)) return;
+    const cat = purchaseCategoryOf(p);
+    const v = purchaseToUah(p.amount, purchaseCurOf(p));
+    if (v == null) return;
+    if (!by[cat]) by[cat] = { icon: pickIcon(cat), planned: 0, bought: 0 };
+    by[cat].planned += v;
+  };
+  const addBought = p => {
+    if (isExcluded(p)) return;
+    if ((p.plannedMonth || '').slice(0, 7) !== cm && (p.boughtAt || '').slice(0, 7) !== cm) return;
+    const cat = purchaseCategoryOf(p);
+    const v = purchaseToUah(p.boughtAmount || p.amount, purchaseCurOf(p));
+    if (v == null) return;
+    if (!by[cat]) by[cat] = { icon: pickIcon(cat), planned: 0, bought: 0 };
+    by[cat].bought += v;
+  };
+  currentItems.forEach(addPlanned);
+  doneItems.forEach(p => { addBought(p); addPlanned(p); });
+
+  const entries = Object.entries(by).sort(([, a], [, b]) => (b.planned + b.bought) - (a.planned + a.bought));
+  if (!entries.length) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = 'block';
+  const maxTotal = Math.max(1, ...entries.map(([, v]) => Math.max(v.planned, v.bought)));
+  list.innerHTML = sanitize(entries.map(([name, v]) => {
+    const pct = maxTotal > 0 ? (Math.max(v.planned, v.bought) / maxTotal) * 100 : 0;
+    return '<div class="cat-row">' +
+      '<div class="cat-row-icon">' + v.icon + '</div>' +
+      '<div>' +
+        '<div class="cat-row-name">' + esc(name) + '</div>' +
+        '<div class="cat-row-progress"><div class="cat-row-progress-bar" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+      '</div>' +
+      '<div class="cat-row-amounts">' +
+        (v.bought > 0 ? '<span class="bought">' + formatShort(v.bought) + '</span> / ' : '') +
+        formatShort(v.planned) + ' грн' +
+      '</div>' +
+    '</div>';
+  }).join(''));
+}
+
+function _renderPurchasesToolbar(counts, categoryCounts) {
   const toolbar = document.getElementById('purchasesToolbar');
   const chipsEl = document.getElementById('purchasesChips');
   if (!toolbar || !chipsEl) return;
   toolbar.style.display = 'block';
   const chips = [
-    { key: 'all',     label: 'Усі' },
-    { key: 'overdue', label: '⚠ Прострочено' },
-    { key: 'current', label: '📅 Цей місяць' },
-    { key: 'future',  label: '🔜 Майбутнє' },
-    { key: 'done',    label: '✓ Здійснено' },
-    { key: 'shared',  label: '👥 Спільні' }
+    { key: 'all',       label: 'Усі' },
+    { key: 'overdue',   label: '⚠ Прострочено' },
+    { key: 'current',   label: '📅 Цей місяць' },
+    { key: 'future',    label: '🔜 Майбутнє' },
+    { key: 'done',      label: '✓ Здійснено' },
+    { key: 'shared',    label: '👥 Спільні' },
+    { key: 'recurring', label: '🔁 Повторювані' }
   ];
   chipsEl.innerHTML = chips.map(c => {
     const n = counts[c.key] || 0;
@@ -5497,6 +5827,55 @@ function _renderPurchasesToolbar(counts) {
       (n ? '<span class="purchases-chip-count">' + n + '</span>' : '') +
       '</button>';
   }).join('');
+
+  // Second row — category chips. Collapsed by default; "Категорії" toggles expansion.
+  const catChipsEl = document.getElementById('purchasesCategoryChips');
+  if (catChipsEl && categoryCounts) {
+    const cats = Object.keys(categoryCounts).sort((a, b) => (categoryCounts[b] - categoryCounts[a]));
+    if (cats.length) {
+      const pickedIcon = name => {
+        for (const [ico, lbl] of Object.entries(PURCHASE_CATEGORY_LABELS)) {
+          if (lbl === name) return ico;
+        }
+        return '🏷';
+      };
+      const isAll = _purchasesCategory === 'all';
+      const expanded = _purchasesCategoryExpanded;
+      const caret = expanded ? '▴' : '▾';
+      const buttons = [];
+      // Main toggle button — always visible.
+      buttons.push(
+        '<button type="button" class="purchases-chip' + (isAll && !expanded ? ' active' : '') + '" onclick="_togglePurchasesCategoryList()">🏷 Категорії ' + caret + '</button>'
+      );
+      // When collapsed and a category is active, show it as a pill with ✕ to clear.
+      if (!expanded && !isAll) {
+        buttons.push(
+          '<button type="button" class="purchases-chip active" onclick="_setPurchasesCategory(\'all\')" title="Зняти фільтр">' +
+            pickedIcon(_purchasesCategory) + ' ' + esc(_purchasesCategory) +
+            ' <span style="opacity:0.7;margin-left:4px">✕</span>' +
+          '</button>'
+        );
+      }
+      // Expanded list — "Усі категорії" + per-category.
+      if (expanded) {
+        buttons.push(
+          '<button type="button" class="purchases-chip' + (isAll ? ' active' : '') + '" onclick="_setPurchasesCategory(\'all\')">Усі категорії</button>'
+        );
+        cats.forEach(name => {
+          buttons.push(
+            '<button type="button" class="purchases-chip' + (_purchasesCategory === name ? ' active' : '') + '" onclick="_setPurchasesCategory(\'' + name.replace(/'/g, '\\\'') + '\')">' +
+              pickedIcon(name) + ' ' + esc(name) +
+              '<span class="purchases-chip-count">' + categoryCounts[name] + '</span>' +
+            '</button>'
+          );
+        });
+      }
+      catChipsEl.innerHTML = buttons.join('');
+      catChipsEl.style.display = '';
+    } else {
+      catChipsEl.style.display = 'none';
+    }
+  }
 
   // Sync input value + clear-btn visibility (without stealing focus).
   const input = document.getElementById('purchasesSearchInput');
@@ -5530,6 +5909,17 @@ function _setPurchasesFilter(name) {
   renderPurchases();
 }
 
+function _setPurchasesCategory(name) {
+  _purchasesCategory = name;
+  _purchasesCategoryExpanded = false; // collapse after a choice is made
+  renderPurchases();
+}
+
+function _togglePurchasesCategoryList() {
+  _purchasesCategoryExpanded = !_purchasesCategoryExpanded;
+  renderPurchases();
+}
+
 function _togglePurchaseGroup(key) {
   _purchasesCollapsed[key] = !_purchasesCollapsed[key];
   renderPurchases();
@@ -5546,6 +5936,8 @@ function _toggleDoneMonth(mk) {
 function _purchasesResetFilters() {
   _purchasesFilter = 'all';
   _purchasesSearchQuery = '';
+  _purchasesCategory = 'all';
+  _purchasesCategoryExpanded = false;
   const input = document.getElementById('purchasesSearchInput');
   if (input) input.value = '';
   renderPurchases();
@@ -5918,9 +6310,9 @@ function openPurchaseDetail(id) {
     actions.push('<button class="btn-export" onclick="unmarkPurchaseBought(\'' + p.id + '\');closePurchaseDetail()" style="width:auto;padding:8px 16px;margin:0">↺ Скасувати позначку</button>');
   }
   if (isShared) {
-    actions.push('<button class="btn-export" onclick="invitePurchaseByEmail(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0;background:#8b5cf6">👥 Запросити</button>');
+    actions.push('<button class="btn-export" onclick="invitePurchaseByEmail(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0;background:#3b82f6">👥 Запросити</button>');
   } else {
-    actions.push('<button class="btn-export" onclick="promptMakeShared(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0;background:#8b5cf6">👥 Зробити спільною</button>');
+    actions.push('<button class="btn-export" onclick="promptMakeShared(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0;background:#3b82f6">👥 Зробити спільною</button>');
   }
   actions.push('<button class="btn-export" onclick="sharePurchase(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0">↗ Поділитись</button>');
   if (!p.bought) {

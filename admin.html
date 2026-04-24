@@ -509,13 +509,22 @@
   async function loadUsers() {
     try {
       const snapshot = await db.collection('users').get();
-      allUsers = [];
+      const real = [];
+      const devIds = new Set();
       snapshot.forEach(doc => {
+        const id = doc.id;
+        if (id.endsWith('_dev')) {
+          devIds.add(id.slice(0, -4));
+          return; // sandbox doc — never shown as separate user
+        }
         const data = doc.data();
         if (data.meta) {
-          allUsers.push({ id: doc.id, ...data.meta, lastSeen: data.meta.lastSeen || null, profile: data.profile || {} });
+          real.push({ id, ...data.meta, lastSeen: data.meta.lastSeen || null, profile: data.profile || {} });
         }
       });
+      // Mark real users that have a DEV sandbox.
+      real.forEach(u => { u.hasDevSandbox = devIds.has(u.id); });
+      allUsers = real;
       allUsers.sort((a, b) => (b.lastLogin || '').localeCompare(a.lastLogin || ''));
       renderStats();
       renderUsers(allUsers);
@@ -583,7 +592,8 @@
       const yes = '<span class="uc-yes">✓ так</span>';
       const no = '<span class="uc-no">— ні</span>';
 
-      const hasActions = !isMe;
+      // Own card gets tester toggle but admin/disable stay blocked to prevent self-lockout.
+      const hasActions = true;
       return `
         <div class="user-card" id="user-${u.id}">
           <img src="${u.photoURL || ''}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'">
@@ -592,6 +602,8 @@
               <span class="user-card-name-text">${u.profile?.displayName || u.displayName || 'Без імені'}</span>
               ${isOnline ? '<span class="admin-badge" style="background:rgba(74,222,128,0.15);color:#4ade80">Online</span>' : ''}
               ${u.isAdmin ? '<span class="admin-badge">Admin</span>' : ''}
+              ${u.isTester ? '<span class="admin-badge" style="background:rgba(59,130,246,0.15);color:#60a5fa">Tester</span>' : ''}
+              ${u.hasDevSandbox ? '<span class="admin-badge" style="background:rgba(251,191,36,0.15);color:#fbbf24" title="Має окрему пісочницю DEV-режиму">DEV</span>' : ''}
               ${disabled ? '<span class="admin-badge disabled-badge">Заблоковано</span>' : ''}
               ${isMe ? '<span class="user-card-me">(ви)</span>' : ''}
             </div>
@@ -621,12 +633,15 @@
           ${hasActions ? `
           <div class="user-card-aside">
             <div class="user-card-actions">
-              ${u.isAdmin
+              ${isMe ? '' : (u.isAdmin
                 ? '<button class="btn-sm danger" onclick="toggleAdmin(\'' + u.id + '\', false)">Зняти admin</button>'
-                : '<button class="btn-sm" onclick="toggleAdmin(\'' + u.id + '\', true)">Зробити admin</button>'}
-              ${disabled
+                : '<button class="btn-sm" onclick="toggleAdmin(\'' + u.id + '\', true)">Зробити admin</button>')}
+              ${u.isTester
+                ? '<button class="btn-sm danger" onclick="toggleTester(\'' + u.id + '\', false)">Зняти tester</button>'
+                : '<button class="btn-sm" onclick="toggleTester(\'' + u.id + '\', true)">Зробити tester</button>'}
+              ${isMe ? '' : (disabled
                 ? '<button class="btn-sm success" onclick="toggleDisabled(\'' + u.id + '\', false)">Розблокувати</button>'
-                : '<button class="btn-sm danger" onclick="toggleDisabled(\'' + u.id + '\', true)">Заблокувати</button>'}
+                : '<button class="btn-sm danger" onclick="toggleDisabled(\'' + u.id + '\', true)">Заблокувати</button>')}
             </div>
           </div>` : ''}
         </div>
@@ -670,6 +685,19 @@
       const user = allUsers.find(u => u.id === uid);
       if (user) user.isAdmin = makeAdmin;
       renderStats();
+      renderUsers(allUsers);
+    } catch(e) {
+      alert('Помилка: ' + e.message);
+    }
+  }
+
+  async function toggleTester(uid, makeTester) {
+    try {
+      await db.collection('users').doc(uid).set({
+        meta: { isTester: makeTester }
+      }, { merge: true });
+      const user = allUsers.find(u => u.id === uid);
+      if (user) user.isTester = makeTester;
       renderUsers(allUsers);
     } catch(e) {
       alert('Помилка: ' + e.message);

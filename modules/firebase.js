@@ -63,6 +63,7 @@ function initFirebase() {
         if (typeof loadDreamsFromFirestore === 'function') loadDreamsFromFirestore();
         if (typeof loadSavingsFromFirestore === 'function') loadSavingsFromFirestore();
         if (typeof loadPurchasesFromFirestore === 'function') loadPurchasesFromFirestore();
+        if (typeof loadMonthlyIncome === 'function') loadMonthlyIncome();
         if (typeof startSharedPurchasesListener === 'function') startSharedPurchasesListener();
         if (typeof processShareInviteOnBoot === 'function') processShareInviteOnBoot();
         loadProfileFromFirestore();
@@ -475,6 +476,13 @@ async function loadProfileFromFirestore() {
       const realMeta = realDoc && realDoc.exists ? realDoc.data().meta : null;
       const adminLink = document.getElementById('adminLink');
       if (adminLink) adminLink.style.display = (realMeta && realMeta.isAdmin) ? '' : 'none';
+      // Expose tester flag globally so UI can show opt-out checkboxes per record.
+      window._isTester = !!(realMeta && realMeta.isTester);
+      document.body.classList.toggle('role-tester', window._isTester);
+      if (typeof renderPortfolio === 'function') renderPortfolio();
+      if (typeof renderDreams === 'function') renderDreams();
+      if (typeof renderSavings === 'function') renderSavings();
+      if (typeof renderPurchases === 'function') renderPurchases();
     } catch(e) { /* non-fatal */ }
   } catch(e) {
     console.warn('Profile load failed:', e);

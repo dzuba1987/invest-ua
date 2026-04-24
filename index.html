@@ -54,42 +54,36 @@
 
 <div class="container">
   <div class="top-bar">
-    <a href="admin.html" class="help-link" id="adminLink" style="display:none">Admin</a>
-    <a href="help.html" class="help-link" data-i18n="help">Довідка</a>
-  </div>
-
-  <h1>Invest UA</h1>
-  <p class="subtitle" data-i18n="app.subtitle">Портфель вкладень</p>
-
-  <!-- Auth bar -->
-  <div class="auth-bar" id="authBar">
-    <div class="user-info" id="userInfo" style="display:none">
+    <div class="top-user" id="userInfo" style="display:none">
       <img id="userAvatar" src="" alt="" referrerpolicy="no-referrer">
       <span class="user-name" id="userName"></span>
       <span class="sync-status" id="syncStatus" data-i18n="synced">синхронізовано</span>
     </div>
-    <div id="authActions">
+    <div class="global-search" id="globalSearch">
+      <div class="global-search-input-wrap">
+        <span class="global-search-icon">🔍</span>
+        <input type="text" id="globalSearchInput" placeholder="Пошук..." oninput="onGlobalSearch()" onfocus="onGlobalSearch()" autocomplete="off">
+        <button class="global-search-clear" id="globalSearchClear" onclick="clearGlobalSearch()" style="display:none">✕</button>
+      </div>
+      <div class="global-search-results" id="globalSearchResults" style="display:none"></div>
+    </div>
+    <div class="top-actions" id="authActions">
       <button class="btn-auth btn-google" id="btnLogin" onclick="googleLogin()">
         <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
         <span data-i18n="login">Увійти через Google</span>
       </button>
       <button class="btn-auth btn-profile" id="btnProfile" onclick="switchMainTab('profile', this)" style="display:none" data-i18n="tab.profile">Профіль</button>
       <button class="btn-auth btn-logout" id="btnLogout" onclick="googleLogout()" style="display:none" data-i18n="logout">Вийти</button>
+      <a href="admin.html" class="help-link" id="adminLink" style="display:none">Admin</a>
+      <a href="help.html" class="help-link" data-i18n="help">Довідка</a>
     </div>
   </div>
+
+  <h1>Invest UA</h1>
+  <p class="subtitle" data-i18n="app.subtitle">Портфель вкладень</p>
 
   <div class="install-banner" id="installBanner" onclick="installApp()">
     <span data-i18n="install">Встановити додаток на пристрій</span>
-  </div>
-
-  <!-- Global search -->
-  <div class="global-search" id="globalSearch">
-    <div class="global-search-input-wrap">
-      <span class="global-search-icon">🔍</span>
-      <input type="text" id="globalSearchInput" placeholder="Пошук по портфелю, валютах, історії..." oninput="onGlobalSearch()" onfocus="onGlobalSearch()" autocomplete="off">
-      <button class="global-search-clear" id="globalSearchClear" onclick="clearGlobalSearch()" style="display:none">✕</button>
-    </div>
-    <div class="global-search-results" id="globalSearchResults" style="display:none"></div>
   </div>
 
   <!-- TAB NAVIGATION -->
@@ -100,7 +94,7 @@
     <button class="main-tab" onclick="switchMainTab('currencies', this)" data-i18n="tab.currencies">Валюти</button>
     <button class="main-tab" onclick="switchMainTab('dreams', this)" data-i18n="tab.dreams">Мрії</button>
     <button class="main-tab" onclick="switchMainTab('savings', this)" data-i18n="tab.savings">Заощадження</button>
-    <button class="main-tab" onclick="switchMainTab('purchases', this)" data-i18n="tab.purchases">Витрати</button>
+    <button class="main-tab" onclick="switchMainTab('purchases', this)" data-i18n="tab.purchases">Планування витрат</button>
     <button class="main-tab" onclick="switchMainTab('updates', this)" data-i18n="tab.updates" style="position:relative">Оновлення<span id="updatesBadge" class="tab-badge" style="display:none"></span></button>
   </div>
 
@@ -841,16 +835,16 @@
             <input type="hidden" id="purchaseIcon" value="🛒">
           </div>
           <div class="field">
+            <label>Сума <span id="purchaseAmountCurLabel" style="color:#64748b;font-weight:400">(грн)</span></label>
+            <input type="text" id="purchaseAmount" placeholder="5 000" inputmode="decimal">
+          </div>
+          <div class="field">
             <label>Валюта</label>
             <select id="purchaseCurrency" onchange="onPurchaseCurrencyChange()" style="width:100%;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none">
               <option value="UAH">UAH (₴)</option>
               <option value="USD">USD ($)</option>
               <option value="EUR">EUR (€)</option>
             </select>
-          </div>
-          <div class="field">
-            <label>Сума <span id="purchaseAmountCurLabel" style="color:#64748b;font-weight:400">(грн)</span></label>
-            <input type="text" id="purchaseAmount" placeholder="5 000" inputmode="decimal">
           </div>
           <div class="field">
             <label>Місяць витрати</label>
@@ -867,6 +861,13 @@
           <div class="field field-full">
             <label>Нотатки</label>
             <textarea id="purchaseNotes" rows="4" placeholder="Деталі, маршрут, опис, перелік..." style="width:100%;min-height:96px;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:15px;font-family:inherit;line-height:1.5;outline:none;resize:vertical"></textarea>
+          </div>
+          <div class="field field-full">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="purchaseRecurring" style="accent-color:#3b82f6;width:18px;height:18px">
+              <span>🔁 Повторюється щомісяця</span>
+            </label>
+            <p style="font-size:12px;color:#64748b;margin:4px 0 0 26px">Після відмітки «Здійснено» наступна копія з'явиться у наступному місяці.</p>
           </div>
         </div>
         <button class="btn-save" id="btnAddPurchase" onclick="addPurchase()">Додати витрату</button>
@@ -899,9 +900,46 @@
             <div class="dash-card-value" id="purchasesFutureCount">0</div>
           </div>
         </div>
+
+        <!-- Income + budget indicator for current month -->
+        <div class="a-card budget-card">
+          <div class="budget-header">
+            <h3 style="margin:0">💵 Дохід за <span id="budgetMonthLabel">місяць</span></h3>
+            <button class="btn-clear budget-edit-btn" type="button" onclick="openBudgetEditor()">✎ Редагувати</button>
+          </div>
+          <div id="budgetBody">
+            <div id="budgetView">
+              <div class="budget-amount" id="budgetAmount">— не вказано —</div>
+              <div class="budget-progress-wrap" id="budgetProgressWrap" style="display:none">
+                <div class="budget-progress"><div class="budget-progress-bar" id="budgetProgressBar"></div></div>
+                <div class="budget-stats" id="budgetStats"></div>
+              </div>
+              <p class="budget-hint" id="budgetHint" style="display:none">Вкажіть ваш місячний дохід, щоб бачити, яка частина бюджету вже розписана на витрати.</p>
+            </div>
+            <div id="budgetForm" style="display:none">
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <input type="text" id="budgetAmountInput" placeholder="50 000" inputmode="decimal" style="flex:1;min-width:140px;padding:10px 12px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:15px;outline:none">
+                <select id="budgetCurrency" style="padding:10px 12px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:15px;outline:none">
+                  <option value="UAH">UAH (₴)</option>
+                  <option value="USD">USD ($)</option>
+                  <option value="EUR">EUR (€)</option>
+                </select>
+                <button class="btn-save" type="button" onclick="saveBudget()" style="width:auto;padding:10px 18px;margin:0">Зберегти</button>
+                <button class="btn-clear" type="button" onclick="closeBudgetEditor()" style="width:auto;padding:10px 18px;margin:0">Скасувати</button>
+              </div>
+              <p style="font-size:12px;color:#64748b;margin:6px 0 0">Якщо дохід не в грн — сума автоматично переводиться у грн за курсом НБУ для порівняння з витратами.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category breakdown for current month -->
+        <div class="a-card" id="categoryBreakdownCard" style="display:none">
+          <h3 style="margin:0 0 10px">📊 Розподіл по категоріях <span id="categoryBreakdownMonth" style="color:#64748b;font-weight:400;font-size:13px"></span></h3>
+          <div id="categoryBreakdownList"></div>
+        </div>
       </div>
 
-      <!-- Toolbar: search + filter chips -->
+      <!-- Toolbar: search + filter chips + category chips -->
       <div class="purchases-toolbar" id="purchasesToolbar" style="display:none">
         <div class="purchases-search">
           <span style="color:#64748b;font-size:14px">🔍</span>
@@ -909,6 +947,7 @@
           <button type="button" class="purchases-search-clear" id="purchasesSearchClear" style="display:none" onclick="_purchasesClearSearch()">✕</button>
         </div>
         <div class="purchases-chips" id="purchasesChips"></div>
+        <div class="purchases-chips" id="purchasesCategoryChips" style="display:none"></div>
       </div>
 
       <div id="purchasesList"></div>
