@@ -846,7 +846,14 @@ html[data-theme-effective="light"] .ui-dialog-footer { background: #f8fafc; bord
 .cat-row-amounts .bought { color: #4ade80; font-weight: 600; }
 
 html[data-theme-effective="light"] .budget-progress { background:#f1f5f9; border-color:#e2e8f0; }
+html[data-theme-effective="light"] .budget-amount { color: #0f172a; }
+html[data-theme-effective="light"] .budget-stats { color: #475569; }
+html[data-theme-effective="light"] .budget-stats strong { color: #0f172a; }
 html[data-theme-effective="light"] .cat-row { border-color: #e2e8f0; }
+html[data-theme-effective="light"] .cat-row-name { color: #0f172a; }
+html[data-theme-effective="light"] .cat-row-amounts { color: #475569; }
+html[data-theme-effective="light"] .cat-row-amounts .bought { color: #16a34a; }
+html[data-theme-effective="light"] .cat-row-progress { background: rgba(148,163,184,0.25); }
 
 .exclude-toggle {
   display: inline-flex;
@@ -2597,13 +2604,15 @@ html[data-theme-effective="light"] label {
   color: #475569;
 }
 
-/* Inputs / selects / textareas */
+/* Inputs / selects / textareas
+   !important needed because many inputs in index.html carry inline
+   dark styles (background:#0f172a;color:#f1f5f9). */
 html[data-theme-effective="light"] input,
 html[data-theme-effective="light"] select,
 html[data-theme-effective="light"] textarea {
-  background: #f8fafc;
-  color: #0f172a;
-  border-color: #cbd5e1;
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
 }
 html[data-theme-effective="light"] input::placeholder,
 html[data-theme-effective="light"] textarea::placeholder {
@@ -2612,7 +2621,7 @@ html[data-theme-effective="light"] textarea::placeholder {
 html[data-theme-effective="light"] input:focus,
 html[data-theme-effective="light"] select:focus,
 html[data-theme-effective="light"] textarea:focus {
-  border-color: #2563eb;
+  border-color: #2563eb !important;
 }
 html[data-theme-effective="light"] input.auto-filled {
   border-color: #93c5fd;
@@ -2647,6 +2656,57 @@ html[data-theme-effective="light"] .btn-clear {
 html[data-theme-effective="light"] .btn-clear:hover {
   border-color: #94a3b8;
   color: #0f172a;
+}
+/* On light theme buttons follow a single visual language:
+   subtle slate background, accent-colored text + border + bottom-shadow.
+   Gradients are too bright on a white card. */
+/* Default unclassed <button> (e.g. "Розрахувати", "Розрахувати кредит") —
+   match the accent-on-slate language. Limit selector to bare buttons so
+   classed buttons (.btn-delete, .tab, .share-btn etc.) keep their styles. */
+html[data-theme-effective="light"] button:not([class]) {
+  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+  color: #1d4ed8;
+  border: 1px solid #93c5fd;
+  box-shadow: inset 0 -2px 0 rgba(37,99,235,0.18);
+}
+html[data-theme-effective="light"] button:not([class]):hover {
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: #1e40af;
+  border-color: #3b82f6;
+  opacity: 1;
+}
+html[data-theme-effective="light"] .btn-save {
+  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+  color: #15803d;
+  border: 1px solid #86efac;
+  box-shadow: inset 0 -2px 0 rgba(22,163,74,0.15);
+}
+html[data-theme-effective="light"] .btn-save:hover {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  color: #166534;
+  border-color: #22c55e;
+}
+html[data-theme-effective="light"] .btn-export {
+  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+  color: #b45309;
+  border: 1px solid #fcd34d;
+  box-shadow: inset 0 -2px 0 rgba(217,119,6,0.15);
+}
+html[data-theme-effective="light"] .btn-export:hover {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+  border-color: #f59e0b;
+}
+html[data-theme-effective="light"] .btn-import {
+  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+  color: #1d4ed8;
+  border: 1px solid #93c5fd;
+  box-shadow: inset 0 -2px 0 rgba(37,99,235,0.15);
+}
+html[data-theme-effective="light"] .btn-import:hover {
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: #1e40af;
+  border-color: #3b82f6;
 }
 
 /* Results blocks */

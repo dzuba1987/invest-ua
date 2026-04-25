@@ -116,9 +116,9 @@
       <div class="field field-full">
         <label data-i18n="portfolio.type">Тип</label>
         <select id="calcType" onchange="toggleCalcTypeFields()" style="width:100%;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none">
-          <option value="ovdp" data-i18n="portfolio.typeOvdp">ОВДП</option>
           <option value="deposit" data-i18n="portfolio.typeDeposit">Депозит</option>
           <option value="insurance" data-i18n="portfolio.typeInsurance">Страхування із накопиченням</option>
+          <option value="ovdp" data-i18n="portfolio.typeOvdp">ОВДП</option>
           <option value="other" data-i18n="portfolio.typeOther">Інше</option>
         </select>
       </div>
@@ -551,27 +551,29 @@
 
       <div class="a-card" id="portfolioFormCard" style="display:none">
         <h3 data-i18n="portfolio.title">Мої вкладення</h3>
-        <div class="minfin-import-section" id="pOvdpSection" style="display:none;margin-bottom:12px">
-          <select id="pOvdpBondSelect" onchange="onPortfolioOvdpSelect()">
-            <option value="">— Оберіть облігацію ОВДП —</option>
-          </select>
-          <div class="minfin-bond-info" id="pOvdpBondInfo" style="display:none"></div>
-        </div>
         <div class="form-grid" style="margin-bottom:16px">
-          <!-- Row 1: Назва | Тип -->
-          <div class="field">
-            <label data-i18n="portfolio.name">Назва вкладення</label>
-            <input type="text" id="pName" placeholder="ОВДП серія 456">
-          </div>
+          <!-- Row 1: Тип | ОВДП-пікер -->
           <div class="field">
             <label data-i18n="portfolio.type">Тип</label>
             <select id="pType" onchange="togglePortfolioTypeFields()" style="width:100%;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none">
-              <option value="ovdp" data-i18n="portfolio.typeOvdp">ОВДП</option>
               <option value="deposit" data-i18n="portfolio.typeDeposit">Депозит</option>
               <option value="insurance" data-i18n="portfolio.typeInsurance">Страхування із накопиченням</option>
+              <option value="ovdp" data-i18n="portfolio.typeOvdp">ОВДП</option>
               <option value="cash" data-i18n="portfolio.typeCash">Готівка</option>
               <option value="other" data-i18n="portfolio.typeOther">Інше</option>
             </select>
+          </div>
+          <div class="field" id="pOvdpSection" style="display:none">
+            <label>Облігація ОВДП</label>
+            <select id="pOvdpBondSelect" onchange="onPortfolioOvdpSelect()">
+              <option value="">— Оберіть облігацію ОВДП —</option>
+            </select>
+            <div class="minfin-bond-info" id="pOvdpBondInfo" style="display:none"></div>
+          </div>
+          <!-- Row 2: Назва (full width) -->
+          <div class="field field-full">
+            <label data-i18n="portfolio.name">Назва вкладення</label>
+            <input type="text" id="pName" placeholder="ОВДП серія 456">
           </div>
           <!-- Row 2: Ціна | Кількість (ОВДП) -->
           <div class="field" id="pBondPriceField">

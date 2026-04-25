@@ -862,6 +862,10 @@ function calculate() {
     if (canvas && typeof Chart !== 'undefined') {
       if (compoundChartInstance) compoundChartInstance.destroy();
       const simpleColor = '#f59e0b';
+      const _isLightC = document.documentElement.getAttribute('data-theme-effective') === 'light';
+      const _gridC = _isLightC ? '#e2e8f0' : '#1e293b';
+      const _tickC = _isLightC ? '#475569' : '#64748b';
+      const _legC = _isLightC ? '#334155' : '#94a3b8';
       compoundChartInstance = new Chart(canvas, {
         type: 'line',
         data: {
@@ -911,7 +915,7 @@ function calculate() {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+            legend: { labels: { color: _legC, font: { size: 11 } } },
             tooltip: {
               callbacks: {
                 label: ctx => ctx.dataset.label + ': ' + formatShort(ctx.raw) + ' грн'
@@ -919,14 +923,14 @@ function calculate() {
             }
           },
           scales: {
-            x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } },
+            x: { ticks: { color: _tickC, font: { size: 10 } }, grid: { color: _gridC } },
             y: {
               ticks: {
-                color: '#64748b',
+                color: _tickC,
                 font: { size: 10 },
                 callback: v => formatShort(v)
               },
-              grid: { color: '#1e293b' }
+              grid: { color: _gridC }
             }
           }
         }
@@ -2961,7 +2965,7 @@ function renderPortfolio() {
           ${p.notes ? '<div class="p-item-notes">' + esc(p.notes) + '</div>' : ''}
           <div style="display:flex;gap:8px;margin-top:8px">
             <button class="btn-delete" onclick="event.stopPropagation();editPortfolioItem('${p.id}')" style="color:#60a5fa">✎</button>
-            <button class="btn-delete" onclick="event.stopPropagation();confirmThen('Видалити ' + ${JSON.stringify(p.name || 'запис')} + '?', () => deletePortfolioItem('${p.id}'), { danger: true, okText: 'Видалити' })">✕</button>
+            <button class="btn-delete" onclick="event.stopPropagation();confirmThen('Видалити це вкладення?', () => deletePortfolioItem('${p.id}'), { danger: true, okText: 'Видалити' })">✕</button>
           </div>
         </div>
         <div class="p-item-actions">
@@ -4224,14 +4228,15 @@ function openDreamDetail(id) {
   const pieCanvas = document.getElementById('dreamDetailPie');
   if (pieCanvas && typeof Chart !== 'undefined') {
     if (dreamDetailChartInstance) dreamDetailChartInstance.destroy();
+    const _isLightT = document.documentElement.getAttribute('data-theme-effective') === 'light';
     dreamDetailChartInstance = new Chart(pieCanvas, {
       type: 'doughnut',
       data: {
         labels: ['Накопичено', 'Залишилось'],
         datasets: [{
           data: [saved, remaining],
-          backgroundColor: ['#4ade80', '#334155'],
-          borderColor: '#0f172a',
+          backgroundColor: ['#4ade80', _isLightT ? '#cbd5e1' : '#334155'],
+          borderColor: _isLightT ? '#ffffff' : '#0f172a',
           borderWidth: 3
         }]
       },
@@ -6532,6 +6537,11 @@ function calculateCredit() {
   const canvas = document.getElementById('creditChart');
   if (canvas && typeof Chart !== 'undefined') {
     if (creditChartInstance) creditChartInstance.destroy();
+    const _isLightCr = document.documentElement.getAttribute('data-theme-effective') === 'light';
+    const _gridCr = _isLightCr ? '#e2e8f0' : '#1e293b';
+    const _tickCr = _isLightCr ? '#475569' : '#64748b';
+    const _legCr = _isLightCr ? '#334155' : '#94a3b8';
+    const _titleCr = _isLightCr ? '#334155' : '#475569';
     creditChartInstance = new Chart(canvas, {
       type: 'bar',
       data: {
@@ -6555,7 +6565,7 @@ function calculateCredit() {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+          legend: { labels: { color: _legCr, font: { size: 11 } } },
           tooltip: {
             callbacks: {
               label: ctx => ctx.dataset.label + ': ' + formatShort(ctx.raw) + ' грн'
@@ -6565,14 +6575,14 @@ function calculateCredit() {
         scales: {
           x: {
             stacked: true,
-            ticks: { color: '#64748b', font: { size: 10 } },
+            ticks: { color: _tickCr, font: { size: 10 } },
             grid: { display: false },
-            title: { display: true, text: 'Місяць', color: '#475569', font: { size: 11 } }
+            title: { display: true, text: 'Місяць', color: _titleCr, font: { size: 11 } }
           },
           y: {
             stacked: true,
-            ticks: { color: '#64748b', font: { size: 10 }, callback: v => formatShort(v) },
-            grid: { color: '#1e293b' }
+            ticks: { color: _tickCr, font: { size: 10 }, callback: v => formatShort(v) },
+            grid: { color: _gridCr }
           }
         }
       }
