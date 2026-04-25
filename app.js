@@ -3712,6 +3712,37 @@ function selectDreamIcon(icon) {
 // ---- Dream currency helpers ----
 const DREAM_CUR_LABEL = { UAH: 'грн', USD: '$', EUR: '€' };
 function dreamCurOf(d) { return (d && d.currency) || 'UAH'; }
+
+// Effective accumulated amount on a dream — explicit deposits[] PLUS the
+// current value of any savings records linked to it (savingItems with
+// dreamId), converted to the dream's own currency. This way editing or
+// adding an earmarked saving immediately moves the dream's progress.
+function _effectiveDreamSaved(d) {
+  const base = d.saved || 0;
+  if (typeof savingItems === 'undefined' || !Array.isArray(savingItems)) return base;
+  const dc = (dreamCurOf(d) || 'UAH').toUpperCase();
+  const rates = (typeof cachedRates !== 'undefined') ? cachedRates : null;
+  let extra = 0;
+  for (const s of savingItems) {
+    if (String(s.dreamId) !== String(d.id)) continue;
+    if (typeof isExcluded === 'function' && isExcluded(s)) continue;
+    const sc = (s.currency || 'UAH').toUpperCase();
+    const amt = s.amount || 0;
+    if (!amt) continue;
+    if (sc === dc) { extra += amt; continue; }
+    // Convert via UAH bridge.
+    let inUah = 0;
+    if (sc === 'UAH') inUah = amt;
+    else if (rates && rates[sc]) inUah = amt * rates[sc];
+    else continue;
+    let inDream = 0;
+    if (dc === 'UAH') inDream = inUah;
+    else if (rates && rates[dc]) inDream = inUah / rates[dc];
+    else continue;
+    extra += inDream;
+  }
+  return base + extra;
+}
 function dreamCurUnitLabel(cc) { return DREAM_CUR_LABEL[cc] || cc; }
 function dreamToUah(amount, cc) {
   if (!cc || cc === 'UAH') return amount;
@@ -4049,8 +4080,9 @@ function openDreamDetail(id) {
 
   const now = new Date();
   const cc = dreamCurOf(d);
-  const progress = d.target > 0 ? Math.min(100, ((d.saved || 0) / d.target) * 100) : 0;
-  const remaining = Math.max(0, d.target - (d.saved || 0));
+  const saved = _effectiveDreamSaved(d);
+  const progress = d.target > 0 ? Math.min(100, (saved / d.target) * 100) : 0;
+  const remaining = Math.max(0, d.target - saved);
   const netMonthly = d.monthly || 0;
   const monthsLeft = netMonthly > 0 && remaining > 0 ? Math.ceil(remaining / netMonthly) : null;
 
@@ -4094,7 +4126,7 @@ function openDreamDetail(id) {
     <div class="dash-hero">
       <div class="dash-hero-label"><span class="dream-icon-hero">${dreamIconOf(d)}</span>${esc(d.name)}</div>
       <div class="dash-hero-value">${progress.toFixed(0)}%</div>
-      <div style="font-size:13px;color:#94a3b8;margin-top:4px">${fmtDreamAmount(d.saved || 0, cc)} з ${fmtDreamAmount(d.target, cc)}</div>
+      <div style="font-size:13px;color:#94a3b8;margin-top:4px">${fmtDreamAmount(saved, cc)} з ${fmtDreamAmount(d.target, cc)}</div>
       <div class="detail-progress" style="margin-top:10px;width:100%"><div class="detail-progress-bar" style="width:${progress.toFixed(1)}%"></div></div>
       <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap">
         <button class="btn-save" onclick="depositDreamFromDetail('${d.id}')" style="width:auto;padding:8px 16px;margin:0">+ Внести кошти</button>
@@ -4110,7 +4142,7 @@ function openDreamDetail(id) {
     <div class="detail-grid">
       <div class="detail-metric">
         <div class="detail-metric-label">Накопичено</div>
-        <div class="detail-metric-value green">${fmtDreamAmount(d.saved || 0, cc)}</div>
+        <div class="detail-metric-value green">${fmtDreamAmount(saved, cc)}</div>
       </div>
       <div class="detail-metric">
         <div class="detail-metric-label">Залишилось</div>
@@ -4141,6 +4173,49 @@ function openDreamDetail(id) {
       })()}
     </div>
 
+    ${(() => {
+      if (typeof savingItems === 'undefined' || !savingItems.length) return '';
+      const linked = savingItems.filter(s => String(s.dreamId) === String(d.id));
+      if (!linked.length) return '';
+      const dc = (cc || 'UAH').toUpperCase();
+      let totalInDream = 0;
+      const rows = linked.map(s => {
+        const sc = (s.currency || 'UAH').toUpperCase();
+        const sym = sc === 'USD' ? '$' : sc === 'EUR' ? '€' : '';
+        const native = sym ? (sym + formatNum(s.amount || 0)) : (formatNum(s.amount || 0) + ' грн');
+        // Convert to dream currency for the right-hand cell.
+        let inDream = 0;
+        if (sc === dc) inDream = s.amount || 0;
+        else {
+          let inUah = 0;
+          if (sc === 'UAH') inUah = s.amount || 0;
+          else if (typeof cachedRates !== 'undefined' && cachedRates && cachedRates[sc]) inUah = (s.amount || 0) * cachedRates[sc];
+          if (dc === 'UAH') inDream = inUah;
+          else if (typeof cachedRates !== 'undefined' && cachedRates && cachedRates[dc]) inDream = inUah / cachedRates[dc];
+        }
+        totalInDream += inDream;
+        const inDreamLabel = inDream > 0 ? fmtDreamAmount(inDream, dc) : '—';
+        const conv = sc !== dc && inDream > 0
+          ? ' <span style="color:#64748b;font-size:11px">≈ ' + inDreamLabel + '</span>'
+          : '';
+        const excludedNote = (typeof isExcluded === 'function' && isExcluded(s))
+          ? ' <span style="color:#64748b;font-size:11px">(не враховується)</span>'
+          : '';
+        return '<tr>' +
+          '<td>' + esc(s.name || '—') + excludedNote + '</td>' +
+          '<td><span class="p-item-type p-type-cash">' + esc(sc) + '</span></td>' +
+          '<td style="text-align:right;color:#93c5fd"><strong>' + native + '</strong>' + conv + '</td>' +
+          '</tr>';
+      }).join('');
+      return '<div class="a-card"><h3>💰 Закріплено в заощадженнях</h3>' +
+        '<table class="credit-schedule-table" style="width:100%"><thead><tr>' +
+          '<th style="text-align:left">Назва</th><th>Валюта</th><th style="text-align:right">Сума</th>' +
+        '</tr></thead><tbody>' + rows +
+        '<tr style="font-weight:700;border-top:2px solid #334155"><td colspan="2">Всього у валюті мрії</td>' +
+        '<td style="text-align:right;color:#4ade80"><strong>' + fmtDreamAmount(totalInDream, dc) + '</strong></td></tr>' +
+        '</tbody></table></div>';
+    })()}
+
     ${depositsHtml}
 
   `);
@@ -4154,7 +4229,7 @@ function openDreamDetail(id) {
       data: {
         labels: ['Накопичено', 'Залишилось'],
         datasets: [{
-          data: [d.saved || 0, remaining],
+          data: [saved, remaining],
           backgroundColor: ['#4ade80', '#334155'],
           borderColor: '#0f172a',
           borderWidth: 3
@@ -4248,7 +4323,7 @@ function renderDreams() {
 
   list.innerHTML = sanitize(dreamItems.map((d, i) => {
     const target = d.target || 0;
-    const saved = d.saved || 0;
+    const saved = _effectiveDreamSaved(d);
     const cc = dreamCurOf(d);
     const progress = target > 0 ? Math.min(100, (saved / target) * 100) : 0;
     const targetUah = dreamToUah(target, cc);
@@ -4335,12 +4410,14 @@ function renderDreams() {
     const tickColorY = isLight ? '#1e293b' : '#e2e8f0';
     const gridColorX = isLight ? '#e2e8f0' : '#1e293b';
     const savedData = dreamItems.map(d => {
-      const cc = dreamCurOf(d); const v = dreamToUah(d.saved || 0, cc);
-      return v !== null ? v : (d.saved || 0);
+      const cc = dreamCurOf(d);
+      const eff = _effectiveDreamSaved(d);
+      const v = dreamToUah(eff, cc);
+      return v !== null ? v : eff;
     });
     const remainData = dreamItems.map(d => {
       const cc = dreamCurOf(d);
-      const rem = Math.max(0, (d.target || 0) - (d.saved || 0));
+      const rem = Math.max(0, (d.target || 0) - _effectiveDreamSaved(d));
       const v = dreamToUah(rem, cc);
       return v !== null ? v : rem;
     });
@@ -4362,9 +4439,10 @@ function renderDreams() {
           tooltip: { callbacks: { label: ctx => {
             const d = dreamItems[ctx.dataIndex];
             const cc = dreamCurOf(d);
+            const eff = _effectiveDreamSaved(d);
             const nativeVal = ctx.dataset.label === 'Накопичено'
-              ? (d.saved || 0)
-              : Math.max(0, (d.target || 0) - (d.saved || 0));
+              ? eff
+              : Math.max(0, (d.target || 0) - eff);
             let lbl = ctx.dataset.label + ': ' + formatNum(ctx.raw) + ' грн';
             if (cc !== 'UAH') lbl += ' (' + (cc === 'USD' ? '$' : cc === 'EUR' ? '€' : cc + ' ') + formatNum(nativeVal) + ')';
             return lbl;
@@ -4647,6 +4725,8 @@ function addSaving() {
 
   renderSavings();
   saveSavingsToFirestore();
+  // Linked savings now contribute to dream "saved" — refresh dream views.
+  if (typeof renderDreams === 'function') renderDreams();
 
   document.getElementById('savingName').value = '';
   document.getElementById('savingAmount').value = '';
@@ -4690,6 +4770,7 @@ async function deleteSaving(id) {
   savingItems = savingItems.filter(s => String(s.id) !== String(id));
   renderSavings();
   saveSavingsToFirestore();
+  if (typeof renderDreams === 'function') renderDreams();
 }
 
 function _savingCurSymbol(cc) {
