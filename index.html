@@ -848,7 +848,7 @@
           </div>
           <div class="field">
             <label>Дата</label>
-            <input type="date" id="purchaseDate" style="width:100%;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none">
+            <input type="date" id="purchaseDate" class="form-control">
           </div>
           <div class="field field-full">
             <label>Посилання</label>
@@ -1248,7 +1248,7 @@
         <div class="form-grid" style="margin-top:12px">
           <div class="field">
             <label>За скільки днів нагадувати</label>
-            <select id="notifyPurchasesDays" onchange="saveNotifySettings()" style="width:100%;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none">
+            <select id="notifyPurchasesDays" onchange="saveNotifySettings()" class="form-control">
               <option value="0">У день витрати</option>
               <option value="1" selected>За 1 день</option>
               <option value="2">За 2 дні</option>
@@ -1350,6 +1350,9 @@
 <script src="modules/form-drafts.js"></script>
 <script src="modules/firebase.js"></script>
 <script src="modules/telegram.js"></script>
+<script src="modules/purchase-helpers.js"></script>
+<script src="modules/purchase-form.js"></script>
+<script src="modules/purchase-calendar.js"></script>
 <script src="app.js"></script>
 
 </body>

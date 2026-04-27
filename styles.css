@@ -812,6 +812,24 @@ html[data-theme-effective="light"] .ui-dialog-footer { background: #f8fafc; bord
   margin: 6px 0 0;
 }
 
+/* Generic form control — matches the inline style legacy fields use, so
+   new inputs/selects can adopt the class without visual drift. */
+.form-control {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #f1f5f9;
+  font-size: 16px;
+  outline: none;
+}
+html[data-theme-effective="light"] .form-control {
+  background: #fff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
 /* Purchase calendar */
 .purchase-calendar-card { margin-top: 12px; }
 .purchase-calendar-header { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom: 12px; flex-wrap:wrap; }
@@ -887,6 +905,7 @@ html[data-theme-effective="light"] .ui-dialog-footer { background: #f8fafc; bord
 .purchase-calendar-day.is-empty .purchase-calendar-day-num,
 .purchase-calendar-day.is-blank .purchase-calendar-day-num { color:transparent; }
 .purchase-calendar-day-icons { display:flex; gap:2px; margin-top:2px; flex-wrap:wrap; line-height:1; font-size:14px; }
+.purchase-calendar-day-more { color:#94a3b8; }
 .purchase-calendar-day-amount { margin-top:auto; font-size:11px; font-weight:600; color:#e2e8f0; }
 .purchase-calendar-day-amount.has-done { color:#4ade80; }
 .purchase-calendar-day-dot { position:absolute; top:6px; right:6px; width:8px; height:8px; border-radius:50%; }
@@ -914,6 +933,7 @@ html[data-theme-effective="light"] .ui-dialog-footer { background: #f8fafc; bord
 }
 .purchase-calendar-day-detail .pcal-item:hover { background:#334155; }
 .purchase-calendar-day-detail .pcal-item:last-child { margin-bottom:0; }
+.purchase-calendar-day-detail .pcal-item-icon { font-size:18px; }
 .purchase-calendar-day-detail .pcal-item-name { flex:1; color:#e2e8f0; font-size:14px; }
 .purchase-calendar-day-detail .pcal-item-amount { color:#e2e8f0; font-weight:600; font-size:13px; }
 .purchase-calendar-day-detail .pcal-item.is-done .pcal-item-name { color:#94a3b8; text-decoration: line-through; text-decoration-color: rgba(148,163,184,0.5); }
