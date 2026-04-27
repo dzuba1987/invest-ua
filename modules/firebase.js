@@ -101,9 +101,9 @@ async function saveUserMeta(user) {
 
     // Cooldown for "login" Telegram notifications: onAuthStateChanged also fires
     // on session restore, token refresh, and tab focus — without throttling, the
-    // admin's chat fills up with one alert every few minutes. Send at most one
-    // login notification per 24h per user, tracked via meta.lastLoginNotifiedAt.
-    const NOTIFY_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+    // admin's chat fills up with one alert every few minutes. 4h gives a useful
+    // "few times a day" signal of user activity without spamming.
+    const NOTIFY_COOLDOWN_MS = 4 * 60 * 60 * 1000;
     const lastNotifiedRaw = !isNewUser ? doc.data()?.meta?.lastLoginNotifiedAt : null;
     const lastNotifiedAt = lastNotifiedRaw ? Date.parse(lastNotifiedRaw) : 0;
     const cooldownPassed = (now.getTime() - lastNotifiedAt) >= NOTIFY_COOLDOWN_MS;
