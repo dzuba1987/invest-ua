@@ -48,6 +48,12 @@ function initFirebase() {
     db = firebase.firestore();
     firebaseReady = true;
 
+    // If the user just clicked a magic-link in their email, the URL contains
+    // Firebase's sign-in params — finish the sign-in before/while the auth
+    // state listener fires. (signInWithEmailLink itself triggers
+    // onAuthStateChanged once it succeeds.)
+    completeEmailLinkSignInOnBoot();
+
     firebase.auth().onAuthStateChanged(user => {
       currentUser = user;
       updateAuthUI();
@@ -144,6 +150,7 @@ async function saveUserMeta(user) {
 function updateAuthUI() {
   const info = document.getElementById('userInfo');
   const loginBtn = document.getElementById('btnLogin');
+  const emailLoginBtn = document.getElementById('btnEmailLogin');
   const logoutBtn = document.getElementById('btnLogout');
   const profileBtn = document.getElementById('btnProfile');
 
@@ -153,6 +160,7 @@ function updateAuthUI() {
   if (currentUser) {
     info.style.display = 'flex';
     loginBtn.style.display = 'none';
+    if (emailLoginBtn) emailLoginBtn.style.display = 'none';
     logoutBtn.style.display = 'inline-block';
     if (profileBtn) profileBtn.style.display = 'inline-block';
     document.getElementById('userAvatar').src = currentUser.photoURL || '';
@@ -162,6 +170,7 @@ function updateAuthUI() {
   } else {
     info.style.display = 'none';
     loginBtn.style.display = 'flex';
+    if (emailLoginBtn) emailLoginBtn.style.display = 'inline-flex';
     logoutBtn.style.display = 'none';
     if (profileBtn) profileBtn.style.display = 'none';
     saveBtn.style.display = 'none';
@@ -191,6 +200,84 @@ function googleLogin() {
     console.error('Login error:', err);
     alert('Помилка входу: ' + err.message);
   });
+}
+
+// ── Passwordless email-link sign-in ─────────────────────────
+// Send a one-time sign-in link to the user's email. They click the link,
+// the browser returns to investua.app, and completeEmailLinkSignInOnBoot()
+// finishes the sign-in. No password, no Google account required.
+async function emailLinkLogin(email) {
+  if (!firebaseReady) {
+    alert('Сервіс авторизації тимчасово недоступний.');
+    return false;
+  }
+  const trimmed = (email || '').trim().toLowerCase();
+  if (!trimmed || !/.+@.+\..+/.test(trimmed)) {
+    alert('Введіть коректний email');
+    return false;
+  }
+  const actionCodeSettings = {
+    url: window.location.origin + window.location.pathname,
+    handleCodeInApp: true,
+  };
+  try {
+    await firebase.auth().sendSignInLinkToEmail(trimmed, actionCodeSettings);
+    // Firebase requires the original email to complete sign-in (defends
+    // against link interception on a different device). Stash for the
+    // common-case "click the link in the same browser".
+    window.localStorage.setItem('emailForSignIn', trimmed);
+    return true;
+  } catch (err) {
+    console.error('Email link send failed:', err);
+    alert('Не вдалося надіслати посилання: ' + (err.message || err.code));
+    return false;
+  }
+}
+
+// Triggered from index.html — wraps emailLinkLogin in a confirm flow.
+async function showEmailLoginDialog() {
+  const email = await uiPrompt('Введіть email — надішлемо посилання для входу:', {
+    okText: 'Надіслати',
+    cancelText: 'Скасувати',
+    placeholder: 'your@email.com',
+  });
+  if (!email) return;
+  const ok = await emailLinkLogin(email);
+  if (ok) {
+    await uiConfirm(
+      '✉️ Посилання надіслано на ' + email.trim() + '.\n\nПерейдіть на пошту і натисніть кнопку входу. Можна закрити це вікно — після кліку ви автоматично увійдете.',
+      { okText: 'OK', cancelText: '' }
+    );
+  }
+}
+
+// Run on boot: if the current URL is a Firebase email-link, complete the
+// sign-in. Firebase fires onAuthStateChanged after this resolves.
+async function completeEmailLinkSignInOnBoot() {
+  if (!firebaseReady) return;
+  try {
+    if (!firebase.auth().isSignInWithEmailLink(window.location.href)) return;
+  } catch (_) { return; }
+
+  let email = window.localStorage.getItem('emailForSignIn') || '';
+  if (!email) {
+    // User opened the link on a different device — re-confirm the email.
+    email = await uiPrompt('Підтвердіть email, на який було надіслано посилання:', {
+      okText: 'Увійти',
+      placeholder: 'your@email.com',
+    }) || '';
+    if (!email) return;
+  }
+  try {
+    await firebase.auth().signInWithEmailLink(email.trim().toLowerCase(), window.location.href);
+    window.localStorage.removeItem('emailForSignIn');
+    // Strip Firebase's magic-link query string so a reload doesn't retry.
+    const cleanUrl = window.location.origin + window.location.pathname;
+    history.replaceState(null, '', cleanUrl);
+  } catch (err) {
+    console.error('Email link sign-in failed:', err);
+    alert('Не вдалося завершити вхід: ' + (err.message || err.code));
+  }
 }
 
 function googleLogout() {

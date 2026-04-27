@@ -1464,6 +1464,15 @@ html[data-theme-effective="light"] .currency-summary-cell .a-stat-label { color:
 }
 .btn-google:hover { background: #f1f5f9; }
 .btn-google svg { width: 16px; height: 16px; }
+.btn-email-login {
+  background: transparent;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.btn-email-login:hover { border-color: #60a5fa; color: #60a5fa; }
 .btn-logout {
   background: transparent;
   border: 1px solid #334155;
