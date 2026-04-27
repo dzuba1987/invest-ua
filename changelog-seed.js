@@ -5,6 +5,12 @@
 // Keep bodies short (1 sentence). User-facing changes only.
 window.CHANGELOG_SEED = [
   {
+    id: 'seed-2026-04-27-new-domain',
+    title: '🌐 Нова адреса: investua.app',
+    createdAt: '2026-04-27T18:00:00Z',
+    body: 'Додаток переїхав на власний домен — тепер відкривайте за адресою https://investua.app. Стара адреса продовжує працювати, але рекомендуємо оновити закладку.'
+  },
+  {
     id: 'seed-2026-04-24-nice-dialogs',
     title: '✨ Нові діалоги замість «системних»',
     createdAt: '2026-04-24T22:00:00Z',
