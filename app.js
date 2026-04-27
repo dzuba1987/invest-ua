@@ -6167,7 +6167,8 @@ function _renderBudget(cm, totalPlannedUah, totalBoughtUah) {
   const bar = document.getElementById('budgetProgressBar');
   const stats = document.getElementById('budgetStats');
   if (!monthLabel || !amountEl) return;
-  monthLabel.textContent = formatMonthKey(cm).toLowerCase();
+  const monthIdx = Number((cm || '').split('-')[1]) - 1;
+  monthLabel.textContent = UA_MONTHS_FULL[monthIdx] || formatMonthKey(cm);
   const rec = _monthlyIncome[cm];
   const incomeUah = _incomeUahFor(cm);
   if (!rec || rec.amount <= 0) {
