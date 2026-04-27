@@ -336,8 +336,12 @@ function updateProfileUI() {
     const preserveEdits = typeof FormDrafts !== 'undefined' && FormDrafts.isDirty('profile');
     if (!preserveEdits) {
       document.getElementById('profileDisplayName').value = userProfile.displayName || currentUser.displayName || '';
-      document.getElementById('profileContactEmail').value = userProfile.contactEmail || '';
-      document.getElementById('profilePhone').value = userProfile.phone || '';
+      // Pre-fill from the Google-provided account — saves the user from
+      // re-typing what we already know. Phone is rarely populated by Google
+      // sign-in (Firebase only exposes it for PhoneAuthProvider), but if it
+      // happens to be there we use it.
+      document.getElementById('profileContactEmail').value = userProfile.contactEmail || currentUser.email || '';
+      document.getElementById('profilePhone').value = userProfile.phone || currentUser.phoneNumber || '';
       if (typeof FormDrafts !== 'undefined') FormDrafts.setBaseline('profile');
     }
     updatePinStatus();
