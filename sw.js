@@ -1,4 +1,4 @@
-const CACHE_NAME = 'invest-calc-v118';
+const CACHE_NAME = 'invest-calc-v119';
 const ASSETS = [
   './',
   './index.html',
