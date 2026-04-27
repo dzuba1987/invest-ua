@@ -752,9 +752,11 @@
 
     const stripHtml = s => String(s || '').replace(/<[^>]*>/g, '').trim();
     const subject = 'Нове в Invest UA';
+    const numbered = picks.length > 1;
     const body = picks.map((e, i) => {
       const d = e.createdAt ? new Date(e.createdAt).toLocaleDateString('uk-UA') : '';
-      return (i + 1) + '. ' + stripHtml(e.title) + (d ? ' (' + d + ')' : '') + '\n' + stripHtml(e.body);
+      const prefix = numbered ? (i + 1) + '. ' : '';
+      return prefix + stripHtml(e.title) + (d ? ' (' + d + ')' : '') + '\n' + stripHtml(e.body);
     }).join('\n\n');
 
     if (!await uiConfirm('Надіслати ' + picks.length + ' запис(ів) у Telegram → ' + (user.email || uid) + '?', { okText: 'Надіслати' })) return;
