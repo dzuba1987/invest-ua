@@ -149,8 +149,6 @@ async function saveUserMeta(user) {
 
 function updateAuthUI() {
   const info = document.getElementById('userInfo');
-  const loginBtn = document.getElementById('btnLogin');
-  const emailLoginBtn = document.getElementById('btnEmailLogin');
   const logoutBtn = document.getElementById('btnLogout');
   const profileBtn = document.getElementById('btnProfile');
 
@@ -159,8 +157,6 @@ function updateAuthUI() {
 
   if (currentUser) {
     info.style.display = 'flex';
-    loginBtn.style.display = 'none';
-    if (emailLoginBtn) emailLoginBtn.style.display = 'none';
     logoutBtn.style.display = 'inline-block';
     if (profileBtn) profileBtn.style.display = 'inline-block';
     document.getElementById('userAvatar').src = currentUser.photoURL || '';
@@ -169,8 +165,6 @@ function updateAuthUI() {
     importBtn.style.display = '';
   } else {
     info.style.display = 'none';
-    loginBtn.style.display = 'flex';
-    if (emailLoginBtn) emailLoginBtn.style.display = 'inline-flex';
     logoutBtn.style.display = 'none';
     if (profileBtn) profileBtn.style.display = 'none';
     saveBtn.style.display = 'none';
