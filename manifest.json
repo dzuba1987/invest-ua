@@ -1,7 +1,7 @@
 {
-  "name": "Invest UA — портфель вкладень",
+  "name": "Invest UA",
   "short_name": "Invest UA",
-  "description": "Портфель вкладень — ОВДП, депозити, кредити. Калькулятор, аналітика, курси валют, Telegram-бот.",
+  "description": "Твої фінанси: інвестиції, заощадження, мрії та планування витрат. Калькулятор, аналітика, курси валют, Telegram-бот.",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f172a",

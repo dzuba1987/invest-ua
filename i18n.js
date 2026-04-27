@@ -1,7 +1,7 @@
 const I18N = {
   uk: {
     // Header
-    'app.subtitle': 'Портфель вкладень',
+    'app.subtitle': 'Твої фінанси',
     'help': 'Довідка',
     'login': 'Увійти через Google',
     'logout': 'Вийти',
@@ -207,7 +207,7 @@ const I18N = {
 
   en: {
     // Header
-    'app.subtitle': 'Investment portfolio',
+    'app.subtitle': 'Your finances',
     'help': 'Help',
     'login': 'Sign in with Google',
     'logout': 'Sign out',
