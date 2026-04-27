@@ -5788,7 +5788,7 @@ function renderPurchases() {
   const totalMonthUah = totalPlannedCmUah + totalBoughtCmUah;
   const monthLower = formatMonthKey(cm).toLowerCase();
   const isCurrentMonth = cm === realCm;
-  document.getElementById('purchasesHeroLabel').textContent = 'Заплановано ' + monthLower;
+  document.getElementById('purchasesHeroLabel').textContent = 'Заплановано витрат на ' + monthLower;
   document.getElementById('purchasesTotalPlanned').textContent = formatShort(totalMonthUah) + ' грн';
   document.getElementById('purchasesHeroHint').textContent = usdRate ? '≈ $' + formatNum(totalMonthUah / usdRate) : '';
   document.getElementById('purchasesBoughtValue').textContent = formatShort(totalBoughtCmUah) + ' грн';
