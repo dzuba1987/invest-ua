@@ -1803,7 +1803,29 @@ function installApp() {
 }
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW:', err));
+  // updateViaCache:'none' — never use the browser HTTP cache for sw.js itself.
+  // GitHub Pages and CDNs aggressively cache static files; without this flag a
+  // freshly-deployed sw.js can be served from cache for hours, so users would
+  // never see the new CACHE_NAME and would stay on the old build.
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
+    // Probe for new SW versions when the tab regains focus and once an hour
+    // while it stays open — covers the "PWA left running for days" case.
+    const checkForUpdate = () => { reg.update().catch(() => {}); };
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') checkForUpdate();
+    });
+    setInterval(checkForUpdate, 60 * 60 * 1000);
+  }).catch(err => console.warn('SW:', err));
+
+  // sw.js calls skipWaiting() + clients.claim(), so the new worker takes
+  // control as soon as it's installed. controllerchange fires once at that
+  // moment — reload the page to pick up the freshly cached HTML/JS.
+  let _swReloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (_swReloading) return;
+    _swReloading = true;
+    window.location.reload();
+  });
 }
 
 // Firebase and Telegram logic moved to firebase.js and telegram.js
