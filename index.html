@@ -90,7 +90,7 @@
     <button class="main-tab" onclick="switchMainTab('currencies', this)" data-i18n="tab.currencies">Валюти</button>
     <button class="main-tab" onclick="switchMainTab('dreams', this)" data-i18n="tab.dreams">Мрії</button>
     <button class="main-tab" onclick="switchMainTab('savings', this)" data-i18n="tab.savings">Заощадження</button>
-    <button class="main-tab" onclick="switchMainTab('purchases', this)" data-i18n="tab.purchases">Планування витрат</button>
+    <button class="main-tab" onclick="switchMainTab('purchases', this)" data-i18n="tab.purchases">Облік та планування витрат</button>
     <button class="main-tab" onclick="switchMainTab('updates', this)" data-i18n="tab.updates" style="position:relative">Оновлення<span id="updatesBadge" class="tab-badge" style="display:none"></span></button>
   </div>
 
@@ -823,7 +823,7 @@
       <button class="btn-save" id="btnTogglePurchaseForm" onclick="togglePurchaseForm()" style="width:100%;margin-bottom:16px">+ Нова витрата</button>
 
       <div class="a-card" id="purchaseFormCard" style="display:none">
-        <h3>Запланована витрата</h3>
+        <h3>Витрата</h3>
         <div class="form-grid" style="margin-bottom:16px">
           <div class="field field-full">
             <label>Назва</label>
@@ -847,12 +847,8 @@
             </select>
           </div>
           <div class="field">
-            <label>Місяць витрати</label>
-            <div style="display:flex;gap:8px">
-              <select id="purchaseMonthM" onchange="_syncPurchaseMonth()" style="flex:2;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none"></select>
-              <select id="purchaseMonthY" onchange="_syncPurchaseMonth()" style="flex:1;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none"></select>
-            </div>
-            <input type="hidden" id="purchaseMonth">
+            <label>Дата</label>
+            <input type="date" id="purchaseDate" style="width:100%;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none">
           </div>
           <div class="field field-full">
             <label>Посилання</label>
@@ -870,7 +866,10 @@
             <p style="font-size:12px;color:#64748b;margin:4px 0 0 26px">Після відмітки «Здійснено» наступна копія з'явиться у наступному місяці.</p>
           </div>
         </div>
-        <button class="btn-save" id="btnAddPurchase" onclick="addPurchase()">Додати витрату</button>
+        <div class="btn-row" id="purchaseFormActions">
+          <button class="btn-import" id="btnRecordPurchase" onclick="addPurchase('record')">Внести витрату</button>
+          <button class="btn-save" id="btnAddPurchase" onclick="addPurchase('plan')">Запланувати</button>
+        </div>
         <p class="error" id="purchaseError"></p>
       </div>
       <p class="success-msg" id="purchaseSuccess"></p>
@@ -901,10 +900,31 @@
           </div>
         </div>
 
+        <!-- Calendar of planned/recorded expenses for the visible month -->
+        <div class="a-card purchase-calendar-card" id="purchaseCalendarCard" style="display:none">
+          <div class="purchase-calendar-header">
+            <div class="purchase-calendar-nav">
+              <button class="purchase-calendar-nav-btn" type="button" onclick="_navPurchaseCalendar(-12)" title="Рік назад" aria-label="Рік назад">‹‹</button>
+              <button class="purchase-calendar-nav-btn" type="button" onclick="_navPurchaseCalendar(-1)" title="Попередній місяць" aria-label="Попередній місяць">‹</button>
+              <h3 style="margin:0">📅 <span id="purchaseCalendarMonth">місяць</span></h3>
+              <button class="purchase-calendar-nav-btn" type="button" onclick="_navPurchaseCalendar(1)" title="Наступний місяць" aria-label="Наступний місяць">›</button>
+              <button class="purchase-calendar-nav-btn" type="button" onclick="_navPurchaseCalendar(12)" title="Рік вперед" aria-label="Рік вперед">››</button>
+              <button class="purchase-calendar-nav-btn purchase-calendar-today-btn" type="button" onclick="_navPurchaseCalendarToday()" title="До поточного місяця">Сьогодні</button>
+            </div>
+            <div class="purchase-calendar-legend">
+              <span class="purchase-calendar-legend-dot is-planned"></span><span>Заплановано</span>
+              <span class="purchase-calendar-legend-dot is-done"></span><span>Здійснено</span>
+            </div>
+          </div>
+          <div class="purchase-calendar-weekdays" id="purchaseCalendarWeekdays"></div>
+          <div class="purchase-calendar-grid" id="purchaseCalendarGrid"></div>
+          <div class="purchase-calendar-day-detail" id="purchaseCalendarDetail" style="display:none"></div>
+        </div>
+
         <!-- Income + budget indicator for current month -->
         <div class="a-card budget-card">
           <div class="budget-header">
-            <h3 style="margin:0">💵 Дохід за <span id="budgetMonthLabel">місяць</span></h3>
+            <h3 style="margin:0">💵 Запланований бюджет на <span id="budgetMonthLabel">місяць</span></h3>
             <button class="btn-clear budget-edit-btn" type="button" onclick="openBudgetEditor()">✎ Редагувати</button>
           </div>
           <div id="budgetBody">
@@ -914,7 +934,7 @@
                 <div class="budget-progress"><div class="budget-progress-bar" id="budgetProgressBar"></div></div>
                 <div class="budget-stats" id="budgetStats"></div>
               </div>
-              <p class="budget-hint" id="budgetHint" style="display:none">Вкажіть ваш місячний дохід, щоб бачити, яка частина бюджету вже розписана на витрати.</p>
+              <p class="budget-hint" id="budgetHint" style="display:none">Вкажіть запланований бюджет на місяць, щоб бачити, яка частина вже розписана на витрати.</p>
             </div>
             <div id="budgetForm" style="display:none">
               <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">

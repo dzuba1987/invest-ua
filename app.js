@@ -126,7 +126,7 @@ function _runGlobalSearch() {
       const cc = (p.currency || 'UAH').toUpperCase();
       const sym = cc === 'USD' ? '$' : cc === 'EUR' ? '€' : '';
       const amountStr = cc === 'UAH' ? formatShort(p.amount || 0) + ' грн' : sym + formatShort(p.amount || 0);
-      const monthStr = p.plannedMonth ? ' · ' + (typeof formatMonthKey === 'function' ? formatMonthKey(p.plannedMonth) : p.plannedMonth) : '';
+      const monthStr = (p.plannedDate || p.plannedMonth) ? ' · ' + formatPurchaseWhen(p) : '';
       const boughtStr = p.bought ? ' · ✓ здійснено' : '';
       const isShared = typeof sharedPurchaseItems !== 'undefined' && sharedPurchaseItems.some(x => String(x.id) === String(p.id));
       const sharedStr = isShared ? ' · 👥 спільна' : '';
@@ -5264,6 +5264,8 @@ function onPurchaseCurrencyChange() {
 // Month helpers — 'YYYY-MM' format throughout.
 const UA_MONTHS_FULL = ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень',
                         'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'];
+const UA_MONTHS_GENITIVE = ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня',
+                            'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня'];
 function currentMonthKey() {
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
@@ -5279,47 +5281,46 @@ function formatMonthKey(monthKey) {
   return UA_MONTHS_FULL[m - 1] + ' ' + y;
 }
 
-// Populate localized month + year selects (native <input type="month"> uses
-// browser locale which is often English — replaced with two Ukr selects).
-function _populatePurchaseMonthPicker() {
-  const selM = document.getElementById('purchaseMonthM');
-  const selY = document.getElementById('purchaseMonthY');
-  if (!selM || !selY) return;
-  if (!selM.options.length) {
-    selM.innerHTML = UA_MONTHS_FULL.map((name, i) =>
-      '<option value="' + String(i + 1).padStart(2, '0') + '">' + name + '</option>'
-    ).join('');
-  }
-  if (!selY.options.length) {
-    const nowY = new Date().getFullYear();
-    const opts = [];
-    for (let y = nowY - 1; y <= nowY + 5; y++) opts.push('<option value="' + y + '">' + y + '</option>');
-    selY.innerHTML = opts.join('');
-  }
+function _todayDateKey() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + dd;
 }
 
-function _syncPurchaseMonth() {
-  const m = document.getElementById('purchaseMonthM').value;
-  const y = document.getElementById('purchaseMonthY').value;
-  const hidden = document.getElementById('purchaseMonth');
-  if (hidden) hidden.value = y + '-' + m;
+function _purchasePlannedDate(p) {
+  if (!p) return null;
+  if (p.plannedDate) return p.plannedDate;
+  if (p.plannedMonth) return p.plannedMonth + '-01';
+  return null;
 }
 
-function _setPurchaseMonthPicker(monthKey) {
-  _populatePurchaseMonthPicker();
-  const key = monthKey || currentMonthKey();
-  const [y, m] = key.split('-');
-  const selM = document.getElementById('purchaseMonthM');
-  const selY = document.getElementById('purchaseMonthY');
-  // Ensure the saved year appears even if outside default range (e.g. old data).
-  if (selY && !Array.from(selY.options).some(o => o.value === y)) {
-    selY.insertAdjacentHTML('afterbegin', '<option value="' + y + '">' + y + '</option>');
+function formatPurchaseWhen(p) {
+  if (!p) return '—';
+  if (p.plannedDate) {
+    const [y, m, d] = p.plannedDate.split('-').map(Number);
+    return d + ' ' + (UA_MONTHS_GENITIVE[m - 1] || '') + ' ' + y;
   }
-  if (selM) selM.value = m;
-  if (selY) selY.value = y;
-  const hidden = document.getElementById('purchaseMonth');
-  if (hidden) hidden.value = key;
+  return formatMonthKey(p.plannedMonth);
 }
+
+function _addOneMonthDate(dateStr) {
+  const [yStr, mStr, dStr] = dateStr.split('-');
+  const y = Number(yStr), m = Number(mStr), d = Number(dStr);
+  // m is 1-based; new Date(y, m, 1) is the 1st of next month (JS month is 0-based).
+  const lastDay = new Date(y, m + 1, 0).getDate();
+  const day = Math.min(d, lastDay);
+  const ny = m === 12 ? y + 1 : y;
+  const nm = m === 12 ? 1 : m + 1;
+  return ny + '-' + String(nm).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+}
+
+function _setPurchaseDate(dateKey) {
+  const input = document.getElementById('purchaseDate');
+  if (input) input.value = dateKey || _todayDateKey();
+}
+
 
 async function togglePurchaseForm(forceOpen) {
   const card = document.getElementById('purchaseFormCard');
@@ -5336,10 +5337,8 @@ async function togglePurchaseForm(forceOpen) {
     btn.textContent = '− Скасувати';
     btn.classList.remove('btn-save');
     btn.classList.add('btn-export');
-    _populatePurchaseMonthPicker();
-    if (!document.getElementById('purchaseMonth').value) {
-      _setPurchaseMonthPicker(currentMonthKey());
-    }
+    const dateInput = document.getElementById('purchaseDate');
+    if (dateInput && !dateInput.value) dateInput.value = _todayDateKey();
     renderPurchaseIconPicker();
     onPurchaseCurrencyChange();
     if (typeof FormDrafts !== 'undefined' && FormDrafts.hasDraft('purchase.form') && !FormDrafts.isDirty('purchase.form') && !_editingPurchaseId) {
@@ -5355,9 +5354,11 @@ async function togglePurchaseForm(forceOpen) {
     btn.classList.remove('btn-export');
     btn.classList.add('btn-save');
     const addBtn = document.getElementById('btnAddPurchase');
-    addBtn.textContent = 'Додати витрату';
+    addBtn.textContent = 'Запланувати';
     addBtn.classList.remove('btn-export');
     addBtn.classList.add('btn-save');
+    const recordBtn = document.getElementById('btnRecordPurchase');
+    if (recordBtn) recordBtn.style.display = '';
     _editingPurchaseId = null;
   }
 }
@@ -5366,7 +5367,7 @@ function _clearPurchaseForm() {
   document.getElementById('purchaseName').value = '';
   document.getElementById('purchaseAmount').value = '';
   document.getElementById('purchaseCurrency').value = 'UAH';
-  _setPurchaseMonthPicker(currentMonthKey());
+  _setPurchaseDate(_todayDateKey());
   document.getElementById('purchaseLink').value = '';
   document.getElementById('purchaseNotes').value = '';
   document.getElementById('purchaseRecurring').checked = false;
@@ -5375,12 +5376,14 @@ function _clearPurchaseForm() {
   onPurchaseCurrencyChange();
 }
 
-function addPurchase() {
+function addPurchase(mode) {
+  const recordNow = mode === 'record';
   const name = document.getElementById('purchaseName').value.trim();
   const amount = parseNum(document.getElementById('purchaseAmount').value);
   const currency = document.getElementById('purchaseCurrency').value || 'UAH';
-  _syncPurchaseMonth();
-  const month = document.getElementById('purchaseMonth').value || currentMonthKey();
+  const dateInput = document.getElementById('purchaseDate');
+  const plannedDate = (dateInput && dateInput.value) ? dateInput.value : _todayDateKey();
+  const month = plannedDate.slice(0, 7);
   const link = document.getElementById('purchaseLink').value.trim();
   const notes = document.getElementById('purchaseNotes').value.trim();
   const icon = document.getElementById('purchaseIcon').value || DEFAULT_PURCHASE_ICON;
@@ -5392,7 +5395,7 @@ function addPurchase() {
   if (!(amount > 0)) { err.textContent = 'Вкажіть суму більше 0'; return; }
   if (link && !/^https?:\/\//i.test(link)) { err.textContent = 'Посилання має починатися з http:// або https://'; return; }
 
-  const payload = { name, icon, amount, currency, plannedMonth: month, link, notes, recurring };
+  const payload = { name, icon, amount, currency, plannedDate, plannedMonth: month, link, notes, recurring };
 
   if (_editingPurchaseId) {
     const found = _findPurchase(_editingPurchaseId);
@@ -5401,8 +5404,6 @@ function addPurchase() {
       found.list[found.index] = updated;
       _editingPurchaseId = null;
       _clearPurchaseForm();
-      // Clear draft BEFORE toggling close — otherwise togglePurchaseForm sees a
-      // dirty form and shows the "discard changes?" prompt over a successful save.
       if (typeof FormDrafts !== 'undefined') FormDrafts.clear('purchase.form');
       togglePurchaseForm(false);
       renderPurchases();
@@ -5414,13 +5415,41 @@ function addPurchase() {
     }
     _editingPurchaseId = null;
   } else {
-    purchaseItems.push({
+    const newItem = {
       id: Date.now(),
       ...payload,
-      bought: false,
+      bought: !!recordNow,
       deferCount: 0,
       createdAt: new Date().toISOString()
-    });
+    };
+    if (recordNow) {
+      newItem.boughtAt = new Date().toISOString();
+      newItem.boughtAmount = amount;
+    }
+    purchaseItems.push(newItem);
+
+    // Recurring + record: spawn next-month copy preserving day-of-month.
+    if (recordNow && recurring) {
+      const nextDate = _addOneMonthDate(plannedDate);
+      const nextMonth = nextDate.slice(0, 7);
+      const alreadyExists = purchaseItems.some(p =>
+        !p.bought
+        && (p.plannedMonth || '') === nextMonth
+        && String(p.name || '').trim() === name
+        && p.recurring
+      );
+      if (!alreadyExists) {
+        purchaseItems.push({
+          ...payload,
+          plannedDate: nextDate,
+          plannedMonth: nextMonth,
+          id: Date.now() + Math.floor(Math.random() * 1000),
+          bought: false,
+          deferCount: 0,
+          createdAt: new Date().toISOString()
+        });
+      }
+    }
   }
 
   _clearPurchaseForm();
@@ -5429,7 +5458,7 @@ function addPurchase() {
   renderPurchases();
   savePurchasesToFirestore();
   const success = document.getElementById('purchaseSuccess');
-  success.textContent = '✓ Збережено';
+  success.textContent = recordNow ? '✓ Внесено' : '✓ Заплановано';
   setTimeout(() => { success.textContent = ''; }, 2000);
 }
 
@@ -5442,13 +5471,15 @@ function editPurchase(id) {
   btn.textContent = 'Зберегти зміни';
   btn.classList.remove('btn-save');
   btn.classList.add('btn-export');
+  const recordBtn = document.getElementById('btnRecordPurchase');
+  if (recordBtn) recordBtn.style.display = 'none';
   // Open the form first so togglePurchaseForm doesn't re-populate from scratch
   // after we set the fields. Populate fields AFTER opening.
   togglePurchaseForm(true);
   document.getElementById('purchaseName').value = item.name || '';
   document.getElementById('purchaseAmount').value = item.amount ? formatShort(item.amount) : '';
   document.getElementById('purchaseCurrency').value = item.currency || 'UAH';
-  _setPurchaseMonthPicker(item.plannedMonth || currentMonthKey());
+  _setPurchaseDate(_purchasePlannedDate(item) || _todayDateKey());
   document.getElementById('purchaseLink').value = item.link || '';
   document.getElementById('purchaseNotes').value = item.notes || '';
   document.getElementById('purchaseRecurring').checked = !!item.recurring;
@@ -5517,7 +5548,9 @@ async function markPurchaseBought(id) {
   _persistPurchase(updated, found.source);
   // Recurring: spawn a clean copy for the next month (if not already present).
   if (item.recurring && found.source === 'private') {
-    const nextMonth = addMonths(item.plannedMonth || currentMonthKey(), 1);
+    const baseDate = item.plannedDate || ((item.plannedMonth || currentMonthKey()) + '-01');
+    const nextDate = _addOneMonthDate(baseDate);
+    const nextMonth = nextDate.slice(0, 7);
     const alreadyExists = purchaseItems.some(p =>
       !p.bought
       && (p.plannedMonth || '') === nextMonth
@@ -5529,6 +5562,7 @@ async function markPurchaseBought(id) {
       purchaseItems.push({
         ...rest,
         id: Date.now() + Math.floor(Math.random() * 1000),
+        plannedDate: nextDate,
         plannedMonth: nextMonth,
         bought: false,
         deferCount: 0,
@@ -5564,10 +5598,12 @@ async function unmarkPurchaseBought(id) {
 function deferPurchase(id) {
   const found = _findPurchase(id);
   if (!found) return;
-  const current = found.item.plannedMonth || currentMonthKey();
+  const baseDate = found.item.plannedDate || ((found.item.plannedMonth || currentMonthKey()) + '-01');
+  const nextDate = _addOneMonthDate(baseDate);
   const updated = {
     ...found.item,
-    plannedMonth: addMonths(current, 1),
+    plannedDate: nextDate,
+    plannedMonth: nextDate.slice(0, 7),
     deferCount: (found.item.deferCount || 0) + 1
   };
   found.list[found.index] = updated;
@@ -5584,7 +5620,7 @@ function sharePurchase(id) {
   const lines = [
     icon + ' ' + item.name,
     '💰 ' + fmtPurchaseAmount(item.amount, cc),
-    '📅 ' + formatMonthKey(item.plannedMonth)
+    '📅 ' + formatPurchaseWhen(item)
   ];
   if (item.link) lines.push('🔗 ' + item.link);
   if (item.notes) lines.push('📝 ' + item.notes);
@@ -5734,15 +5770,21 @@ function renderPurchases() {
   });
 
   const usdRate = cachedRates && cachedRates.USD;
-  document.getElementById('purchasesHeroLabel').textContent = 'Заплановано на ' + formatMonthKey(cm);
-  document.getElementById('purchasesTotalPlanned').textContent = formatShort(totalPlannedCmUah) + ' грн';
-  document.getElementById('purchasesHeroHint').textContent = usdRate ? '≈ $' + formatNum(totalPlannedCmUah / usdRate) : '';
+  // Hero shows the full monthly outflow plan: not-yet-spent (totalPlannedCmUah)
+  // plus already-spent (totalBoughtCmUah) — together they form the month's
+  // committed budget. Sub-tiles split it back into "spent" and "remaining".
+  const totalMonthUah = totalPlannedCmUah + totalBoughtCmUah;
+  document.getElementById('purchasesHeroLabel').textContent = 'Заплановано ' + formatMonthKey(cm).toLowerCase();
+  document.getElementById('purchasesTotalPlanned').textContent = formatShort(totalMonthUah) + ' грн';
+  document.getElementById('purchasesHeroHint').textContent = usdRate ? '≈ $' + formatNum(totalMonthUah / usdRate) : '';
   document.getElementById('purchasesBoughtValue').textContent = formatShort(totalBoughtCmUah) + ' грн';
-  document.getElementById('purchasesRemainingValue').textContent = formatShort(Math.max(0, totalPlannedCmUah - totalBoughtCmUah)) + ' грн';
+  document.getElementById('purchasesRemainingValue').textContent = formatShort(totalPlannedCmUah) + ' грн';
   document.getElementById('purchasesOverdueCount').textContent = String(groups.overdue.length);
   document.getElementById('purchasesFutureCount').textContent = String(groups.future.length);
   dashboard.style.display = 'block';
 
+  // Calendar view of expenses (navigable; defaults to current month).
+  _renderPurchaseCalendar();
   // Budget (income) indicator for current month.
   _renderBudget(cm, totalPlannedCmUah, totalBoughtCmUah);
   // Category breakdown for current month.
@@ -5795,7 +5837,7 @@ function renderPurchases() {
           </div>
           <div class="p-item-details">
             <span>${amountStr}${uahEq}</span>
-            <span>${formatMonthKey(p.plannedMonth)}</span>
+            <span>${formatPurchaseWhen(p)}</span>
             ${p.boughtAt ? '<span style="color:#64748b">Позначено: ' + new Date(p.boughtAt).toLocaleDateString('uk-UA') + '</span>' : ''}
           </div>
           ${linkHtml}
@@ -5807,9 +5849,13 @@ function renderPurchases() {
 
     const isOverdue = opts.isOverdue;
     const deferBadge = p.deferCount ? '<span class="p-item-type" style="background:rgba(251,191,36,0.15);color:#fbbf24">перенесено ×' + p.deferCount + '</span>' : '';
-    const nextMonthName = formatMonthKey(addMonths(p.plannedMonth || cm, 1));
+    const nextDateLabel = (() => {
+      const base = p.plannedDate || ((p.plannedMonth || cm) + '-01');
+      const next = _addOneMonthDate(base);
+      return p.plannedDate ? formatPurchaseWhen({ plannedDate: next }) : formatMonthKey(next.slice(0, 7));
+    })();
     actions.push('<button class="btn-save purchase-action" title="Відмітити як здійснену" onclick="event.stopPropagation();markPurchaseBought(\'' + p.id + '\')">✓ Відмітити</button>');
-    actions.push('<button class="btn-clear purchase-action" onclick="event.stopPropagation();deferPurchase(\'' + p.id + '\')" title="Перенести на ' + nextMonthName + '">📅 +міс</button>');
+    actions.push('<button class="btn-clear purchase-action" onclick="event.stopPropagation();deferPurchase(\'' + p.id + '\')" title="Перенести на ' + nextDateLabel + '">📅 +міс</button>');
     actions.push('<button class="btn-delete purchase-action-icon" title="Деталі" onclick="event.stopPropagation();openPurchaseDetail(\'' + p.id + '\')" style="color:#60a5fa">📋</button>');
     if (isShared) {
       actions.push('<button class="btn-delete purchase-action-icon" title="Запросити ще учасника" onclick="event.stopPropagation();invitePurchaseByEmail(\'' + p.id + '\')" style="color:#60a5fa">👥</button>');
@@ -5833,7 +5879,7 @@ function renderPurchases() {
         </div>
         <div class="p-item-details">
           <span><strong>${amountStr}</strong>${uahEq}</span>
-          <span>${formatMonthKey(p.plannedMonth)}</span>
+          <span>${formatPurchaseWhen(p)}</span>
         </div>
         ${linkHtml}
         ${p.notes ? '<div class="p-item-notes" style="white-space:pre-wrap">' + esc(p.notes) + '</div>' : ''}
@@ -5948,6 +5994,153 @@ function renderPurchases() {
   }
 
   list.innerHTML = sanitize(sections.join(''));
+}
+
+let _selectedPurchaseCalendarDate = null;
+let _purchaseCalendarMonth = null; // YYYY-MM, null = follow current month
+
+function _activePurchaseCalendarMonth() {
+  return _purchaseCalendarMonth || currentMonthKey();
+}
+
+function _navPurchaseCalendar(direction) {
+  const cur = _activePurchaseCalendarMonth();
+  _purchaseCalendarMonth = addMonths(cur, direction);
+  _selectedPurchaseCalendarDate = null;
+  _renderPurchaseCalendar();
+}
+
+function _navPurchaseCalendarToday() {
+  _purchaseCalendarMonth = null;
+  _selectedPurchaseCalendarDate = null;
+  _renderPurchaseCalendar();
+}
+
+function _renderPurchaseCalendar() {
+  const card = document.getElementById('purchaseCalendarCard');
+  const grid = document.getElementById('purchaseCalendarGrid');
+  const weekdays = document.getElementById('purchaseCalendarWeekdays');
+  const monthLabel = document.getElementById('purchaseCalendarMonth');
+  const detailEl = document.getElementById('purchaseCalendarDetail');
+  if (!card || !grid || !weekdays) return;
+
+  const allItems = [
+    ...(typeof purchaseItems !== 'undefined' ? purchaseItems : []),
+    ...(typeof sharedPurchaseItems !== 'undefined' ? sharedPurchaseItems : [])
+  ];
+  if (!allItems.length) {
+    card.style.display = 'none';
+    return;
+  }
+
+  const cm = _activePurchaseCalendarMonth();
+  monthLabel.textContent = formatMonthKey(cm).toLowerCase();
+
+  // Build weekday headers (Monday-first, Ukrainian short names).
+  const wdNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
+  weekdays.innerHTML = wdNames.map((n, i) =>
+    '<span' + (i >= 5 ? ' class="is-weekend"' : '') + '>' + n + '</span>'
+  ).join('');
+
+  const [yStr, mStr] = cm.split('-');
+  const y = Number(yStr), m = Number(mStr);
+  // First day of month (Mon=0..Sun=6).
+  const firstDow = (new Date(y, m - 1, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const todayKey = _todayDateKey();
+
+  // Group items by ISO date.
+  const byDay = {};
+  allItems.forEach(p => {
+    const cc = purchaseCurOf(p);
+    const uah = purchaseToUah(p.boughtAmount || p.amount, cc);
+    let dateKey;
+    if (p.plannedDate) dateKey = p.plannedDate;
+    else if (p.bought && p.boughtAt) dateKey = p.boughtAt.slice(0, 10);
+    else if (p.plannedMonth) dateKey = p.plannedMonth + '-01';
+    else return;
+    if (dateKey.slice(0, 7) !== cm) return;
+    if (!byDay[dateKey]) byDay[dateKey] = { items: [], totalUah: 0, hasPlanned: false, hasDone: false };
+    byDay[dateKey].items.push(p);
+    if (uah != null) byDay[dateKey].totalUah += uah;
+    if (p.bought) byDay[dateKey].hasDone = true;
+    else byDay[dateKey].hasPlanned = true;
+  });
+
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) {
+    cells.push('<div class="purchase-calendar-day is-empty"></div>');
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    const data = byDay[key];
+    const isToday = key === todayKey;
+    const isSelected = _selectedPurchaseCalendarDate === key;
+    const cls = ['purchase-calendar-day'];
+    if (isToday) cls.push('is-today');
+    if (isSelected) cls.push('is-selected');
+    if (data) cls.push('is-active');
+    let dotClass = '';
+    if (data) {
+      if (data.hasPlanned && data.hasDone) dotClass = 'is-mixed';
+      else if (data.hasDone) dotClass = 'is-done';
+      else dotClass = 'is-planned';
+    }
+    const icons = data
+      ? data.items.slice(0, 3).map(it => '<span>' + esc(purchaseIconOf(it)) + '</span>').join('')
+      + (data.items.length > 3 ? '<span style="color:#94a3b8">+' + (data.items.length - 3) + '</span>' : '')
+      : '';
+    const amount = data ? '<div class="purchase-calendar-day-amount' + (data.hasDone ? ' has-done' : '') + '">' + formatShort(data.totalUah) + '</div>' : '';
+    const dot = dotClass ? '<span class="purchase-calendar-day-dot ' + dotClass + '"></span>' : '';
+    const onclick = data ? ' onclick="_selectPurchaseCalendarDay(\'' + key + '\')"' : '';
+    cells.push(
+      '<div class="' + cls.join(' ') + '"' + onclick + '>' +
+        dot +
+        '<span class="purchase-calendar-day-num">' + d + '</span>' +
+        (icons ? '<div class="purchase-calendar-day-icons">' + icons + '</div>' : '') +
+        amount +
+      '</div>'
+    );
+  }
+
+  grid.innerHTML = sanitize(cells.join(''));
+  card.style.display = 'block';
+
+  // Render detail panel for the selected day, if it still has items.
+  if (_selectedPurchaseCalendarDate && byDay[_selectedPurchaseCalendarDate]) {
+    _renderCalendarDayDetail(_selectedPurchaseCalendarDate, byDay[_selectedPurchaseCalendarDate]);
+  } else {
+    _selectedPurchaseCalendarDate = null;
+    if (detailEl) { detailEl.style.display = 'none'; detailEl.innerHTML = ''; }
+  }
+}
+
+function _renderCalendarDayDetail(dayKey, data) {
+  const detailEl = document.getElementById('purchaseCalendarDetail');
+  if (!detailEl) return;
+  const [y, mo, d] = dayKey.split('-').map(Number);
+  const title = d + ' ' + (UA_MONTHS_GENITIVE[mo - 1] || '') + ' ' + y;
+  const rows = data.items.map(p => {
+    const cc = purchaseCurOf(p);
+    const amt = fmtPurchaseAmount(p.boughtAmount || p.amount, cc);
+    const cls = 'pcal-item' + (p.bought ? ' is-done' : '');
+    return '<div class="' + cls + '" onclick="openPurchaseDetail(\'' + p.id + '\')">' +
+      '<span style="font-size:18px">' + esc(purchaseIconOf(p)) + '</span>' +
+      '<span class="pcal-item-name">' + esc(p.name || '') + (p.bought ? ' · ✓' : '') + '</span>' +
+      '<span class="pcal-item-amount">' + esc(amt) + '</span>' +
+    '</div>';
+  }).join('');
+  detailEl.innerHTML = sanitize('<h4>' + title + '</h4>' + rows);
+  detailEl.style.display = 'block';
+}
+
+function _selectPurchaseCalendarDay(dayKey) {
+  _selectedPurchaseCalendarDate = (_selectedPurchaseCalendarDate === dayKey) ? null : dayKey;
+  _renderPurchaseCalendar();
+  if (_selectedPurchaseCalendarDate) {
+    const detail = document.getElementById('purchaseCalendarDetail');
+    if (detail) detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 }
 
 function _renderBudget(cm, totalPlannedUah, totalBoughtUah) {
@@ -6609,7 +6802,7 @@ function openPurchaseDetail(id) {
     <div class="a-card">
       <h3>Деталі</h3>
       <div class="detail-info-row"><span class="detail-info-label">Сума</span><span class="detail-info-value">${amountStr}${uahEq}</span></div>
-      <div class="detail-info-row"><span class="detail-info-label">Запланований місяць</span><span class="detail-info-value">${formatMonthKey(p.plannedMonth)}</span></div>
+      <div class="detail-info-row"><span class="detail-info-label">${p.plannedDate ? 'Запланована дата' : 'Запланований місяць'}</span><span class="detail-info-value">${formatPurchaseWhen(p)}</span></div>
       ${p.deferCount ? '<div class="detail-info-row"><span class="detail-info-label">Перенесень</span><span class="detail-info-value">' + p.deferCount + '</span></div>' : ''}
       ${p.bought && p.boughtAt ? '<div class="detail-info-row"><span class="detail-info-label">Позначено як здійснена</span><span class="detail-info-value">' + new Date(p.boughtAt).toLocaleDateString('uk-UA') + '</span></div>' : ''}
       ${p.bought && p.boughtAmount && p.boughtAmount !== p.amount ? '<div class="detail-info-row"><span class="detail-info-label">Фактична сума</span><span class="detail-info-value">' + fmtPurchaseAmount(p.boughtAmount, cc) + '</span></div>' : ''}
@@ -6848,8 +7041,8 @@ if (typeof FormDrafts !== 'undefined') {
     'savingName', 'savingAmount', 'savingCurrency', 'savingNotes', 'savingDreamId'
   ]);
   FormDrafts.register('purchase.form', [
-    'purchaseName', 'purchaseAmount', 'purchaseCurrency', 'purchaseMonth',
-    'purchaseMonthM', 'purchaseMonthY', 'purchaseLink', 'purchaseNotes', 'purchaseIcon'
+    'purchaseName', 'purchaseAmount', 'purchaseCurrency', 'purchaseDate',
+    'purchaseLink', 'purchaseNotes', 'purchaseIcon'
   ]);
   FormDrafts.register('profile', [
     'profileDisplayName', 'profileContactEmail', 'profilePhone'

@@ -812,6 +812,131 @@ html[data-theme-effective="light"] .ui-dialog-footer { background: #f8fafc; bord
   margin: 6px 0 0;
 }
 
+/* Purchase calendar */
+.purchase-calendar-card { margin-top: 12px; }
+.purchase-calendar-header { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom: 12px; flex-wrap:wrap; }
+.purchase-calendar-nav { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.purchase-calendar-nav h3 { min-width: 160px; text-align:center; }
+.purchase-calendar-nav-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin: 0;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.purchase-calendar-nav-btn:hover { background: #334155; border-color: #475569; }
+.purchase-calendar-nav-btn.purchase-calendar-today-btn {
+  width: auto;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-left: 6px;
+}
+.purchase-calendar-legend { display:flex; align-items:center; gap:8px; font-size:12px; color:#94a3b8; flex-wrap:wrap; }
+.purchase-calendar-legend > span:not(.purchase-calendar-legend-dot) { margin-right: 6px; }
+.purchase-calendar-legend-dot { display:inline-block; width:10px; height:10px; border-radius:50%; }
+.purchase-calendar-legend-dot.is-planned { background:#60a5fa; }
+.purchase-calendar-legend-dot.is-done { background:#4ade80; }
+.purchase-calendar-weekdays {
+  display:grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap:4px;
+  font-size:11px;
+  color:#64748b;
+  text-align:center;
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+  margin-bottom:6px;
+}
+.purchase-calendar-weekdays > span { padding:4px 0; }
+.purchase-calendar-weekdays > span.is-weekend { color:#94a3b8; }
+.purchase-calendar-grid {
+  display:grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap:4px;
+}
+.purchase-calendar-day {
+  background:#0f172a;
+  border:1px solid #1e293b;
+  border-radius:8px;
+  min-height:64px;
+  padding:6px 6px 4px;
+  display:flex;
+  flex-direction:column;
+  font-size:12px;
+  color:#94a3b8;
+  position:relative;
+  cursor:default;
+}
+.purchase-calendar-day.is-empty { background:transparent; border-color:transparent; }
+.purchase-calendar-day.is-today { border-color:#3b82f6; box-shadow: 0 0 0 1px #3b82f6 inset; }
+.purchase-calendar-day.is-active { cursor:pointer; transition: background 0.15s, border-color 0.15s; }
+.purchase-calendar-day.is-active:hover { background:#1e293b; border-color:#475569; }
+.purchase-calendar-day.is-selected { background:#1e293b; border-color:#60a5fa; }
+.purchase-calendar-day-num { font-weight:600; color:#e2e8f0; font-size:13px; }
+.purchase-calendar-day.is-empty .purchase-calendar-day-num,
+.purchase-calendar-day.is-blank .purchase-calendar-day-num { color:transparent; }
+.purchase-calendar-day-icons { display:flex; gap:2px; margin-top:2px; flex-wrap:wrap; line-height:1; font-size:14px; }
+.purchase-calendar-day-amount { margin-top:auto; font-size:11px; font-weight:600; color:#e2e8f0; }
+.purchase-calendar-day-amount.has-done { color:#4ade80; }
+.purchase-calendar-day-dot { position:absolute; top:6px; right:6px; width:8px; height:8px; border-radius:50%; }
+.purchase-calendar-day-dot.is-planned { background:#60a5fa; }
+.purchase-calendar-day-dot.is-done { background:#4ade80; }
+.purchase-calendar-day-dot.is-mixed { background: linear-gradient(45deg, #60a5fa 50%, #4ade80 50%); }
+.purchase-calendar-day-detail {
+  margin-top:12px;
+  padding:12px;
+  background:#0f172a;
+  border:1px solid #334155;
+  border-radius:10px;
+}
+.purchase-calendar-day-detail h4 { margin:0 0 8px; font-size:14px; color:#e2e8f0; }
+.purchase-calendar-day-detail .pcal-item {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px;
+  border-radius:8px;
+  background:#1e293b;
+  margin-bottom:6px;
+  cursor:pointer;
+  transition: background 0.15s;
+}
+.purchase-calendar-day-detail .pcal-item:hover { background:#334155; }
+.purchase-calendar-day-detail .pcal-item:last-child { margin-bottom:0; }
+.purchase-calendar-day-detail .pcal-item-name { flex:1; color:#e2e8f0; font-size:14px; }
+.purchase-calendar-day-detail .pcal-item-amount { color:#e2e8f0; font-weight:600; font-size:13px; }
+.purchase-calendar-day-detail .pcal-item.is-done .pcal-item-name { color:#94a3b8; text-decoration: line-through; text-decoration-color: rgba(148,163,184,0.5); }
+@media (max-width: 600px) {
+  .purchase-calendar-day { min-height:54px; padding:4px 4px 3px; }
+  .purchase-calendar-day-num { font-size:12px; }
+  .purchase-calendar-day-icons { font-size:11px; }
+  .purchase-calendar-day-amount { font-size:10px; }
+}
+html[data-theme-effective="light"] .purchase-calendar-day { background:#f8fafc; border-color:#e2e8f0; color:#475569; }
+html[data-theme-effective="light"] .purchase-calendar-day.is-empty { background:transparent; border-color:transparent; }
+html[data-theme-effective="light"] .purchase-calendar-day-num { color:#0f172a; }
+html[data-theme-effective="light"] .purchase-calendar-day-amount { color:#0f172a; }
+html[data-theme-effective="light"] .purchase-calendar-day.is-selected { background:#dbeafe; border-color:#3b82f6; }
+html[data-theme-effective="light"] .purchase-calendar-day.is-active:hover { background:#e2e8f0; border-color:#94a3b8; }
+html[data-theme-effective="light"] .purchase-calendar-day-detail { background:#f8fafc; border-color:#e2e8f0; }
+html[data-theme-effective="light"] .purchase-calendar-day-detail .pcal-item { background:#fff; border:1px solid #e2e8f0; }
+html[data-theme-effective="light"] .purchase-calendar-day-detail .pcal-item:hover { background:#f1f5f9; }
+html[data-theme-effective="light"] .purchase-calendar-day-detail .pcal-item-name,
+html[data-theme-effective="light"] .purchase-calendar-day-detail .pcal-item-amount { color:#0f172a; }
+html[data-theme-effective="light"] .purchase-calendar-nav-btn { background:#fff; border-color:#cbd5e1; color:#0f172a; }
+html[data-theme-effective="light"] .purchase-calendar-nav-btn:hover { background:#f1f5f9; border-color:#94a3b8; }
+
 /* Category breakdown rows */
 .cat-row {
   display: grid;

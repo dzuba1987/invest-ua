@@ -14,7 +14,7 @@ const I18N = {
     'tab.portfolio': 'Портфель',
     'tab.dreams': 'Мрії',
     'tab.savings': 'Заощадження',
-    'tab.purchases': 'Планування витрат',
+    'tab.purchases': 'Облік та планування витрат',
     'tab.updates': 'Оновлення',
     'tab.profile': 'Профіль',
 
