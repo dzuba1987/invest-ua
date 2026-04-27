@@ -1828,6 +1828,70 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// ================================================================
+// =============== UNSUBSCRIBE FROM EMAIL NEWSLETTER ==============
+// Triggered when a user clicks the "Відписатися" link in a marketing
+// email — that link points to https://investua.app/?unsubscribe=<token>.
+// The token is a stateless HMAC over the user's UID, verified server-side.
+// We don't need Firebase auth for this — the token IS the auth.
+async function processUnsubscribeOnBoot() {
+  let token;
+  try {
+    const url = new URL(window.location.href);
+    token = url.searchParams.get('unsubscribe');
+    if (!token) return;
+    // Strip from URL so a reload doesn't retrigger the confirm dialog.
+    url.searchParams.delete('unsubscribe');
+    history.replaceState(null, '', url.toString());
+  } catch(_) { return; }
+
+  const apiBase = typeof NOTIFY_API_BASE !== 'undefined' ? NOTIFY_API_BASE : '';
+  if (!apiBase) return;
+
+  const proceed = await uiConfirm(
+    'Відписатись від email-розсилки Invest UA?\n\nВи більше не отримуватимете листи з оновленнями. Сповіщення про завершення вкладень не зачіпаються.',
+    { okText: 'Відписатись', cancelText: 'Скасувати', danger: true }
+  );
+  if (!proceed) return;
+
+  try {
+    const res = await fetch(apiBase + '/unsubscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!json.ok) {
+      await uiConfirm('Не вдалося відписатись: ' + (json.description || 'посилання недійсне'), { okText: 'OK', cancelText: '' });
+      return;
+    }
+    const undo = await uiConfirm(
+      '✓ Вас відписано від розсилки.\n\nЯкщо це сталось випадково — можна підписатись назад.',
+      { okText: 'Підписатись назад', cancelText: 'Закрити' }
+    );
+    if (!undo) return;
+    const r = await fetch(apiBase + '/resubscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (j.ok) {
+      await uiConfirm('✓ Підписку відновлено.', { okText: 'OK', cancelText: '' });
+    } else {
+      await uiConfirm('Не вдалося відновити: ' + (j.description || 'помилка сервера'), { okText: 'OK', cancelText: '' });
+    }
+  } catch(_) {
+    await uiConfirm('Помилка мережі. Спробуйте пізніше.', { okText: 'OK', cancelText: '' });
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', processUnsubscribeOnBoot);
+} else {
+  processUnsubscribeOnBoot();
+}
+
 // Firebase and Telegram logic moved to firebase.js and telegram.js
 
 // ================================================================

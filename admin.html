@@ -884,7 +884,7 @@
     const body = document.getElementById('emailBody').value.trim();
     const alsoTelegram = document.getElementById('emailAlsoTelegram').checked;
     const status = document.getElementById('emailStatus');
-    const targets = getTargetUsers();
+    const allTargets = getTargetUsers();
 
     if (!body) {
       status.textContent = 'Введіть текст повідомлення';
@@ -893,7 +893,14 @@
       return;
     }
 
-    if (!await uiConfirm('Надіслати повідомлення ' + targets.length + ' користувачам?', { okText: 'Надіслати' })) return;
+    // Drop users who explicitly opted out of newsletters via the unsubscribe
+    // link in a previous email. Telegram delivery still goes through if the
+    // chat ID exists — Telegram has its own unsubscribe path.
+    const targets = allTargets.filter(u => !u.profile?.unsubscribed);
+    const skipped = allTargets.length - targets.length;
+    const skippedNote = skipped ? ' (' + skipped + ' відписаних пропущено)' : '';
+
+    if (!await uiConfirm('Надіслати повідомлення ' + targets.length + ' користувачам' + skippedNote + '?', { okText: 'Надіслати' })) return;
 
     if (typeof NOTIFY_API_BASE === 'undefined' || !NOTIFY_API_BASE) {
       status.textContent = 'NOTIFY_API_BASE не налаштовано';
@@ -912,7 +919,7 @@
       try {
         const email = u.profile?.contactEmail || u.email;
         if (email) {
-          await adminApiFetch('/newsletter/send', { email, subject, body, name: u.profile?.displayName || u.displayName || '' });
+          await adminApiFetch('/newsletter/send', { email, subject, body, uid: u.id, name: u.profile?.displayName || u.displayName || '' });
         }
 
         if (alsoTelegram && u.profile?.telegramChatId) {
