@@ -556,6 +556,8 @@ async function saveProfileToFirestore() {
         notifyEmail: userProfile.notifyEmail || false,
         notifyTelegram: userProfile.notifyTelegram || false,
         useTelegramBot: userProfile.useTelegramBot || false,
+        notifyPurchases: (typeof userProfile.notifyPurchases === 'boolean') ? userProfile.notifyPurchases : true,
+        notifyPurchasesDays: userProfile.notifyPurchasesDays || 1,
         telegramChatId: userProfile.telegramChatId || null,
         updatedAt: new Date().toISOString()
       }

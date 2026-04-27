@@ -1228,6 +1228,37 @@
         </div>
       </div>
 
+      <!-- Purchase reminders -->
+      <div class="a-card">
+        <h3>🛒 Нагадування про витрати</h3>
+        <p style="font-size:12px;color:#64748b;margin-bottom:14px">Telegram-нагадування за день до запланованої витрати</p>
+
+        <div class="notify-channels">
+          <div class="notify-channel">
+            <div class="notify-channel-header">
+              <label class="checkbox-label">
+                <input type="checkbox" id="notifyPurchases" onchange="saveNotifySettings()">
+                <span>Нагадувати про заплановані витрати</span>
+              </label>
+            </div>
+            <p class="notify-channel-desc">Працює лише за умови підключеного Telegram вище.</p>
+          </div>
+        </div>
+
+        <div class="form-grid" style="margin-top:12px">
+          <div class="field">
+            <label>За скільки днів нагадувати</label>
+            <select id="notifyPurchasesDays" onchange="saveNotifySettings()" style="width:100%;padding:12px 14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#f1f5f9;font-size:16px;outline:none">
+              <option value="0">У день витрати</option>
+              <option value="1" selected>За 1 день</option>
+              <option value="2">За 2 дні</option>
+              <option value="3">За 3 дні</option>
+              <option value="7">За тиждень</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <!-- ── SECTION: Security ── -->
       <div class="profile-section-title">Безпека</div>
 

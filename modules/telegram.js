@@ -68,11 +68,17 @@ function saveNotifySettings() {
   const emailOn = document.getElementById('notifyEmail').checked;
   const tgOn = document.getElementById('notifyTelegram').checked;
   const botOn = document.getElementById('useTelegramBot').checked;
+  const purchasesEl = document.getElementById('notifyPurchases');
+  const purchasesDaysEl = document.getElementById('notifyPurchasesDays');
+  const purchasesOn = purchasesEl ? purchasesEl.checked : true;
+  const purchasesDays = purchasesDaysEl ? purchasesDaysEl.value : '1';
 
   localStorage.setItem('notifyDays', days);
   localStorage.setItem('notifyEmail', emailOn);
   localStorage.setItem('notifyTelegram', tgOn);
   localStorage.setItem('useTelegramBot', botOn);
+  localStorage.setItem('notifyPurchases', purchasesOn);
+  localStorage.setItem('notifyPurchasesDays', purchasesDays);
 
   document.getElementById('telegramLinkSection').style.display = tgOn ? 'block' : 'none';
 
@@ -81,6 +87,8 @@ function saveNotifySettings() {
     userProfile.notifyEmail = emailOn;
     userProfile.notifyTelegram = tgOn;
     userProfile.useTelegramBot = botOn;
+    userProfile.notifyPurchases = purchasesOn;
+    userProfile.notifyPurchasesDays = parseInt(purchasesDays);
     saveProfileToFirestore();
   }
 }
@@ -90,11 +98,25 @@ function loadNotifySettings() {
   const emailOn = userProfile.notifyEmail || localStorage.getItem('notifyEmail') === 'true';
   const tgOn = userProfile.notifyTelegram || localStorage.getItem('notifyTelegram') === 'true';
   const botOn = userProfile.useTelegramBot || localStorage.getItem('useTelegramBot') === 'true';
+  // Purchase reminders default ON: legacy profiles never had this field, but
+  // we want them included once the bot job ships. localStorage 'false' opt-out
+  // still wins when present.
+  const purchasesStored = localStorage.getItem('notifyPurchases');
+  const purchasesOn = (typeof userProfile.notifyPurchases === 'boolean')
+    ? userProfile.notifyPurchases
+    : (purchasesStored === null ? true : purchasesStored === 'true');
+  const purchasesDays = userProfile.notifyPurchasesDays
+    || localStorage.getItem('notifyPurchasesDays')
+    || '1';
 
   document.getElementById('notifyDays').value = days;
   document.getElementById('notifyEmail').checked = emailOn;
   document.getElementById('notifyTelegram').checked = tgOn;
   document.getElementById('useTelegramBot').checked = botOn;
+  const purchasesEl = document.getElementById('notifyPurchases');
+  const purchasesDaysEl = document.getElementById('notifyPurchasesDays');
+  if (purchasesEl) purchasesEl.checked = purchasesOn;
+  if (purchasesDaysEl) purchasesDaysEl.value = String(purchasesDays);
   document.getElementById('telegramLinkSection').style.display = tgOn ? 'block' : 'none';
 
   const botName = typeof TELEGRAM_BOT_NAME !== 'undefined' ? TELEGRAM_BOT_NAME : 'my_invest_ua_bot';
