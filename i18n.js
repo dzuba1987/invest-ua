@@ -21,6 +21,7 @@ const I18N = {
     // Calculator
     'calc.hint': 'Заповніть будь-які відомі поля — решта розрахується автоматично',
     'calc.bondName': 'Назва облігації',
+    'calc.recordName': 'Назва',
     'calc.bondPrice': 'Вартість 1 облігації (грн)',
     'calc.bondCount': 'Кількість облігацій',
     'calc.invested': 'Сума вкладення (грн)',
@@ -30,7 +31,6 @@ const I18N = {
     'calc.received': 'Сума отримання (грн)',
     'calc.diff': 'Різниця (грн)',
     'calc.tax': 'Податок від доходу (%)',
-    'calc.calculate': 'Розрахувати',
     'calc.save': 'Зберегти запис',
     'calc.clear': 'Очистити',
     'calc.import': 'Імпорт з Excel',
@@ -227,6 +227,7 @@ const I18N = {
     // Calculator
     'calc.hint': 'Fill in any known fields — the rest will be calculated automatically',
     'calc.bondName': 'Bond name',
+    'calc.recordName': 'Name',
     'calc.bondPrice': 'Price per bond (UAH)',
     'calc.bondCount': 'Number of bonds',
     'calc.invested': 'Investment amount (UAH)',
@@ -236,7 +237,6 @@ const I18N = {
     'calc.received': 'Amount received (UAH)',
     'calc.diff': 'Difference (UAH)',
     'calc.tax': 'Income tax (%)',
-    'calc.calculate': 'Calculate',
     'calc.save': 'Save record',
     'calc.clear': 'Clear',
     'calc.import': 'Import from Excel',

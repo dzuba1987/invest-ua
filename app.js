@@ -247,7 +247,7 @@ async function switchMainTab(tab, btn) {
     // Check only forms visible on the tab we are leaving
     const visible = dirtyFormsOnActiveTab();
     for (const id of visible) {
-      if (!await FormDrafts.confirmDiscard(id, 'У формі є незбережені зміни. Перейти на іншу вкладку без збереження?')) {
+      if (!await FormDrafts.confirmDiscard(id, 'У формі є незбережені зміни. Перейти на іншу вкладку без збереження?', { okText: 'Перейти', cancelText: 'Залишитись' })) {
         return;
       }
       // Discard confirmed — close the form so stale edit state (e.g. _editingDreamId)
@@ -578,11 +578,21 @@ function update(changedField) {
   calculate();
 }
 
+let _calcPrevType = null;
 function toggleCalcTypeFields() {
   const type = document.getElementById('calcType').value;
   const isOvdp = type === 'ovdp';
   const isDeposit = type === 'deposit';
   const isInsurance = type === 'insurance';
+
+  // When user actually switches type, prior inputs and results no longer apply
+  // (e.g. ОВДП auto-fills price/qty/dates from a selected bond — meaningless
+  // on a deposit). Clear before the rest of the toggle so calculate() at the
+  // end runs on a blank slate.
+  if (_calcPrevType !== null && _calcPrevType !== type) {
+    _resetCalcForm();
+  }
+  _calcPrevType = type;
 
   const compoundToggle = document.querySelector('.compound-toggle');
   const cb = document.getElementById('compoundCheck');
@@ -597,17 +607,33 @@ function toggleCalcTypeFields() {
     toggleCompoundOptions();
   }
 
-  document.getElementById('fieldBondName').style.display = isOvdp ? '' : 'none';
+  document.getElementById('fieldBondName').style.display = '';
   document.getElementById('fieldBondPrice').style.display = isOvdp ? '' : 'none';
   document.getElementById('fieldBondCount').style.display = isOvdp ? '' : 'none';
   document.getElementById('fieldReceived').style.display = isInsurance ? 'none' : '';
   document.getElementById('fieldDiff').style.display = isInsurance ? 'none' : '';
 
+  const lblBondName = document.getElementById('labelBondName');
+  const inpBondName = document.getElementById('bondName');
+  if (lblBondName) {
+    lblBondName.textContent = isOvdp
+      ? (t('calc.bondName') || 'Назва облігації')
+      : (t('calc.recordName') || 'Назва');
+  }
+  if (inpBondName) {
+    const placeholders = {
+      ovdp: 'Військові ОВДП серія 123/456',
+      deposit: 'Депозит у ПриватБанку',
+      insurance: 'Поліс TAS',
+      other: 'Назва інвестиції'
+    };
+    inpBondName.placeholder = placeholders[type] || 'Назва';
+  }
+
   const ovdpSection = document.getElementById('ovdpSection');
-  if (ovdpSection && typeof ovdpBonds !== 'undefined' && ovdpBonds.length > 0) {
-    ovdpSection.style.display = isOvdp ? 'block' : 'none';
-  } else if (ovdpSection && !isOvdp) {
-    ovdpSection.style.display = 'none';
+  if (ovdpSection) {
+    const bondsReady = typeof ovdpBonds !== 'undefined' && ovdpBonds.length > 0;
+    ovdpSection.style.display = (isOvdp && bondsReady) ? '' : 'none';
   }
 
   calculate();
@@ -644,11 +670,14 @@ function toggleCompoundOptions() {
   const calcTypeEl = document.getElementById('calcType');
   const ctype = calcTypeEl ? calcTypeEl.value : null;
   const isOvdpType = ctype === 'ovdp';
-  const bondFields = ['fieldBondName', 'fieldBondPrice', 'fieldBondCount'];
+  const bondFields = ['fieldBondPrice', 'fieldBondCount'];
   bondFields.forEach(id => {
     const hide = isCompound || (ctype && !isOvdpType);
     document.getElementById(id).style.display = hide ? 'none' : '';
   });
+  // Name field stays visible for all types — even in compound mode users want
+  // to label their record before saving.
+  document.getElementById('fieldBondName').style.display = '';
   ['fieldReceived', 'fieldDiff'].forEach(id => {
     const hide = isCompound || ctype === 'insurance';
     document.getElementById(id).style.display = hide ? 'none' : '';
@@ -1336,7 +1365,7 @@ function importFromExcel(event) {
       }
 
       if (headerIdx === -1) {
-        alert('Не вдалося знайти заголовки таблиці у файлі');
+        toast('✗ Не вдалося знайти заголовки таблиці у файлі. Перевірте формат.', 'err');
         return;
       }
 
@@ -1383,16 +1412,14 @@ function importFromExcel(event) {
 
       renderSaved();
 
-      const msg = document.getElementById('successMsg');
-      msg.textContent = '✓ Імпортовано ' + imported + ' записів з файлу!';
-      msg.style.display = 'block';
-      msg.style.animation = 'none';
-      msg.offsetHeight;
-      msg.style.animation = 'fadeOut 3s forwards';
-      setTimeout(() => { msg.style.display = 'none'; msg.textContent = '✓ Запис збережено!'; }, 3000);
+      if (imported === 0) {
+        toast('✗ Жодного запису не імпортовано. Переконайтесь, що файл має правильний формат і містить дані.', 'err');
+      } else {
+        toast('✓ Імпортовано ' + imported + ' запис' + (imported === 1 ? '' : imported < 5 ? 'и' : 'ів') + ' з файлу', 'ok');
+      }
 
     } catch (err) {
-      alert('Помилка при читанні файлу: ' + err.message);
+      toast('✗ Помилка при читанні файлу: ' + err.message, 'err');
     }
   };
   reader.readAsArrayBuffer(file);
@@ -1415,7 +1442,6 @@ async function loadOvdpBonds() {
     // Sort by maturity date
     ovdpBonds.sort((a, b) => (a.maturityDate || '').localeCompare(b.maturityDate || ''));
 
-    const section = document.getElementById('ovdpSection');
     const select = document.getElementById('ovdpBondSelect');
     const pSelect = document.getElementById('pOvdpBondSelect');
 
@@ -1434,7 +1460,7 @@ async function loadOvdpBonds() {
       });
     });
 
-    if (section) section.style.display = 'block';
+    if (typeof toggleCalcTypeFields === 'function' && document.getElementById('calcType')) toggleCalcTypeFields();
     if (typeof togglePortfolioTypeFields === 'function' && document.getElementById('pType')) togglePortfolioTypeFields();
   } catch(e) {
     console.log('ОВДП load:', e.message);
@@ -1652,7 +1678,9 @@ function onPortfolioBondPriceInputOvdp() {
 }
 
 // ============ CLEAR ============
-function clearAll() {
+// Wipes all inputs, results, and ОВДП bond selection. Does NOT touch the type
+// dropdown — callers decide whether to keep the current type or reset it.
+function _resetCalcForm() {
   numFields.forEach(id => {
     const el = document.getElementById(id);
     el.value = '';
@@ -1685,16 +1713,28 @@ function clearAll() {
   document.getElementById('compoundTax').value = '';
   document.getElementById('compoundIndex').value = '';
   toggleCompoundOptions();
-  const ct = document.getElementById('calcType');
-  if (ct) { ct.value = 'ovdp'; toggleCalcTypeFields(); }
   document.getElementById('compoundSection').style.display = 'none';
-  document.getElementById('compoundFullWidth').style.display = 'none';
-  if (compoundChartInstance) { compoundChartInstance.destroy(); compoundChartInstance = null; }
+  const cfw = document.getElementById('compoundFullWidth');
+  if (cfw) cfw.style.display = 'none';
+  if (typeof compoundChartInstance !== 'undefined' && compoundChartInstance) {
+    compoundChartInstance.destroy();
+    compoundChartInstance = null;
+  }
   const t = new Date();
   document.getElementById('dateStart').value = t.toISOString().split('T')[0];
   const f = new Date(t);
   f.setMonth(f.getMonth() + 3);
   document.getElementById('dateEnd').value = f.toISOString().split('T')[0];
+}
+
+function clearAll() {
+  _resetCalcForm();
+  const ct = document.getElementById('calcType');
+  if (ct && ct.value !== 'ovdp') {
+    ct.value = 'ovdp';
+    _calcPrevType = 'ovdp';
+    toggleCalcTypeFields();
+  }
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
@@ -1866,7 +1906,7 @@ function renderRankingTable(bonds) {
   cols.forEach(c => {
     html += `<th onclick="aChangeSort('${c.key}')">${c.label}${arrow(c.key)}</th>`;
   });
-  html += '</tr></thead><tbody>';
+  html += '<th></th></tr></thead><tbody>';
 
   sorted.forEach(b => {
     const best = b.name === bestName;
@@ -1876,12 +1916,21 @@ function renderRankingTable(bonds) {
       if (c.key === 'effAnnual' && best) val += ' <span class="a-badge a-badge-green">ТОП</span>';
       html += `<td>${val}</td>`;
     });
+    html += `<td class="a-rank-actions"><button class="btn-delete" title="Видалити з рейтингу" onclick="deleteAnalyticsBond(${b.id})">✕</button></td>`;
     html += '</tr>';
   });
   html += '</tbody>';
 
   document.getElementById('aRankTable').innerHTML = html;
   window._aBonds = bonds;
+}
+
+async function deleteAnalyticsBond(id) {
+  const rec = savedRecords.find(r => r.id === id);
+  const name = rec && rec.name ? rec.name : 'облігацію';
+  if (!await uiConfirm('Видалити «' + name + '» з рейтингу?', { danger: true, okText: 'Видалити' })) return;
+  deleteRecord(id);
+  checkAnalyticsReady();
 }
 
 function aChangeSort(col) {
@@ -2086,7 +2135,7 @@ function _exclusionCheckboxHtml(scope, id, checked) {
   if (!isTester()) return '';
   const title = checked ? 'Не враховується в сумах (клік щоб повернути)' : 'Виключити з сум (тест)';
   return '<label class="exclude-toggle" title="' + esc(title) + '" onclick="event.stopPropagation()">' +
-    '<input type="checkbox" ' + (checked ? '' : 'checked') + ' onchange="toggleExcluded(\'' + scope + '\',\'' + id + '\',!this.checked)"> <span>враховувати</span></label>';
+    '<input type="checkbox" ' + (checked ? '' : 'checked') + ' onclick="toggleExcluded(\'' + scope + '\',\'' + id + '\',!this.checked)"> <span>враховувати</span></label>';
 }
 
 async function toggleExcluded(scope, id, excluded) {
@@ -2121,7 +2170,7 @@ async function togglePortfolioForm(forceOpen) {
 
   // Closing — guard unsaved edits
   if (!shouldOpen && typeof FormDrafts !== 'undefined' && FormDrafts.isDirty('portfolio.form')) {
-    if (!await FormDrafts.confirmDiscard('portfolio.form', 'У формі вкладення є незбережені зміни. Закрити без збереження?')) {
+    if (!await FormDrafts.confirmDiscard('portfolio.form', 'У формі вкладення є незбережені зміни. Закрити без збереження?', { okText: 'Закрити', cancelText: 'Залишитись' })) {
       return;
     }
   }
@@ -3717,12 +3766,33 @@ function selectDreamIcon(icon) {
 const DREAM_CUR_LABEL = { UAH: 'грн', USD: '$', EUR: '€' };
 function dreamCurOf(d) { return (d && d.currency) || 'UAH'; }
 
+// Sum of recorded deposit amounts in the dream's currency.
+function _depositsSum(d) {
+  return (d && d.deposits || []).reduce((s, dep) => s + (Number(dep.amount) || 0), 0);
+}
+
+// Pull d.saved up to at least sum(deposits) — handles the case where a sync
+// race or stale read drifted the running total below the authoritative deposit
+// history. Idempotent and safe to call before any mutation that adjusts saved
+// by a delta (so the delta is applied to a consistent base).
+function _reconcileDreamSaved(d) {
+  if (!d) return;
+  const sum = _depositsSum(d);
+  const cur = Number(d.saved) || 0;
+  if (cur < sum) d.saved = sum;
+}
+
 // Effective accumulated amount on a dream — explicit deposits[] PLUS the
 // current value of any savings records linked to it (savingItems with
 // dreamId), converted to the dream's own currency. This way editing or
 // adding an earmarked saving immediately moves the dream's progress.
 function _effectiveDreamSaved(d) {
-  const base = d.saved || 0;
+  // d.saved is the running total maintained in addDreamDeposit (initial offset
+  // + sum of deposits). The deposit history is append-only and authoritative;
+  // if a Firestore sync race or stale read leaves d.saved below the deposit
+  // sum, trust the history instead — otherwise newly added deposits would
+  // visibly disappear from "Накопичено".
+  const base = Math.max(Number(d.saved) || 0, _depositsSum(d));
   if (typeof savingItems === 'undefined' || !Array.isArray(savingItems)) return base;
   const dc = (dreamCurOf(d) || 'UAH').toUpperCase();
   const rates = (typeof cachedRates !== 'undefined') ? cachedRates : null;
@@ -3840,7 +3910,7 @@ async function toggleDreamForm(forceOpen) {
   const shouldOpen = forceOpen !== undefined ? forceOpen : isHidden;
 
   if (!shouldOpen && typeof FormDrafts !== 'undefined' && FormDrafts.isDirty('dream.form')) {
-    if (!await FormDrafts.confirmDiscard('dream.form', 'У формі мрії є незбережені зміни. Закрити без збереження?')) {
+    if (!await FormDrafts.confirmDiscard('dream.form', 'У формі мрії є незбережені зміни. Закрити без збереження?', { okText: 'Закрити', cancelText: 'Залишитись' })) {
       return;
     }
   }
@@ -4009,7 +4079,10 @@ function saveDreamDepositEdit(dreamId, idx) {
     convertedAmount = toUah / fromUahRate;
   }
 
-  // Adjust saved: replace old amount with new.
+  // Reconcile against the deposit history before applying the delta — if
+  // d.saved drifted (e.g. a Firestore race), we want the delta to land on a
+  // consistent base.
+  _reconcileDreamSaved(d);
   d.saved = Math.max(0, (d.saved || 0) - dep.amount + convertedAmount);
   d.deposits[idx] = {
     amount: convertedAmount,
@@ -4027,6 +4100,7 @@ async function deleteDreamDeposit(dreamId, idx) {
   if (!d || !d.deposits || !d.deposits[idx]) return;
   if (!await uiConfirm('Видалити цей внесок?', { danger: true, okText: 'Видалити' })) return;
   const dep = d.deposits[idx];
+  _reconcileDreamSaved(d);
   d.saved = Math.max(0, (d.saved || 0) - (dep.amount || 0));
   d.deposits.splice(idx, 1);
   renderDreams();
@@ -4060,6 +4134,9 @@ function addDreamDeposit(id) {
     convertedAmount = toUah / fromUahRate;
   }
 
+  // Reconcile drifted running total against the deposit history before adding
+  // the new amount, so the final d.saved stays in sync with deposits[].
+  _reconcileDreamSaved(item);
   item.saved = (item.saved || 0) + convertedAmount;
 
   // Save deposit history — keep both the dream-currency amount (for aggregation)
@@ -4675,7 +4752,7 @@ async function toggleSavingsForm(forceOpen) {
   const shouldOpen = forceOpen !== undefined ? forceOpen : isHidden;
 
   if (!shouldOpen && typeof FormDrafts !== 'undefined' && FormDrafts.isDirty('saving.form')) {
-    if (!await FormDrafts.confirmDiscard('saving.form', 'У формі заощадження є незбережені зміни. Закрити без збереження?')) return;
+    if (!await FormDrafts.confirmDiscard('saving.form', 'У формі заощадження є незбережені зміни. Закрити без збереження?', { okText: 'Закрити', cancelText: 'Залишитись' })) return;
   }
 
   if (shouldOpen) {
@@ -5165,7 +5242,7 @@ async function togglePurchaseForm(forceOpen) {
   const shouldOpen = forceOpen !== undefined ? forceOpen : isHidden;
 
   if (!shouldOpen && typeof FormDrafts !== 'undefined' && FormDrafts.isDirty('purchase.form')) {
-    if (!await FormDrafts.confirmDiscard('purchase.form', 'У формі витрати є незбережені зміни. Закрити без збереження?')) return;
+    if (!await FormDrafts.confirmDiscard('purchase.form', 'У формі витрати є незбережені зміни. Закрити без збереження?', { okText: 'Закрити', cancelText: 'Залишитись' })) return;
   }
 
   if (shouldOpen) {
@@ -5238,8 +5315,10 @@ function addPurchase() {
       found.list[found.index] = updated;
       _editingPurchaseId = null;
       _clearPurchaseForm();
-      togglePurchaseForm(false);
+      // Clear draft BEFORE toggling close — otherwise togglePurchaseForm sees a
+      // dirty form and shows the "discard changes?" prompt over a successful save.
       if (typeof FormDrafts !== 'undefined') FormDrafts.clear('purchase.form');
+      togglePurchaseForm(false);
       renderPurchases();
       _persistPurchase(updated, found.source);
       const success = document.getElementById('purchaseSuccess');
@@ -5259,8 +5338,8 @@ function addPurchase() {
   }
 
   _clearPurchaseForm();
-  togglePurchaseForm(false);
   if (typeof FormDrafts !== 'undefined') FormDrafts.clear('purchase.form');
+  togglePurchaseForm(false);
   renderPurchases();
   savePurchasesToFirestore();
   const success = document.getElementById('purchaseSuccess');
@@ -6399,23 +6478,24 @@ function openPurchaseDetail(id) {
   }
   const deferBadge = p.deferCount ? '<span class="p-item-type" style="background:rgba(251,191,36,0.15);color:#fbbf24;margin-left:6px">перенесено ×' + p.deferCount + '</span>' : '';
 
-  // Action buttons
-  const actions = [];
+  // Action buttons: primary actions in one row, the destructive action on its
+  // own subtle row so the layout reads as "intentional" rather than wrapped.
+  const primaryActions = [];
   if (!p.bought) {
-    actions.push('<button class="btn-save" onclick="markPurchaseBought(\'' + p.id + '\');closePurchaseDetail()" style="width:auto;padding:8px 16px;margin:0">✓ Відмітити</button>');
+    primaryActions.push('<button class="btn-save" onclick="markPurchaseBought(\'' + p.id + '\');closePurchaseDetail()" style="width:auto;padding:8px 16px;margin:0">✓ Відмітити</button>');
   } else {
-    actions.push('<button class="btn-export" onclick="unmarkPurchaseBought(\'' + p.id + '\');closePurchaseDetail()" style="width:auto;padding:8px 16px;margin:0">↺ Скасувати позначку</button>');
+    primaryActions.push('<button class="btn-export" onclick="unmarkPurchaseBought(\'' + p.id + '\');closePurchaseDetail()" style="width:auto;padding:8px 16px;margin:0">↺ Скасувати позначку</button>');
   }
   if (isShared) {
-    actions.push('<button class="btn-export" onclick="invitePurchaseByEmail(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0;background:#3b82f6">👥 Запросити</button>');
+    primaryActions.push('<button class="btn-export" onclick="invitePurchaseByEmail(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0">👥 Запросити</button>');
   } else {
-    actions.push('<button class="btn-export" onclick="promptMakeShared(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0;background:#3b82f6">👥 Зробити спільною</button>');
+    primaryActions.push('<button class="btn-export" onclick="promptMakeShared(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0">👥 Зробити спільною</button>');
   }
-  actions.push('<button class="btn-export" onclick="sharePurchase(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0">↗ Поділитись</button>');
+  primaryActions.push('<button class="btn-export" onclick="sharePurchase(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0">↗ Поділитись</button>');
   if (!p.bought) {
-    actions.push('<button class="btn-export" onclick="editPurchaseFromDetail(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0">✎ Редагувати</button>');
+    primaryActions.push('<button class="btn-export" onclick="editPurchaseFromDetail(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0">✎ Редагувати</button>');
   }
-  actions.push('<button class="btn-clear" onclick="confirmThen(\'' + (isShared ? 'Покинути спільну витрату?' : 'Видалити витрату?') + '\', () => { deletePurchase(\'' + p.id + '\'); closePurchaseDetail(); }, { danger: true, okText: \'' + (isShared ? 'Покинути' : 'Видалити') + '\' })" style="width:auto;padding:8px 16px;margin:0">✕ ' + (isShared ? 'Покинути' : 'Видалити') + '</button>');
+  const dangerAction = '<button class="btn-clear" onclick="confirmThen(\'' + (isShared ? 'Покинути спільну витрату?' : 'Видалити витрату?') + '\', () => { deletePurchase(\'' + p.id + '\'); closePurchaseDetail(); }, { danger: true, okText: \'' + (isShared ? 'Покинути' : 'Видалити') + '\' })" style="width:auto;padding:8px 16px;margin:0">✕ ' + (isShared ? 'Покинути' : 'Видалити') + '</button>';
 
   _openPurchaseDetailId = String(p.id);
   document.getElementById('purchasesContent').style.display = 'none';
@@ -6433,7 +6513,10 @@ function openPurchaseDetail(id) {
       <div style="font-size:13px;color:#94a3b8;margin-top:4px">${uahEq}</div>
       <div style="margin-top:10px">${statusBadge}${deferBadge}${sharedBadge}</div>
       <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap">
-        ${actions.join('')}
+        ${primaryActions.join('')}
+      </div>
+      <div style="display:flex;justify-content:center;margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,0.15)">
+        ${dangerAction}
       </div>
     </div>
 

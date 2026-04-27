@@ -190,14 +190,17 @@
      * proceed (form is clean or user agreed to discard).
      * @param {string} id
      * @param {string} [message]
+     * @param {{okText?: string, cancelText?: string}} [opts]
      */
-    async confirmDiscard(id, message) {
+    async confirmDiscard(id, message, opts) {
       if (!this.isDirty(id)) return true;
       const prompt = message || 'У формі є незбережені зміни. Вийти без збереження?';
+      const okText = (opts && opts.okText) || 'Не зберігати';
+      const cancelText = (opts && opts.cancelText) || 'Залишитись';
       // Prefer the in-app dialog when available; fall back to native confirm
       // so this module stays self-sufficient.
       const ok = (typeof window !== 'undefined' && typeof window.uiConfirm === 'function')
-        ? await window.uiConfirm(prompt, { okText: 'Відкинути' })
+        ? await window.uiConfirm(prompt, { okText, cancelText })
         : confirm(prompt);
       if (ok) this.clear(id);
       return ok;

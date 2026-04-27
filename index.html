@@ -102,14 +102,6 @@
   <div class="tab-panel" id="panel-calc">
     <p class="hint" data-i18n="calc.hint">Заповніть будь-які відомі поля — решта розрахується автоматично</p>
 
-    <!-- ОВДП bond select -->
-    <div class="minfin-import-section" id="ovdpSection" style="display:none">
-      <select id="ovdpBondSelect" onchange="onOvdpSelect()">
-        <option value="">— Оберіть облігацію ОВДП —</option>
-      </select>
-      <div class="minfin-bond-info" id="ovdpBondInfo" style="display:none"></div>
-    </div>
-
     <div class="main-layout">
     <div class="panel-left">
     <div class="form-grid">
@@ -122,8 +114,16 @@
           <option value="other" data-i18n="portfolio.typeOther">Інше</option>
         </select>
       </div>
+      <!-- ОВДП bond select — shown only when type is ОВДП and bonds are loaded -->
+      <div class="field field-full" id="ovdpSection" style="display:none">
+        <label>Облігація ОВДП</label>
+        <select id="ovdpBondSelect" onchange="onOvdpSelect()">
+          <option value="">— Оберіть облігацію ОВДП —</option>
+        </select>
+        <div class="minfin-bond-info" id="ovdpBondInfo" style="display:none"></div>
+      </div>
       <div class="field field-full" id="fieldBondName">
-        <label data-i18n="calc.bondName">Назва облігації</label>
+        <label id="labelBondName" data-i18n="calc.recordName">Назва</label>
         <input type="text" id="bondName" placeholder="Військові ОВДП серія 123/456">
       </div>
       <div class="field" id="fieldBondPrice">
@@ -195,7 +195,6 @@
       </div>
     </div>
 
-    <button onclick="calculate()" data-i18n="calc.calculate">Розрахувати</button>
     <div class="btn-row">
       <button class="btn-save" id="btnSaveRecord" onclick="saveRecord()" data-i18n="calc.save" style="display:none">Зберегти запис</button>
       <button class="btn-import" id="btnImportExcel" onclick="document.getElementById('importFile').click()" data-i18n="calc.import" style="display:none">Імпорт з Excel</button>
