@@ -245,6 +245,19 @@ async function showEmailLoginDialog() {
   }
 }
 
+// Resolve once Firebase has loaded any persisted auth state from IndexedDB.
+// On the very first onAuthStateChanged fire we have a definitive answer
+// ("logged in" or "anonymous"); before that, currentUser may still be null
+// even though there's a real session about to come back.
+function awaitFirebaseAuthReady() {
+  return new Promise(resolve => {
+    const unsub = firebase.auth().onAuthStateChanged(user => {
+      unsub();
+      resolve(user || null);
+    });
+  });
+}
+
 // Run on boot: if the current URL is a Firebase email-link, complete the
 // sign-in. Firebase fires onAuthStateChanged after this resolves.
 async function completeEmailLinkSignInOnBoot() {
@@ -254,8 +267,21 @@ async function completeEmailLinkSignInOnBoot() {
   } catch (_) { return; }
 
   let email = window.localStorage.getItem('emailForSignIn') || '';
+
+  // Fallback chain when localStorage is empty (different browser / cleared
+  // storage): use the email of the already-signed-in user. Common case: user
+  // is logged in via Google in the same browser, then clicks a magic-link
+  // they sent to themselves — no need to re-ask, the email is on file.
   if (!email) {
-    // User opened the link on a different device — re-confirm the email.
+    const persistedUser = await awaitFirebaseAuthReady();
+    if (persistedUser && persistedUser.email) {
+      email = persistedUser.email;
+    }
+  }
+
+  // Last resort — explicitly ask. Happens only when user opened the link
+  // on a totally fresh device with no Firebase session whatsoever.
+  if (!email) {
     email = await uiPrompt('Підтвердіть email, на який було надіслано посилання:', {
       okText: 'Увійти',
       placeholder: 'your@email.com',
