@@ -96,6 +96,19 @@ async function saveUserMeta(user) {
     const isAdminFlag = doc.exists && doc.data().meta && doc.data().meta.isAdmin;
     const skipNotify = isMe || isAdminFlag;
 
+    const now = new Date();
+    const isoNow = now.toISOString();
+
+    // Cooldown for "login" Telegram notifications: onAuthStateChanged also fires
+    // on session restore, token refresh, and tab focus — without throttling, the
+    // admin's chat fills up with one alert every few minutes. Send at most one
+    // login notification per 24h per user, tracked via meta.lastLoginNotifiedAt.
+    const NOTIFY_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+    const lastNotifiedRaw = !isNewUser ? doc.data()?.meta?.lastLoginNotifiedAt : null;
+    const lastNotifiedAt = lastNotifiedRaw ? Date.parse(lastNotifiedRaw) : 0;
+    const cooldownPassed = (now.getTime() - lastNotifiedAt) >= NOTIFY_COOLDOWN_MS;
+    const shouldNotifyLogin = !isNewUser && !skipNotify && cooldownPassed;
+
     if (isNewUser) {
       await docRef.set({
         meta: {
@@ -103,22 +116,25 @@ async function saveUserMeta(user) {
           email: user.email || '',
           displayName: user.displayName || '',
           photoURL: user.photoURL || '',
-          lastLogin: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
+          lastLogin: isoNow,
+          lastLoginNotifiedAt: isoNow,
+          createdAt: isoNow,
           provider: user.providerData[0]?.providerId || 'unknown'
         }
       });
       if (!skipNotify) notifyTelegram('newUser', user);
     } else {
-      await docRef.update({
+      const updates = {
         'meta.uid': user.uid,
         'meta.email': user.email || '',
         'meta.displayName': user.displayName || '',
         'meta.photoURL': user.photoURL || '',
-        'meta.lastLogin': new Date().toISOString(),
+        'meta.lastLogin': isoNow,
         'meta.provider': user.providerData[0]?.providerId || 'unknown'
-      });
-      if (!skipNotify) notifyTelegram('login', user);
+      };
+      if (shouldNotifyLogin) updates['meta.lastLoginNotifiedAt'] = isoNow;
+      await docRef.update(updates);
+      if (shouldNotifyLogin) notifyTelegram('login', user);
     }
   } catch(e) {
     console.warn('User meta save failed:', e);
