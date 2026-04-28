@@ -147,11 +147,11 @@
         <input type="date" id="dateEnd">
       </div>
       <div class="field" id="fieldReceived">
-        <label data-i18n="calc.received">Сума отримання (грн)</label>
+        <label data-i18n="calc.received">Сума отримання (грн, до податку)</label>
         <input type="text" id="received" placeholder="607 231" inputmode="decimal">
       </div>
       <div class="field" id="fieldDiff">
-        <label data-i18n="calc.diff">Різниця (грн)</label>
+        <label data-i18n="calc.diff">Різниця (грн, до податку)</label>
         <input type="text" id="diffAmount" placeholder="45 361" inputmode="decimal">
       </div>
       <div class="field">
@@ -165,7 +165,7 @@
         </label>
       </div>
       <div class="field" id="compoundRateField" style="display:none">
-        <label data-i18n="calc.compoundRate">Ставка реінвестування (%)</label>
+        <label data-i18n="calc.compoundRate">Річна ставка (%)</label>
         <input type="text" id="compoundRate" placeholder="15" inputmode="decimal">
       </div>
       <div class="field" id="compoundTaxField" style="display:none">
@@ -220,10 +220,6 @@
         <span class="result-value computed" id="resInvestedCalc"></span>
       </div>
       <div class="result-section" data-i18n="res.result">Результат</div>
-      <div class="result-row" id="receivedCalcRow" style="display:none">
-        <span class="result-label" data-i18n="res.receivedCalc">Сума отримання</span>
-        <span class="result-value computed" id="resReceivedCalc"></span>
-      </div>
       <div class="result-row">
         <span class="result-label" data-i18n="res.profit">Прибуток</span>
         <span class="result-value profit" id="resProfit"></span>
@@ -231,6 +227,10 @@
       <div class="result-row" id="profitPerBondRow" style="display:none">
         <span class="result-label" data-i18n="res.profitPerBond">Прибуток на 1 облігацію</span>
         <span class="result-value profit" id="resProfitPerBond"></span>
+      </div>
+      <div class="result-row" id="receivedCalcRow">
+        <span class="result-label" data-i18n="res.receivedCalc">Підсумкова сума</span>
+        <span class="result-value computed" id="resReceivedCalc"></span>
       </div>
       <div class="result-row">
         <span class="result-label" data-i18n="res.term">Термін</span>
@@ -243,15 +243,6 @@
       <div class="result-row" id="annualRateCalcRow">
         <span class="result-label" data-i18n="res.annualRate">Річна дохідність</span>
         <span class="result-value rate" id="resAnnualRate"></span>
-      </div>
-      <div class="result-section" data-i18n="res.netSection">Чистий прибуток</div>
-      <div class="result-row">
-        <span class="result-label" data-i18n="res.netProfit">Чистий прибуток (отримано − вкладено)</span>
-        <span class="result-value profit" id="resNetProfit"></span>
-      </div>
-      <div class="result-row" id="netPerBondRow" style="display:none">
-        <span class="result-label" data-i18n="res.netPerBond">Чистий прибуток на 1 облігацію</span>
-        <span class="result-value profit" id="resNetPerBond"></span>
       </div>
       <div class="result-section" id="bonusSectionLabel" style="display:none" data-i18n="res.taxSection">Після оподаткування</div>
       <div class="result-row" id="bonusAmountRow" style="display:none">
@@ -274,8 +265,12 @@
           <span class="result-value profit" id="resCompoundTotal"></span>
         </div>
         <div class="result-row">
-          <span class="result-label" data-i18n="res.compoundProfit">Загальний прибуток</span>
+          <span class="result-label" data-i18n="res.compoundProfit">Прибуток до податку</span>
           <span class="result-value profit" id="resCompoundProfit"></span>
+        </div>
+        <div class="result-row" id="compoundTaxRow" style="display:none">
+          <span class="result-label">Податок (<span id="resCompoundTaxPct"></span>% від доходу)</span>
+          <span class="result-value" id="resCompoundTax" style="color:#f87171"></span>
         </div>
         <div class="result-row" id="compoundNetRow" style="display:none">
           <span class="result-label" data-i18n="res.compoundNet">Прибуток після податку</span>
@@ -315,9 +310,9 @@
         <table class="saved-table">
           <thead>
             <tr>
-              <th>Назва</th><th>Ціна</th><th>К-сть</th><th>Вкладено</th>
-              <th>Отримано</th><th>Різниця</th><th>Дата від</th><th>Дата до</th>
-              <th>Днів</th><th>Місяців</th><th>Ставка</th><th>Річна %</th><th></th>
+              <th>Назва</th><th class="num">Ціна</th><th class="num">К-сть</th><th class="num">Вкладено</th>
+              <th class="num">Отримано</th><th class="num">Різниця</th><th>Дата від</th><th>Дата до</th>
+              <th class="num">Днів</th><th class="num">Місяців</th><th class="num">Ставка</th><th class="num">Річна %</th><th></th>
             </tr>
           </thead>
           <tbody id="savedBody"></tbody>

@@ -331,10 +331,9 @@ function getVal(id) {
 function setAutoVal(id, value) {
   if (id === activeField) return;
   const el = document.getElementById(id);
-  const formatted = Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-  el.value = formatted;
+  el.value = formatNum(value);
   el.classList.add('auto-filled');
-  if (id === 'invested') document.getElementById('aBudget').value = Math.round(value);
+  if (id === 'invested') document.getElementById('aBudget').value = value;
 }
 function clearAutoVal(id) {
   if (id === activeField) return;
@@ -526,7 +525,7 @@ document.getElementById('compoundYears').addEventListener('change', () => calcul
 // ============ SYNC BUDGET WITH INVESTED ============
 document.getElementById('invested').addEventListener('change', () => {
   const v = getVal('invested');
-  if (!isNaN(v) && v > 0) document.getElementById('aBudget').value = Math.round(v);
+  if (!isNaN(v) && v > 0) document.getElementById('aBudget').value = v;
 });
 
 // ============ REACTIVE UPDATE ============
@@ -651,19 +650,27 @@ function toggleCompoundOptions() {
     if (!cr.value) cr.value = '10';
     const ct = document.getElementById('compoundTax');
     if (!ct.value) ct.value = document.getElementById('bonusPercent').value || '';
-    // Set default dates: today + 2 years
-    const now = new Date();
-    document.getElementById('dateStart').value = now.toISOString().split('T')[0];
-    const end = new Date(now);
-    end.setFullYear(end.getFullYear() + 2);
-    document.getElementById('dateEnd').value = end.toISOString().split('T')[0];
+    // Default dates only when both are empty: today + 2 years
+    const dsEl = document.getElementById('dateStart');
+    const deEl = document.getElementById('dateEnd');
+    if (!dsEl.value && !deEl.value) {
+      const now = new Date();
+      dsEl.value = now.toISOString().split('T')[0];
+      const end = new Date(now);
+      end.setFullYear(end.getFullYear() + 2);
+      deEl.value = end.toISOString().split('T')[0];
+    }
   } else {
-    // Reset to 3 months
-    const now = new Date();
-    document.getElementById('dateStart').value = now.toISOString().split('T')[0];
-    const end = new Date(now);
-    end.setMonth(end.getMonth() + 3);
-    document.getElementById('dateEnd').value = end.toISOString().split('T')[0];
+    // Default dates only when both are empty: today + 3 months
+    const dsEl = document.getElementById('dateStart');
+    const deEl = document.getElementById('dateEnd');
+    if (!dsEl.value && !deEl.value) {
+      const now = new Date();
+      dsEl.value = now.toISOString().split('T')[0];
+      const end = new Date(now);
+      end.setMonth(end.getMonth() + 3);
+      deEl.value = end.toISOString().split('T')[0];
+    }
   }
 
   // Hide bond-specific fields in compound mode; also respect calcType if present
@@ -754,10 +761,8 @@ function calculate() {
   } else { showRow('bondNameRow', false); }
   document.getElementById('bondsSectionLabel').style.display = showBonds ? 'block' : 'none';
 
-  if (hasRate && !isManual('received')) {
-    document.getElementById('resReceivedCalc').textContent = formatNum(received) + ' грн';
-    showRow('receivedCalcRow', true);
-  } else { showRow('receivedCalcRow', false); }
+  document.getElementById('resReceivedCalc').textContent = formatNum(received) + ' грн';
+  showRow('receivedCalcRow', true);
 
   document.getElementById('resProfit').textContent = formatNum(profit) + ' грн';
 
@@ -770,7 +775,27 @@ function calculate() {
   } else { showRow('profitPerBondRow', false); }
 
   document.getElementById('resTerm').textContent = formatTerm(diffDays);
-  document.getElementById('resPeriodRate').textContent = periodRate.toFixed(2) + '%';
+  // If the period covers a Feb 29, surface a small ℹ️ explaining why the
+  // figure isn't a clean rate × years (e.g. 18% × 2 ≠ 36.02%).
+  const _hasLeapDay = (() => {
+    const dsEl = document.getElementById('dateStart');
+    const deEl = document.getElementById('dateEnd');
+    if (!dsEl || !deEl || !dsEl.value || !deEl.value) return false;
+    const start = new Date(dsEl.value);
+    const end = new Date(deEl.value);
+    if (isNaN(start) || isNaN(end)) return false;
+    for (let y = start.getFullYear(); y <= end.getFullYear(); y++) {
+      const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+      if (!leap) continue;
+      const feb29 = new Date(y, 1, 29);
+      if (feb29 >= start && feb29 <= end) return true;
+    }
+    return false;
+  })();
+  const _periodHint = _hasLeapDay
+    ? ' <span title="Період містить 29 лютого (високосний рік). Формула pro-rate за реальні дні: ' + diffDays + ' днів / 365.25 = ' + (diffDays / 365.25).toFixed(3) + ' р. Тому ' + (hasRate ? annualRateInput.toFixed(0) + '% × ' + (diffDays / 365.25).toFixed(3) + ' = ' + periodRate.toFixed(2) + '%, а не ' + (annualRateInput * Math.round(diffDays / 365.25)).toFixed(0) + '%' : 'дохідність трохи вища, ніж rate × кількість років') + '." style="cursor:help;color:#94a3b8;font-size:13px;font-weight:400;margin-left:6px">ℹ️</span>'
+    : '';
+  document.getElementById('resPeriodRate').innerHTML = sanitize(periodRate.toFixed(2) + '%' + _periodHint);
   document.getElementById('resAnnualRate').textContent = annualRate.toFixed(2) + '%';
 
   if (hasRate && isManual('received')) {
@@ -779,14 +804,6 @@ function calculate() {
     document.getElementById('annualRateCalcRow').querySelector('.result-label').textContent = 'Річна дохідність';
   }
 
-  document.getElementById('resNetProfit').textContent = formatNum(profit) + ' грн';
-  if (hasBondCount || hasBondPrice) {
-    const bc = hasBondCount ? Math.floor(bondCount) : Math.floor(invested / bondPrice);
-    if (bc > 0) {
-      document.getElementById('resNetPerBond').textContent = formatNum(profit / bc) + ' грн';
-      showRow('netPerBondRow', true);
-    } else { showRow('netPerBondRow', false); }
-  } else { showRow('netPerBondRow', false); }
 
   // Tax on income
   const taxPct = getVal('bonusPercent');
@@ -827,10 +844,10 @@ function calculate() {
 
     // Simple yearly compound: reinvest once per year
     const labels = ['Старт'];
-    const investedLine = [Math.round(invested)];
-    const grossLine = [Math.round(invested)];
-    const netLine = [Math.round(invested)];
-    const simpleLine = [Math.round(invested)];
+    const investedLine = [invested];
+    const grossLine = [invested];
+    const netLine = [invested];
+    const simpleLine = [invested];
 
     let balance = invested;
     let balanceNet = invested;
@@ -841,10 +858,10 @@ function calculate() {
       balanceNet += balanceNet * yearRate * (1 - taxRate);
 
       labels.push(y + (y === 1 ? ' рік' : y < 5 ? ' роки' : ' років'));
-      investedLine.push(Math.round(invested));
-      grossLine.push(Math.round(balance));
-      netLine.push(Math.round(balanceNet));
-      simpleLine.push(Math.round(invested * (1 + annualRate_c * y)));
+      investedLine.push(invested);
+      grossLine.push(balance);
+      netLine.push(balanceNet);
+      simpleLine.push(invested * (1 + annualRate_c * y));
     }
 
     const totalGrossProfit = balance - invested;
@@ -852,13 +869,16 @@ function calculate() {
 
     document.getElementById('resCompoundPeriods').textContent = years + ' р. (щорічне реінвестування)';
     document.getElementById('resCompoundTotal').textContent = formatNum(cHasTax ? balanceNet : balance) + ' грн';
-    document.getElementById('resCompoundProfit').textContent = '+' + formatNum(cHasTax ? totalNetProfit : totalGrossProfit) + ' грн'
-      + (cHasTax ? ' (чисті, −' + compoundTaxVal + '% податок)' : '');
+    document.getElementById('resCompoundProfit').textContent = '+' + formatNum(totalGrossProfit) + ' грн';
 
     if (cHasTax) {
-      document.getElementById('resCompoundNet').textContent = 'Без податку: +' + formatNum(totalGrossProfit) + ' грн → з податком: +' + formatNum(totalNetProfit) + ' грн';
+      document.getElementById('resCompoundTaxPct').textContent = compoundTaxVal;
+      document.getElementById('resCompoundTax').textContent = '−' + formatNum(totalGrossProfit - totalNetProfit) + ' грн';
+      document.getElementById('resCompoundNet').textContent = '+' + formatNum(totalNetProfit) + ' грн';
+      showRow('compoundTaxRow', true);
       showRow('compoundNetRow', true);
     } else {
+      showRow('compoundTaxRow', false);
       showRow('compoundNetRow', false);
     }
 
@@ -1129,6 +1149,14 @@ function renderSaved() {
 }
 
 function loadRecordToForm(r) {
+  // Set calcType FIRST so toggleCalcTypeFields() (which may call _resetCalcForm)
+  // runs before we populate fields — otherwise it would wipe them.
+  const ct = document.getElementById('calcType');
+  if (ct) {
+    ct.value = r.calcType || (r.bondPrice || r.bondCount ? 'ovdp' : (r.compound ? 'deposit' : 'other'));
+    toggleCalcTypeFields();
+  }
+
   // Fill form fields from saved record
   document.getElementById('bondName').value = r.name === '—' || r.name === 'Вклад (складний %)' ? '' : r.name || '';
   document.getElementById('bondPrice').value = r.bondPrice ? formatShort(r.bondPrice) : '';
@@ -1148,12 +1176,6 @@ function loadRecordToForm(r) {
   document.getElementById('compoundIndex').value = r.compoundIndex || '';
   if (r.compoundYears) document.getElementById('compoundYears').value = r.compoundYears;
   toggleCompoundOptions();
-
-  const ct = document.getElementById('calcType');
-  if (ct) {
-    ct.value = r.calcType || (r.bondPrice || r.bondCount ? 'ovdp' : (r.compound ? 'deposit' : 'other'));
-    toggleCalcTypeFields();
-  }
 
   // Mark manual fields so calculate() doesn't override them
   numFields.forEach(id => document.getElementById(id).classList.remove('auto-filled'));
@@ -1298,16 +1320,16 @@ function exportToExcel() {
     ws[XLSX.utils.encode_cell({ r: row, c: 0 })] = { v: r.name, s: { ...cellStyle, font: { name: 'Arial', color: { rgb: blue }, sz: 11 } } };
     ws[XLSX.utils.encode_cell({ r: row, c: 1 })] = { v: r.bondPrice || '', s: r.bondPrice ? numStyle : cellStyle };
     ws[XLSX.utils.encode_cell({ r: row, c: 2 })] = { v: r.bondCount || '', s: r.bondCount ? numStyle : cellStyle };
-    ws[XLSX.utils.encode_cell({ r: row, c: 3 })] = { v: Math.round(r.invested), s: numStyle, t: 'n' };
-    ws[XLSX.utils.encode_cell({ r: row, c: 4 })] = { v: Math.round(r.received), s: numStyle, t: 'n' };
-    ws[XLSX.utils.encode_cell({ r: row, c: 5 })] = { v: Math.round(r.profit), s: profitStyle, t: 'n' };
+    ws[XLSX.utils.encode_cell({ r: row, c: 3 })] = { v: r.invested, s: numStyle, t: 'n' };
+    ws[XLSX.utils.encode_cell({ r: row, c: 4 })] = { v: r.received, s: numStyle, t: 'n' };
+    ws[XLSX.utils.encode_cell({ r: row, c: 5 })] = { v: r.profit, s: profitStyle, t: 'n' };
     ws[XLSX.utils.encode_cell({ r: row, c: 6 })] = { v: r.dateStart, s: dateStyle };
     ws[XLSX.utils.encode_cell({ r: row, c: 7 })] = { v: r.dateEnd, s: dateStyle };
     ws[XLSX.utils.encode_cell({ r: row, c: 8 })] = { v: days, s: centerStyle, t: 'n' };
     ws[XLSX.utils.encode_cell({ r: row, c: 9 })] = { v: months, s: centerStyle, t: 'n' };
     ws[XLSX.utils.encode_cell({ r: row, c: 10 })] = { v: r.rateInput ? r.rateInput.toFixed(1) + '%' : '—', s: { ...cellStyle, alignment: { horizontal: 'center', vertical: 'center' } } };
-    ws[XLSX.utils.encode_cell({ r: row, c: 11 })] = { v: Math.round(r.annualRate * 100) / 100, s: rateStyle, t: 'n' };
-    ws[XLSX.utils.encode_cell({ r: row, c: 12 })] = { v: Math.round(r.periodRate * 100) / 100, s: { ...profitStyle, numFmt: '0.00"%"' }, t: 'n' };
+    ws[XLSX.utils.encode_cell({ r: row, c: 11 })] = { v: r.annualRate, s: rateStyle, t: 'n' };
+    ws[XLSX.utils.encode_cell({ r: row, c: 12 })] = { v: r.periodRate, s: { ...profitStyle, numFmt: '0.00"%"' }, t: 'n' };
   });
 
   const totalRow = savedRecords.length + 3;
@@ -1318,11 +1340,11 @@ function exportToExcel() {
 
   ws[XLSX.utils.encode_cell({ r: totalRow, c: 0 })] = { v: 'РАЗОМ (' + savedRecords.length + ')', s: totalLabelStyle };
   for (let c = 1; c <= 2; c++) ws[XLSX.utils.encode_cell({ r: totalRow, c })] = { v: '', s: totalStyle };
-  ws[XLSX.utils.encode_cell({ r: totalRow, c: 3 })] = { v: Math.round(totalInvested), s: totalStyle, t: 'n' };
-  ws[XLSX.utils.encode_cell({ r: totalRow, c: 4 })] = { v: Math.round(totalReceived), s: totalStyle, t: 'n' };
-  ws[XLSX.utils.encode_cell({ r: totalRow, c: 5 })] = { v: Math.round(totalProfit), s: { ...totalStyle, font: { name: 'Arial', color: { rgb: green }, sz: 12, bold: true } }, t: 'n' };
+  ws[XLSX.utils.encode_cell({ r: totalRow, c: 3 })] = { v: totalInvested, s: totalStyle, t: 'n' };
+  ws[XLSX.utils.encode_cell({ r: totalRow, c: 4 })] = { v: totalReceived, s: totalStyle, t: 'n' };
+  ws[XLSX.utils.encode_cell({ r: totalRow, c: 5 })] = { v: totalProfit, s: { ...totalStyle, font: { name: 'Arial', color: { rgb: green }, sz: 12, bold: true } }, t: 'n' };
   for (let c = 6; c <= 10; c++) ws[XLSX.utils.encode_cell({ r: totalRow, c })] = { v: '', s: totalStyle };
-  ws[XLSX.utils.encode_cell({ r: totalRow, c: 11 })] = { v: Math.round(avgAnnual * 100) / 100, s: { ...totalStyle, font: { name: 'Arial', color: { rgb: yellow }, sz: 13, bold: true }, numFmt: '"⌀ "0.00"%"' }, t: 'n' };
+  ws[XLSX.utils.encode_cell({ r: totalRow, c: 11 })] = { v: avgAnnual, s: { ...totalStyle, font: { name: 'Arial', color: { rgb: yellow }, sz: 13, bold: true }, numFmt: '"⌀ "0.00"%"' }, t: 'n' };
   ws[XLSX.utils.encode_cell({ r: totalRow, c: 12 })] = { v: '', s: totalStyle };
 
   ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: totalRow, c: colCount - 1 } });
@@ -1694,12 +1716,12 @@ function _resetCalcForm() {
   document.getElementById('error').style.display = 'none';
 
   // Clear all result values
-  ['resProfit','resTerm','resPeriodRate','resAnnualRate','resNetProfit',
+  ['resProfit','resTerm','resPeriodRate','resAnnualRate',
    'resBondName','resBondsCount','resInvestedCalc','resReceivedCalc',
-   'resProfitPerBond','resNetPerBond','resBonusAmount','resTotalWithBonus'
+   'resProfitPerBond','resBonusAmount','resTotalWithBonus'
   ].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = ''; });
   ['bondsSectionLabel','bondNameRow','bondsCountRow','investedCalcRow',
-   'receivedCalcRow','profitPerBondRow','netPerBondRow','bonusSectionLabel',
+   'receivedCalcRow','profitPerBondRow','bonusSectionLabel',
    'bonusAmountRow','totalWithBonusRow'
   ].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
   // Reset ОВДП select
@@ -2519,18 +2541,24 @@ function openInvestmentDetail(id) {
         dailyGross = (curPre * (item.rate / 100)) / 365.25;
         dailyNet = dailyGross * (1 - taxRate);
       } else if (item.compound) {
-        let balance = item.invested, totalInterest = 0;
+        let balance = item.invested, totalNet = 0, totalGross = 0;
         for (let y = 1; y <= totalYears; y++) {
-          const netInt = balance * effRate;
+          const grossInt = balance * ratePct;
+          const netInt = grossInt * (1 - taxRate);
           balance += netInt;
-          totalInterest += netInt;
+          totalNet += netInt;
+          totalGross += grossInt;
         }
-        expectedProfit = totalInterest;
+        expectedProfit = totalNet;
         const yearsE = Math.min(elapsed, days) / 365.25;
         earnedSoFar = item.invested * (Math.pow(1 + effRate, yearsE) - 1);
         earnedSoFar = Math.min(earnedSoFar, expectedProfit);
-        dailyGross = item.invested * (item.rate / 100) / 365.25;
-        dailyNet = dailyGross * (1 - taxRate);
+        // Daily figures must average to the compound totals so that
+        // (Дохід/день × days) ≈ Очікуваний дохід. The previous version used
+        // the linear `invested × rate / 365` shortcut, which under-counted
+        // for years where the balance had already grown.
+        dailyGross = days > 0 ? totalGross / days : 0;
+        dailyNet = days > 0 ? totalNet / days : 0;
       } else if (item.rate) {
         // Simple interest — single tax deduction at the end.
         const ty = days / 365.25;
@@ -2622,6 +2650,7 @@ function openInvestmentDetail(id) {
     ${item.tax || taxAmount > 0 ? `<div class="a-card">
       <h3>Оподаткування</h3>
       <div class="detail-info-row"><span class="detail-info-label">Ставка податку</span><span class="detail-info-value">${item.tax}%</span></div>
+      <div class="detail-info-row"><span class="detail-info-label">Дохід до податку</span><span class="detail-info-value">+${formatNum(grossProfit)} грн</span></div>
       <div class="detail-info-row"><span class="detail-info-label">Сума податку</span><span class="detail-info-value" style="color:#f87171">−${formatNum(taxAmount)} грн</span></div>
       <div class="detail-info-row"><span class="detail-info-label">Чистий прибуток</span><span class="detail-info-value" style="color:#4ade80">+${formatNum(netProfit)} грн</span></div>
     </div>` : ''}
@@ -3048,6 +3077,11 @@ function renderPortfolio() {
           } else if (isIns && insCurPreBal) {
             // Insurance daily pace tracks current-year balance.
             dailyGross = (insCurPreBal * (p.rate / 100)) / 365.25;
+          } else if (p.compound && days > 0) {
+            // Compound daily pace = average gross interest per day so that
+            // `Дохід/день × days ≈ expected gross profit` (matches the
+            // detail card and the compound row that the user sees).
+            dailyGross = expectedProfit / days;
           } else {
             dailyGross = (p.rate || 0) > 0 ? p.invested * (p.rate / 100) / 365.25 : 0;
           }
@@ -3096,6 +3130,7 @@ function renderPortfolio() {
             ${p.tax ? '<span>Податок: <strong>' + p.tax + '%</strong></span>' : ''}
           </div>
           ${p.dateStart ? '<div class="p-item-details p-row"><span>' + formatDate(p.dateStart) + ' → ' + (p.dateEnd ? formatDate(p.dateEnd) : '...') + '</span></div>' : ''}
+          ${expectedProfit > 0 && p.tax ? '<div class="p-item-details p-row"><span>Очікуваний дохід: <strong style="color:#4ade80">+' + formatShort(expectedProfit) + ' грн</strong></span><span>Податок: <strong style="color:#f87171">−' + formatShort(expectedProfit - expectedProfitNet) + ' грн</strong></span></div>' : ''}
           ${p.bank ? '<div class="p-item-details p-row"><span>Банк: <strong>' + esc(p.bank) + '</strong></span></div>' : ''}
           ${p.notes ? '<div class="p-item-notes">' + esc(p.notes) + '</div>' : ''}
           <div style="display:flex;gap:8px;margin-top:8px">
@@ -3104,7 +3139,7 @@ function renderPortfolio() {
           </div>
         </div>
         <div class="p-item-actions">
-          ${expectedProfit > 0 ? '<div class="p-item-profit"><div class="amount">+' + formatShort(expectedProfit) + ' грн</div><div class="label">очікуваний дохід</div>' + (p.tax && expectedProfit > 0 ? '<div style="color:#f87171;font-size:12px;margin-top:2px">−' + formatShort(expectedProfit - expectedProfitNet) + ' податок</div><div style="color:#4ade80;font-size:13px;font-weight:700">=' + formatShort(expectedProfitNet) + ' чистими</div>' : '') + '</div>' : ''}
+          ${expectedProfit > 0 ? '<div class="p-item-profit"><div class="amount">+' + formatShort(p.tax ? expectedProfitNet : expectedProfit) + ' грн</div><div class="label">' + (p.tax ? 'чистий прибуток' : 'очікуваний дохід') + '</div></div>' : ''}
         </div>
       </div>
     `;

@@ -283,6 +283,7 @@ button:hover { opacity: 0.9; }
 .saved-table tbody tr { cursor: pointer; transition: background 0.15s; }
 .saved-table tbody tr:hover td { background: #1e3a5f; }
 .saved-table .num { text-align: right; }
+.saved-table th.num { text-align: right; }
 .saved-table .profit-cell { color: #4ade80; }
 .saved-table .rate-cell { color: #facc15; font-weight: 600; }
 .btn-delete {
