@@ -52,6 +52,22 @@
 </head>
 <body>
 
+<div id="biometricLockOverlay" class="biometric-lock-overlay" style="display:none">
+  <div class="biometric-lock-card">
+    <img data-bio-avatar src="" alt="" class="biometric-lock-avatar" referrerpolicy="no-referrer">
+    <div class="biometric-lock-name" data-bio-name></div>
+    <div class="biometric-lock-icon">🔒</div>
+    <div class="biometric-lock-title">Розблокувати додаток</div>
+    <div class="biometric-lock-desc">Підтвердіть біометрією пристрою</div>
+    <button id="biometricUnlockBtn" class="btn-save biometric-lock-btn"
+      onclick="BiometricLock.tryUnlock(firebase.auth().currentUser)">
+      Розблокувати
+    </button>
+    <p id="biometricUnlockError" class="biometric-lock-error"></p>
+    <button class="biometric-lock-signout" onclick="firebase.auth().signOut()">Вийти з акаунта</button>
+  </div>
+</div>
+
 <div class="container">
   <div class="top-bar">
     <div class="top-user" id="userInfo" style="display:none">
@@ -1117,6 +1133,24 @@
         </div>
       </div>
 
+      <!-- Biometric lock -->
+      <div class="a-card" id="biometricSettingsCard" style="display:none">
+        <h3>Біометричне розблокування</h3>
+        <p style="font-size:12px;color:#64748b;margin-bottom:12px">
+          Замість пароля — Face ID, Touch ID або Windows Hello при поверненні до додатку.
+        </p>
+        <div class="profile-lang-options">
+          <button class="profile-lang-btn" id="bioToggleBtn" onclick="toggleBiometricLock()">
+            <span class="profile-lang-flag">🔐</span>
+            <span id="bioToggleLabel">Увімкнути</span>
+          </button>
+          <button class="profile-lang-btn" id="bioLockNowBtn" onclick="BiometricLock.lockNow()" style="display:none">
+            <span class="profile-lang-flag">🔒</span> Заблокувати
+          </button>
+        </div>
+        <p class="success-msg" id="bioToggleMsg"></p>
+      </div>
+
       <!-- ── SECTION: Portfolio settings ── -->
       <div class="profile-section-title">Дані портфеля</div>
 
@@ -1344,6 +1378,7 @@
 <script src="modules/ui-dialog.js"></script>
 <script src="modules/form-drafts.js"></script>
 <script src="modules/firebase.js"></script>
+<script src="modules/biometric-lock.js"></script>
 <script src="modules/telegram.js"></script>
 <script src="modules/purchase-helpers.js"></script>
 <script src="modules/purchase-form.js"></script>

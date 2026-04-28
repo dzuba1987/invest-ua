@@ -57,6 +57,7 @@ function initFirebase() {
     firebase.auth().onAuthStateChanged(user => {
       currentUser = user;
       updateAuthUI();
+      if (typeof BiometricLock !== 'undefined') BiometricLock.checkAndLock(user);
       if (user) {
         // Reset load flags — a fresh session must re-load before destructive saves.
         portfolioLoaded = false;
@@ -453,10 +454,45 @@ function updateProfileUI() {
     }
     updatePinStatus();
     loadNotifySettings();
+    if (typeof updateBiometricLockUI === 'function') updateBiometricLockUI();
   } else {
     auth.style.display = 'block';
     content.style.display = 'none';
   }
+}
+
+async function updateBiometricLockUI() {
+  const card = document.getElementById('biometricSettingsCard');
+  if (!card || typeof BiometricLock === 'undefined') return;
+  const supported = BiometricLock.isSupported() && await BiometricLock.isPlatformAuthenticatorAvailable();
+  if (!currentUser || !supported) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = '';
+  const enabled = BiometricLock.isEnabled(currentUser.uid);
+  const label = document.getElementById('bioToggleLabel');
+  const lockNow = document.getElementById('bioLockNowBtn');
+  if (label) label.textContent = enabled ? 'Вимкнути' : 'Увімкнути';
+  if (lockNow) lockNow.style.display = enabled ? '' : 'none';
+}
+
+async function toggleBiometricLock() {
+  if (typeof BiometricLock === 'undefined' || !currentUser) return;
+  const msg = document.getElementById('bioToggleMsg');
+  if (msg) { msg.textContent = ''; msg.style.color = ''; }
+  try {
+    if (BiometricLock.isEnabled(currentUser.uid)) {
+      BiometricLock.disable(currentUser.uid);
+      if (msg) { msg.textContent = '✓ Біометрію вимкнено'; msg.style.display = 'block'; }
+    } else {
+      await BiometricLock.enable(currentUser);
+      if (msg) { msg.textContent = '✓ Біометрію увімкнено'; msg.style.display = 'block'; }
+    }
+  } catch (e) {
+    if (msg) { msg.textContent = e.message || 'Помилка'; msg.style.color = '#f87171'; msg.style.display = 'block'; }
+  }
+  updateBiometricLockUI();
 }
 
 function setAppLanguage(lang) {

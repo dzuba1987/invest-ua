@@ -5,6 +5,12 @@
 // Keep bodies short (1 sentence). User-facing changes only.
 window.CHANGELOG_SEED = [
   {
+    id: 'seed-2026-04-28-biometric-lock',
+    title: '🔐 Біометричне розблокування',
+    createdAt: '2026-04-28T18:00:00Z',
+    body: 'У Профілі з\'явилось «Біометричне розблокування» — Face ID, Touch ID або Windows Hello замість пароля при поверненні до додатку. Кожен пристрій налаштовується окремо.'
+  },
+  {
     id: 'seed-2026-04-27-new-domain',
     title: '🌐 Нова адреса: investua.app',
     createdAt: '2026-04-27T18:00:00Z',
