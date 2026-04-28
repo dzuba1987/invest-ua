@@ -5546,16 +5546,33 @@ function renderPurchases() {
   const realCm = currentMonthKey();
   const groups = { overdue: [], current: [], future: [], done: [] };
   allItems.forEach(p => {
-    if (p.bought) groups.done.push(p);
-    else if ((p.plannedMonth || cm) < cm) groups.overdue.push(p);
-    else if ((p.plannedMonth || cm) === cm) groups.current.push(p);
+    if (p.bought) { groups.done.push(p); return; }
+    const pm = p.plannedMonth || cm;
+    if (pm < cm) {
+      // When peering into a future month, recurring items whose real cycle
+      // is the realCm-or-later instance are still "active", not overdue —
+      // their projection already covers `cm`. Hide them from overdue so
+      // the count reflects only genuinely-missed records.
+      if (p.recurring && cm > realCm && pm >= realCm) return;
+      groups.overdue.push(p);
+    } else if (pm === cm) groups.current.push(p);
     else groups.future.push(p);
   });
 
   // Dashboard totals (in UAH for aggregation) — excluded items skipped.
+  // Projected recurring occurrences (e.g., May projection of an unmarked
+  // April recurring) count toward the planned total so the hero matches
+  // what the calendar shows for the displayed month.
   let totalPlannedCmUah = 0;
   let totalBoughtCmUah = 0;
   groups.current.forEach(p => {
+    if (isExcluded(p)) return;
+    const v = purchaseToUah(p.amount, purchaseCurOf(p));
+    if (v != null) totalPlannedCmUah += v;
+  });
+  const projectedCm = (typeof _projectRecurringForMonth === 'function')
+    ? _projectRecurringForMonth(allItems, cm) : [];
+  projectedCm.forEach(p => {
     if (isExcluded(p)) return;
     const v = purchaseToUah(p.amount, purchaseCurOf(p));
     if (v != null) totalPlannedCmUah += v;
@@ -5589,8 +5606,9 @@ function renderPurchases() {
   _renderPurchaseCalendar();
   // Budget (income) indicator for current month.
   _renderBudget(cm, totalPlannedCmUah, totalBoughtCmUah);
-  // Category breakdown for current month.
-  _renderCategoryBreakdown(cm, groups.current, groups.done);
+  // Category breakdown for current month — projected recurring items
+  // share the breakdown so categories match the hero/calendar totals.
+  _renderCategoryBreakdown(cm, [...groups.current, ...projectedCm], groups.done);
 
   const sortByMonthAsc = (a, b) => (a.plannedMonth || '').localeCompare(b.plannedMonth || '');
   const sortByBoughtDesc = (a, b) => (b.boughtAt || '').localeCompare(a.boughtAt || '');
@@ -6443,13 +6461,16 @@ function openPurchaseDetail(id) {
   const sharedBadge = isShared
     ? '<span class="p-item-type" style="background:rgba(168,85,247,0.15);color:#c084fc;margin-left:6px">👥 Спільна (' + (Array.isArray(p.members) ? p.members.length : 0) + ')</span>'
     : '';
+  const recurringBadge = p.recurring
+    ? '<span class="p-item-type" style="background:rgba(96,165,250,0.15);color:#60a5fa;margin-left:6px" title="Повторюється щомісяця">🔁 щомісяця</span>'
+    : '';
 
   detail.querySelector('#purchaseDetailContent').innerHTML = sanitize(`
     <div class="dash-hero">
       <div class="dash-hero-label"><span class="dream-icon-hero">${purchaseIconOf(p)}</span>${esc(p.name)}</div>
       <div class="dash-hero-value">${amountStr}</div>
       <div style="font-size:13px;color:#94a3b8;margin-top:4px">${uahEq}</div>
-      <div style="margin-top:10px">${statusBadge}${deferBadge}${sharedBadge}</div>
+      <div style="margin-top:10px">${statusBadge}${deferBadge}${sharedBadge}${recurringBadge}</div>
       <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap">
         ${primaryActions.join('')}
       </div>
@@ -6462,6 +6483,7 @@ function openPurchaseDetail(id) {
       <h3>Деталі</h3>
       <div class="detail-info-row"><span class="detail-info-label">Сума</span><span class="detail-info-value">${amountStr}${uahEq}</span></div>
       <div class="detail-info-row"><span class="detail-info-label">${p.plannedDate ? 'Запланована дата' : 'Запланований місяць'}</span><span class="detail-info-value">${formatPurchaseWhen(p)}</span></div>
+      ${p.recurring ? '<div class="detail-info-row"><span class="detail-info-label">Повторюваність</span><span class="detail-info-value">🔁 Щомісяця</span></div>' : ''}
       ${p.deferCount ? '<div class="detail-info-row"><span class="detail-info-label">Перенесень</span><span class="detail-info-value">' + p.deferCount + '</span></div>' : ''}
       ${p.bought && p.boughtAt ? '<div class="detail-info-row"><span class="detail-info-label">Позначено як здійснена</span><span class="detail-info-value">' + new Date(p.boughtAt).toLocaleDateString('uk-UA') + '</span></div>' : ''}
       ${p.bought && p.boughtAmount && p.boughtAmount !== p.amount ? '<div class="detail-info-row"><span class="detail-info-label">Фактична сума</span><span class="detail-info-value">' + fmtPurchaseAmount(p.boughtAmount, cc) + '</span></div>' : ''}

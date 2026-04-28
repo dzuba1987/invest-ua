@@ -6,9 +6,46 @@
 
 let _selectedPurchaseCalendarDate = null;
 let _purchaseCalendarMonth = null; // YYYY-MM, null = follow current month
+let _lastRenderedTodayKey = null;  // last `_todayDateKey()` baked into the grid
 
 function _activePurchaseCalendarMonth() {
   return _purchaseCalendarMonth || currentMonthKey();
+}
+
+// Project recurring not-bought items into a future month (`cm`). Returns
+// synthetic items with `_projected: true`, `plannedDate` snapped to the
+// same day-of-month (clamped to month length) and `plannedMonth` rewritten
+// to `cm`. Items already living in `cm` (real next-month copy spawned by
+// `markPurchaseBought`) suppress projections of the same recurring chain
+// to avoid double-counting. Shared by the calendar grid and the dashboard
+// totals so both stay in sync.
+function _projectRecurringForMonth(items, cm) {
+  const [yStr, mStr] = cm.split('-');
+  const y = Number(yStr), m = Number(mStr);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const realInMonth = items.filter(p => {
+    const pm = (p.plannedDate ? p.plannedDate.slice(0, 7) : (p.plannedMonth || ''));
+    return pm === cm && p.recurring && !p.bought;
+  });
+  const out = [];
+  items.forEach(p => {
+    if (!p.recurring || p.bought) return;
+    const base = p.plannedDate || ((p.plannedMonth || cm) + '-01');
+    const baseMonth = base.slice(0, 7);
+    if (baseMonth >= cm) return;
+    const baseDay = Number(base.slice(8, 10)) || 1;
+    const day = Math.min(baseDay, daysInMonth);
+    const name = String(p.name || '').trim();
+    const dup = realInMonth.some(it => String(it.name || '').trim() === name);
+    if (dup) return;
+    out.push({
+      ...p,
+      _projected: true,
+      plannedDate: y + '-' + String(m).padStart(2, '0') + '-' + String(day).padStart(2, '0'),
+      plannedMonth: cm
+    });
+  });
+  return out;
 }
 
 function _navPurchaseCalendar(direction) {
@@ -56,10 +93,13 @@ function _renderPurchaseCalendar() {
   const firstDow = (new Date(y, m - 1, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(y, m, 0).getDate();
   const todayKey = _todayDateKey();
+  _lastRenderedTodayKey = todayKey;
 
-  // Group items by ISO date.
+  // Group items by ISO date — real records first, projected (virtual)
+  // recurring occurrences appended via `_projectRecurringForMonth`.
+  const projected = _projectRecurringForMonth(allItems, cm);
   const byDay = {};
-  allItems.forEach(p => {
+  [...allItems, ...projected].forEach(p => {
     const cc = purchaseCurOf(p);
     const uah = purchaseToUah(p.boughtAmount || p.amount, cc);
     let dateKey;
@@ -68,10 +108,11 @@ function _renderPurchaseCalendar() {
     else if (p.plannedMonth) dateKey = p.plannedMonth + '-01';
     else return;
     if (dateKey.slice(0, 7) !== cm) return;
-    if (!byDay[dateKey]) byDay[dateKey] = { items: [], totalUah: 0, hasPlanned: false, hasDone: false };
+    if (!byDay[dateKey]) byDay[dateKey] = { items: [], totalUah: 0, hasPlanned: false, hasDone: false, hasProjected: false };
     byDay[dateKey].items.push(p);
     if (uah != null) byDay[dateKey].totalUah += uah;
-    if (p.bought) byDay[dateKey].hasDone = true;
+    if (p._projected) byDay[dateKey].hasProjected = true;
+    else if (p.bought) byDay[dateKey].hasDone = true;
     else byDay[dateKey].hasPlanned = true;
   });
 
@@ -92,7 +133,8 @@ function _renderPurchaseCalendar() {
     if (data) {
       if (data.hasPlanned && data.hasDone) dotClass = 'is-mixed';
       else if (data.hasDone) dotClass = 'is-done';
-      else dotClass = 'is-planned';
+      else if (data.hasPlanned) dotClass = 'is-planned';
+      else if (data.hasProjected) dotClass = 'is-projected';
     }
     const icons = data
       ? data.items.slice(0, 3).map(it => '<span>' + esc(purchaseIconOf(it)) + '</span>').join('')
@@ -131,10 +173,12 @@ function _renderCalendarDayDetail(dayKey, data) {
   const rows = data.items.map(p => {
     const cc = purchaseCurOf(p);
     const amt = fmtPurchaseAmount(p.boughtAmount || p.amount, cc);
-    const cls = 'pcal-item' + (p.bought ? ' is-done' : '');
+    const cls = 'pcal-item' + (p.bought ? ' is-done' : '') + (p._projected ? ' is-projected' : '');
+    const recur = p.recurring ? ' <span title="Повторюється щомісяця">🔁</span>' : '';
+    const proj = p._projected ? ' <span class="pcal-item-proj">(прогноз)</span>' : '';
     return '<div class="' + cls + '" onclick="openPurchaseDetail(\'' + p.id + '\')">' +
       '<span class="pcal-item-icon">' + esc(purchaseIconOf(p)) + '</span>' +
-      '<span class="pcal-item-name">' + esc(p.name || '') + (p.bought ? ' · ✓' : '') + '</span>' +
+      '<span class="pcal-item-name">' + esc(p.name || '') + recur + proj + (p.bought ? ' · ✓' : '') + '</span>' +
       '<span class="pcal-item-amount">' + esc(amt) + '</span>' +
     '</div>';
   }).join('');
@@ -150,3 +194,14 @@ function _selectPurchaseCalendarDay(dayKey) {
     if (detail) detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 }
+
+// PWA stays alive across midnight when kept in standby; without a refresh,
+// the `is-today` highlight stays on the previously rendered day. Re-render
+// when the tab becomes visible and the local date has rolled over.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (_lastRenderedTodayKey && _lastRenderedTodayKey !== _todayDateKey() &&
+      typeof renderPurchases === 'function') {
+    renderPurchases();
+  }
+});
