@@ -6781,3 +6781,10 @@ if (typeof FormDrafts !== 'undefined') {
   if (btn) switchMainTab(saved, btn);
   else if (saved === 'profile') switchMainTab('profile', null);
 })();
+
+// Boot Firebase last — the auth listener it registers calls back into
+// functions defined throughout app.js (updatePinStatus, loadFromFirestore,
+// renderPortfolio, …). Initialising from app.js's tail guarantees those
+// declarations are hoisted before the listener can fire.
+initFirebase();
+startHeartbeat();

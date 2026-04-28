@@ -804,8 +804,12 @@ if (savedLang) setAppLanguage(savedLang);
 const savedTheme = localStorage.getItem('appTheme') || 'dark';
 applyThemeDom(savedTheme);
 
-initFirebase();
-startHeartbeat();
+// initFirebase() and startHeartbeat() are intentionally invoked from the
+// tail of app.js — Firebase's auth listener (registered by initFirebase)
+// dispatches into functions defined in app.js (updatePinStatus,
+// loadFromFirestore, …). If we called initFirebase here, the listener
+// could fire on cached-session restore before app.js finishes parsing,
+// leading to "X is not defined" errors observed in production.
 
 // Tab visibility control is temporarily disabled — all tabs are shown to everyone.
 async function applyTabVisibility() {
