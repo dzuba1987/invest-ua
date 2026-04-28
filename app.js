@@ -4759,6 +4759,20 @@ function refreshUpdatesBadge() {
   }
 }
 
+// Re-poll changelog on tab focus and hourly so Firestore entries surface
+// without a hard reload. The boot call still seeds the badge immediately.
+let _changelogPollTimer = null;
+function _ensureChangelogPolling() {
+  if (_changelogPollTimer) return;
+  _changelogPollTimer = setInterval(() => loadChangelog(true), 60 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) loadChangelog(true);
+  });
+}
+if (typeof window !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', _ensureChangelogPolling);
+}
+
 async function loadChangelog(force) {
   if (_changelogLoadedOnce && !force) return;
   const seed = Array.isArray(window.CHANGELOG_SEED) ? window.CHANGELOG_SEED : [];
