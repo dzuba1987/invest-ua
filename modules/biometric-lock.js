@@ -10,6 +10,7 @@ const BiometricLock = (function () {
   const TIMEOUT_MS = 60000;
 
   const KEY_CRED = (uid) => `biometricLock:credId:${uid}`;
+  const KEY_TRANSPORTS = (uid) => `biometricLock:transports:${uid}`;
   const KEY_ENABLED = (uid) => `biometricLock:enabled:${uid}`;
   const KEY_SESSION_UNLOCKED = (uid) => `biometricLock:unlocked:${uid}`;
 
@@ -101,6 +102,19 @@ const BiometricLock = (function () {
     if (!cred) throw new Error('Реєстрація скасована');
 
     localStorage.setItem(KEY_CRED(user.uid), b64uEncode(cred.rawId));
+    // Підказка браузеру при verify(): шукати ключ саме на цьому пристрої,
+    // а не пропонувати hybrid (QR/security key). Без цього Chrome показує
+    // діалог «Passkeys & Security Keys» замість Touch ID / Hello.
+    let transports = [];
+    try {
+      const t = cred.response && typeof cred.response.getTransports === 'function'
+        ? cred.response.getTransports()
+        : [];
+      transports = Array.isArray(t) && t.length ? t : ['internal'];
+    } catch {
+      transports = ['internal'];
+    }
+    localStorage.setItem(KEY_TRANSPORTS(user.uid), JSON.stringify(transports));
     localStorage.setItem(KEY_ENABLED(user.uid), '1');
     markUnlocked(user.uid);
   }
@@ -108,6 +122,7 @@ const BiometricLock = (function () {
   function disable(uid) {
     if (!uid) return;
     localStorage.removeItem(KEY_CRED(uid));
+    localStorage.removeItem(KEY_TRANSPORTS(uid));
     localStorage.removeItem(KEY_ENABLED(uid));
     clearSession(uid);
   }
@@ -117,11 +132,24 @@ const BiometricLock = (function () {
     const stored = localStorage.getItem(KEY_CRED(uid));
     if (!stored) throw new Error('Біометрія не зареєстрована');
 
+    let transports;
+    try {
+      const raw = localStorage.getItem(KEY_TRANSPORTS(uid));
+      const parsed = raw ? JSON.parse(raw) : null;
+      transports = Array.isArray(parsed) && parsed.length ? parsed : ['internal'];
+    } catch {
+      transports = ['internal'];
+    }
+
     const assertion = await navigator.credentials.get({
       publicKey: {
         challenge: randomChallenge(),
         rpId: location.hostname,
-        allowCredentials: [{ type: 'public-key', id: b64uDecode(stored) }],
+        allowCredentials: [{
+          type: 'public-key',
+          id: b64uDecode(stored),
+          transports
+        }],
         userVerification: 'required',
         timeout: TIMEOUT_MS
       }
