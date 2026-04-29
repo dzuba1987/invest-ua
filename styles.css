@@ -866,6 +866,7 @@ html[data-theme-effective="light"] .form-control {
 .purchase-calendar-legend-dot { display:inline-block; width:10px; height:10px; border-radius:50%; }
 .purchase-calendar-legend-dot.is-planned { background:#60a5fa; }
 .purchase-calendar-legend-dot.is-done { background:#4ade80; }
+.purchase-calendar-legend-dot.is-credit { background:#a78bfa; }
 .purchase-calendar-weekdays {
   display:grid;
   grid-template-columns: repeat(7, 1fr);
@@ -914,6 +915,10 @@ html[data-theme-effective="light"] .form-control {
 .purchase-calendar-day-dot.is-done { background:#4ade80; }
 .purchase-calendar-day-dot.is-mixed { background: linear-gradient(45deg, #60a5fa 50%, #4ade80 50%); }
 .purchase-calendar-day-dot.is-projected { background:transparent; border:1.5px dashed #60a5fa; box-sizing:border-box; }
+.purchase-calendar-day-dot.is-credit { background:#a78bfa; }
+.purchase-calendar-day-dot.is-credit-done { background:#4ade80; border:2px solid #a78bfa; box-sizing:border-box; }
+.purchase-calendar-day-dot.is-credit-mixed { background: linear-gradient(45deg, #a78bfa 50%, #4ade80 50%); }
+.purchase-calendar-day-dot.is-credit-projected { background:transparent; border:1.5px dashed #a78bfa; box-sizing:border-box; }
 .purchase-calendar-day-detail {
   margin-top:12px;
   padding:12px;

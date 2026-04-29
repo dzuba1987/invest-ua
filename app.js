@@ -5308,6 +5308,8 @@ function onPurchaseCurrencyChange() {
   const label = cc === 'USD' ? '($)' : cc === 'EUR' ? '(€)' : '(грн)';
   const el = document.getElementById('purchaseAmountCurLabel');
   if (el) el.textContent = label;
+  const creditEl = document.getElementById('purchaseCreditTotalCurLabel');
+  if (creditEl) creditEl.textContent = label;
 }
 
 // Month helpers — 'YYYY-MM' format throughout.
@@ -5389,8 +5391,11 @@ async function markPurchaseBought(id) {
   found.list[found.index] = updated;
   renderPurchases();
   _persistPurchase(updated, found.source);
-  // Recurring: spawn a clean copy for the next month (if not already present).
-  if (item.recurring && found.source === 'private') {
+  // Recurring/credit: spawn a clean copy for the next month if not present.
+  // Credit stops spawning once the final installment has been recorded.
+  const isCredit = !!item.credit;
+  const creditHasNext = isCredit && (Number(item.creditMonthIndex) || 1) + 1 <= Number(item.creditMonths || 0);
+  if ((item.recurring || creditHasNext) && found.source === 'private') {
     const baseDate = item.plannedDate || ((item.plannedMonth || currentMonthKey()) + '-01');
     const nextDate = _addOneMonthDate(baseDate);
     const nextMonth = nextDate.slice(0, 7);
@@ -5398,20 +5403,22 @@ async function markPurchaseBought(id) {
       !p.bought
       && (p.plannedMonth || '') === nextMonth
       && String(p.name || '').trim() === String(item.name || '').trim()
-      && p.recurring
+      && (p.recurring || p.credit)
     );
     if (!alreadyExists) {
       const { id, bought, boughtAt, boughtAmount, deferCount, ...rest } = item;
-      purchaseItems.push({
+      const child = {
         ...rest,
         id: Date.now() + Math.floor(Math.random() * 1000),
         plannedDate: nextDate,
         plannedMonth: nextMonth,
         bought: false,
         deferCount: 0,
-        createdAt: new Date().toISOString(),
-        recurring: true
-      });
+        createdAt: new Date().toISOString()
+      };
+      if (isCredit) child.creditMonthIndex = (Number(item.creditMonthIndex) || 1) + 1;
+      else child.recurring = true;
+      purchaseItems.push(child);
       renderPurchases();
       savePurchasesToFirestore();
     }
@@ -5602,7 +5609,7 @@ function renderPurchases() {
       // is the realCm-or-later instance are still "active", not overdue —
       // their projection already covers `cm`. Hide them from overdue so
       // the count reflects only genuinely-missed records.
-      if (p.recurring && cm > realCm && pm >= realCm) return;
+      if ((p.recurring || p.credit) && cm > realCm && pm >= realCm) return;
       groups.overdue.push(p);
     } else if (pm === cm) groups.current.push(p);
     else groups.future.push(p);
@@ -5685,6 +5692,9 @@ function renderPurchases() {
     const recurringBadge = p.recurring
       ? '<span class="p-item-type" style="background:rgba(96,165,250,0.15);color:#60a5fa" title="Повторюється щомісяця">🔁 щомісяця</span>'
       : '';
+    const creditBadge = p.credit
+      ? '<span class="p-item-type" style="background:rgba(167,139,250,0.18);color:#a78bfa" title="Платіж за кредит">💳 кредит ' + (Number(p.creditMonthIndex) || 1) + '/' + (Number(p.creditMonths) || '?') + '</span>'
+      : '';
     if (p.bought) {
       const boughtStr = p.boughtAmount && p.boughtAmount !== p.amount
         ? 'Здійснено за ' + fmtPurchaseAmount(p.boughtAmount, cc)
@@ -5701,6 +5711,7 @@ function renderPurchases() {
             <span class="dream-icon">${purchaseIconOf(p)}</span>${esc(p.name)}
             ${sharedBadge}
             ${recurringBadge}
+            ${creditBadge}
             <span class="p-item-type" style="background:rgba(74,222,128,0.15);color:#4ade80">✓ ${boughtStr}</span>
             ${_exclusionCheckboxHtml('purchase', p.id, isExcluded(p))}
           </div>
@@ -5742,6 +5753,7 @@ function renderPurchases() {
           <span class="dream-icon">${purchaseIconOf(p)}</span>${esc(p.name)}
           ${sharedBadge}
           ${recurringBadge}
+          ${creditBadge}
           ${isOverdue ? '<span class="p-item-type" style="background:rgba(248,113,113,0.15);color:#f87171">прострочено</span>' : ''}
           ${deferBadge}
           ${_exclusionCheckboxHtml('purchase', p.id, isExcluded(p))}
@@ -6513,13 +6525,18 @@ function openPurchaseDetail(id) {
   const recurringBadge = p.recurring
     ? '<span class="p-item-type" style="background:rgba(96,165,250,0.15);color:#60a5fa;margin-left:6px" title="Повторюється щомісяця">🔁 щомісяця</span>'
     : '';
+  const creditBadge = p.credit
+    ? '<span class="p-item-type" style="background:rgba(167,139,250,0.18);color:#a78bfa;margin-left:6px" title="Платіж за кредит">💳 кредит ' + (Number(p.creditMonthIndex) || 1) + '/' + (Number(p.creditMonths) || '?') + '</span>'
+    : '';
+  const creditTotalStr = p.credit && p.creditTotal ? fmtPurchaseAmount(p.creditTotal, cc) : '';
+  const creditRemainingMonths = p.credit ? Math.max(0, (Number(p.creditMonths) || 0) - (Number(p.creditMonthIndex) || 1)) : 0;
 
   detail.querySelector('#purchaseDetailContent').innerHTML = sanitize(`
     <div class="dash-hero">
       <div class="dash-hero-label"><span class="dream-icon-hero">${purchaseIconOf(p)}</span>${esc(p.name)}</div>
       <div class="dash-hero-value">${amountStr}</div>
       <div style="font-size:13px;color:#94a3b8;margin-top:4px">${uahEq}</div>
-      <div style="margin-top:10px">${statusBadge}${deferBadge}${sharedBadge}${recurringBadge}</div>
+      <div style="margin-top:10px">${statusBadge}${deferBadge}${sharedBadge}${recurringBadge}${creditBadge}</div>
       <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap">
         ${primaryActions.join('')}
       </div>
@@ -6533,6 +6550,9 @@ function openPurchaseDetail(id) {
       <div class="detail-info-row"><span class="detail-info-label">Сума</span><span class="detail-info-value">${amountStr}${uahEq}</span></div>
       <div class="detail-info-row"><span class="detail-info-label">${p.plannedDate ? 'Запланована дата' : 'Запланований місяць'}</span><span class="detail-info-value">${formatPurchaseWhen(p)}</span></div>
       ${p.recurring ? '<div class="detail-info-row"><span class="detail-info-label">Повторюваність</span><span class="detail-info-value">🔁 Щомісяця</span></div>' : ''}
+      ${p.credit ? '<div class="detail-info-row"><span class="detail-info-label">Сума кредиту</span><span class="detail-info-value">' + creditTotalStr + '</span></div>' : ''}
+      ${p.credit ? '<div class="detail-info-row"><span class="detail-info-label">Період</span><span class="detail-info-value">' + (Number(p.creditMonths) || 0) + ' міс</span></div>' : ''}
+      ${p.credit ? '<div class="detail-info-row"><span class="detail-info-label">Платіж</span><span class="detail-info-value">' + (Number(p.creditMonthIndex) || 1) + ' з ' + (Number(p.creditMonths) || 0) + ' (залишилось ' + creditRemainingMonths + ')</span></div>' : ''}
       ${p.deferCount ? '<div class="detail-info-row"><span class="detail-info-label">Перенесень</span><span class="detail-info-value">' + p.deferCount + '</span></div>' : ''}
       ${p.bought && p.boughtAt ? '<div class="detail-info-row"><span class="detail-info-label">Позначено як здійснена</span><span class="detail-info-value">' + new Date(p.boughtAt).toLocaleDateString('uk-UA') + '</span></div>' : ''}
       ${p.bought && p.boughtAmount && p.boughtAmount !== p.amount ? '<div class="detail-info-row"><span class="detail-info-label">Фактична сума</span><span class="detail-info-value">' + fmtPurchaseAmount(p.boughtAmount, cc) + '</span></div>' : ''}
@@ -6772,7 +6792,8 @@ if (typeof FormDrafts !== 'undefined') {
   ]);
   FormDrafts.register('purchase.form', [
     'purchaseName', 'purchaseAmount', 'purchaseCurrency', 'purchaseDate',
-    'purchaseLink', 'purchaseNotes', 'purchaseIcon'
+    'purchaseLink', 'purchaseNotes', 'purchaseIcon',
+    'purchaseCredit', 'purchaseCreditTotal', 'purchaseCreditMonths'
   ]);
   FormDrafts.register('profile', [
     'profileDisplayName', 'profileContactEmail', 'profilePhone'

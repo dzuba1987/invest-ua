@@ -25,25 +25,39 @@ function _projectRecurringForMonth(items, cm) {
   const daysInMonth = new Date(y, m, 0).getDate();
   const realInMonth = items.filter(p => {
     const pm = (p.plannedDate ? p.plannedDate.slice(0, 7) : (p.plannedMonth || ''));
-    return pm === cm && p.recurring && !p.bought;
+    return pm === cm && (p.recurring || p.credit) && !p.bought;
   });
   const out = [];
   items.forEach(p => {
-    if (!p.recurring || p.bought) return;
+    if (!(p.recurring || p.credit) || p.bought) return;
     const base = p.plannedDate || ((p.plannedMonth || cm) + '-01');
     const baseMonth = base.slice(0, 7);
     if (baseMonth >= cm) return;
+    // Credit projections stop after the final installment. Index of the
+    // projected month = creditMonthIndex of the source + months between
+    // baseMonth and cm. Cap at creditMonths.
+    let projectedIndex = null;
+    if (p.credit) {
+      const totalMonths = Number(p.creditMonths) || 0;
+      const baseIndex = Number(p.creditMonthIndex) || 1;
+      const [by, bm] = baseMonth.split('-').map(Number);
+      const monthDiff = (y - by) * 12 + (m - bm);
+      projectedIndex = baseIndex + monthDiff;
+      if (projectedIndex > totalMonths) return;
+    }
     const baseDay = Number(base.slice(8, 10)) || 1;
     const day = Math.min(baseDay, daysInMonth);
     const name = String(p.name || '').trim();
     const dup = realInMonth.some(it => String(it.name || '').trim() === name);
     if (dup) return;
-    out.push({
+    const projected = {
       ...p,
       _projected: true,
       plannedDate: y + '-' + String(m).padStart(2, '0') + '-' + String(day).padStart(2, '0'),
       plannedMonth: cm
-    });
+    };
+    if (projectedIndex != null) projected.creditMonthIndex = projectedIndex;
+    out.push(projected);
   });
   return out;
 }
@@ -108,12 +122,20 @@ function _renderPurchaseCalendar() {
     else if (p.plannedMonth) dateKey = p.plannedMonth + '-01';
     else return;
     if (dateKey.slice(0, 7) !== cm) return;
-    if (!byDay[dateKey]) byDay[dateKey] = { items: [], totalUah: 0, hasPlanned: false, hasDone: false, hasProjected: false };
+    if (!byDay[dateKey]) byDay[dateKey] = { items: [], totalUah: 0, hasPlanned: false, hasDone: false, hasProjected: false, hasCredit: false, hasCreditDone: false, hasCreditProjected: false };
     byDay[dateKey].items.push(p);
     if (uah != null) byDay[dateKey].totalUah += uah;
-    if (p._projected) byDay[dateKey].hasProjected = true;
-    else if (p.bought) byDay[dateKey].hasDone = true;
-    else byDay[dateKey].hasPlanned = true;
+    if (p._projected) {
+      if (p.credit) byDay[dateKey].hasCreditProjected = true;
+      else byDay[dateKey].hasProjected = true;
+    } else if (p.bought) {
+      if (p.credit) byDay[dateKey].hasCreditDone = true;
+      else byDay[dateKey].hasDone = true;
+    } else if (p.credit) {
+      byDay[dateKey].hasCredit = true;
+    } else {
+      byDay[dateKey].hasPlanned = true;
+    }
   });
 
   const cells = [];
@@ -131,13 +153,25 @@ function _renderPurchaseCalendar() {
     if (data) cls.push('is-active');
     let dotClass = '';
     if (data) {
-      if (data.hasPlanned && data.hasDone) dotClass = 'is-mixed';
+      // Credit identity wins so users still see "this is a loan installment"
+      // after marking ✓ — without this, hasDone alone would paint the day green.
+      const anyCreditReal = data.hasCredit || data.hasCreditDone;
+      const anyOtherReal = data.hasPlanned || data.hasDone;
+      if (anyCreditReal && anyOtherReal) dotClass = 'is-credit-mixed';
+      else if (data.hasCredit && data.hasCreditDone) dotClass = 'is-credit-mixed';
+      else if (data.hasCreditDone) dotClass = 'is-credit-done';
+      else if (data.hasCredit) dotClass = 'is-credit';
+      else if (data.hasPlanned && data.hasDone) dotClass = 'is-mixed';
       else if (data.hasDone) dotClass = 'is-done';
       else if (data.hasPlanned) dotClass = 'is-planned';
+      else if (data.hasCreditProjected) dotClass = 'is-credit-projected';
       else if (data.hasProjected) dotClass = 'is-projected';
     }
+    // For credit items show 💳 in the day cell so the loan nature is visible
+    // at a glance on the calendar — the user-picked icon still shows up in
+    // the day-detail drawer alongside the badge.
     const icons = data
-      ? data.items.slice(0, 3).map(it => '<span>' + esc(purchaseIconOf(it)) + '</span>').join('')
+      ? data.items.slice(0, 3).map(it => '<span' + (it.credit ? ' class="is-credit"' : '') + '>' + esc(it.credit ? '💳' : purchaseIconOf(it)) + '</span>').join('')
       + (data.items.length > 3 ? '<span class="purchase-calendar-day-more">+' + (data.items.length - 3) + '</span>' : '')
       : '';
     const amount = data ? '<div class="purchase-calendar-day-amount' + (data.hasDone ? ' has-done' : '') + '">' + formatShort(data.totalUah) + '</div>' : '';
@@ -175,10 +209,13 @@ function _renderCalendarDayDetail(dayKey, data) {
     const amt = fmtPurchaseAmount(p.boughtAmount || p.amount, cc);
     const cls = 'pcal-item' + (p.bought ? ' is-done' : '') + (p._projected ? ' is-projected' : '');
     const recur = p.recurring ? ' <span title="Повторюється щомісяця">🔁</span>' : '';
+    const cred = p.credit
+      ? ' <span title="Платіж за кредит" style="color:#a78bfa">💳 ' + (Number(p.creditMonthIndex) || 1) + '/' + (Number(p.creditMonths) || '?') + '</span>'
+      : '';
     const proj = p._projected ? ' <span class="pcal-item-proj">(прогноз)</span>' : '';
     return '<div class="' + cls + '" onclick="openPurchaseDetail(\'' + p.id + '\')">' +
       '<span class="pcal-item-icon">' + esc(purchaseIconOf(p)) + '</span>' +
-      '<span class="pcal-item-name">' + esc(p.name || '') + recur + proj + (p.bought ? ' · ✓' : '') + '</span>' +
+      '<span class="pcal-item-name">' + esc(p.name || '') + recur + cred + proj + (p.bought ? ' · ✓' : '') + '</span>' +
       '<span class="pcal-item-amount">' + esc(amt) + '</span>' +
     '</div>';
   }).join('');

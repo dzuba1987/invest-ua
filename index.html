@@ -177,7 +177,7 @@
       <div class="field field-full compound-toggle">
         <label class="checkbox-label">
           <input type="checkbox" id="compoundCheck" onchange="toggleCompoundOptions()">
-          <span data-i18n="calc.compound">Складний відсоток (реінвестування)</span>
+          <span data-i18n="calc.compound">Складний відсоток</span>
         </label>
       </div>
       <div class="field" id="compoundRateField" style="display:none">
@@ -871,10 +871,30 @@
           </div>
           <div class="field field-full">
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-              <input type="checkbox" id="purchaseRecurring" style="accent-color:#3b82f6;width:18px;height:18px">
+              <input type="checkbox" id="purchaseRecurring" style="accent-color:#3b82f6;width:18px;height:18px" onchange="onPurchaseRecurringChange()">
               <span>🔁 Повторюється щомісяця</span>
             </label>
             <p style="font-size:12px;color:#64748b;margin:4px 0 0 26px">Після відмітки «Здійснено» наступна копія з'явиться у наступному місяці.</p>
+          </div>
+          <div class="field field-full">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="purchaseCredit" style="accent-color:#a78bfa;width:18px;height:18px" onchange="onPurchaseCreditChange()">
+              <span>💳 Кредит на цю покупку</span>
+            </label>
+            <p style="font-size:12px;color:#64748b;margin:4px 0 0 26px">Витрата відображатиметься щомісяця протягом обраного періоду.</p>
+          </div>
+          <div class="field field-full" id="purchaseCreditFields" style="display:none">
+            <div class="form-grid" style="margin:0">
+              <div class="field">
+                <label>Сума кредиту <span id="purchaseCreditTotalCurLabel" style="color:#64748b;font-weight:400">(грн)</span></label>
+                <input type="text" id="purchaseCreditTotal" placeholder="30 000" inputmode="decimal" oninput="onPurchaseCreditCalcChange()">
+              </div>
+              <div class="field">
+                <label>Період (місяців)</label>
+                <input type="number" id="purchaseCreditMonths" placeholder="12" min="1" max="240" inputmode="numeric" oninput="onPurchaseCreditCalcChange()">
+              </div>
+            </div>
+            <p style="font-size:12px;color:#64748b;margin:6px 0 0">Щомісячний платіж розрахується автоматично як сума ÷ період.</p>
           </div>
         </div>
         <div class="btn-row" id="purchaseFormActions">
@@ -925,6 +945,7 @@
             <div class="purchase-calendar-legend">
               <span class="purchase-calendar-legend-dot is-planned"></span><span>Заплановано</span>
               <span class="purchase-calendar-legend-dot is-done"></span><span>Здійснено</span>
+              <span class="purchase-calendar-legend-dot is-credit"></span><span>💳 Кредит</span>
             </div>
           </div>
           <div class="purchase-calendar-weekdays" id="purchaseCalendarWeekdays"></div>
