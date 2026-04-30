@@ -6509,9 +6509,7 @@ function openPurchaseDetail(id) {
     primaryActions.push('<button class="btn-export" onclick="promptMakeShared(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0">👥 Зробити спільною</button>');
   }
   primaryActions.push('<button class="btn-export" onclick="sharePurchase(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0">↗ Поділитись</button>');
-  if (!p.bought) {
-    primaryActions.push('<button class="btn-export" onclick="editPurchaseFromDetail(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0">✎ Редагувати</button>');
-  }
+  primaryActions.push('<button class="btn-export" onclick="editPurchaseFromDetail(\'' + p.id + '\')" style="width:auto;padding:8px 16px;margin:0">✎ Редагувати</button>');
   const dangerAction = '<button class="btn-clear" onclick="confirmThen(\'' + (isShared ? 'Покинути спільну витрату?' : 'Видалити витрату?') + '\', () => { deletePurchase(\'' + p.id + '\'); closePurchaseDetail(); }, { danger: true, okText: \'' + (isShared ? 'Покинути' : 'Видалити') + '\' })" style="width:auto;padding:8px 16px;margin:0">✕ ' + (isShared ? 'Покинути' : 'Видалити') + '</button>';
 
   _openPurchaseDetailId = String(p.id);

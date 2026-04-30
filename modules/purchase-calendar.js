@@ -213,9 +213,16 @@ function _renderCalendarDayDetail(dayKey, data) {
       ? ' <span title="Платіж за кредит" style="color:#a78bfa">💳 ' + (Number(p.creditMonthIndex) || 1) + '/' + (Number(p.creditMonths) || '?') + '</span>'
       : '';
     const proj = p._projected ? ' <span class="pcal-item-proj">(прогноз)</span>' : '';
+    // Inline ✓/↺ — projected items are virtual (no real id) and skip the toggle.
+    const toggle = p._projected
+      ? ''
+      : (p.bought
+          ? '<button class="pcal-item-toggle is-done" title="Скасувати позначку" onclick="event.stopPropagation();unmarkPurchaseBought(\'' + p.id + '\')">↺</button>'
+          : '<button class="pcal-item-toggle" title="Відмітити як здійснену" onclick="event.stopPropagation();markPurchaseBought(\'' + p.id + '\')">✓</button>');
     return '<div class="' + cls + '" onclick="openPurchaseDetail(\'' + p.id + '\')">' +
       '<span class="pcal-item-icon">' + esc(purchaseIconOf(p)) + '</span>' +
       '<span class="pcal-item-name">' + esc(p.name || '') + recur + cred + proj + (p.bought ? ' · ✓' : '') + '</span>' +
+      toggle +
       '<span class="pcal-item-amount">' + esc(amt) + '</span>' +
     '</div>';
   }).join('');
